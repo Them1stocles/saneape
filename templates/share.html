@@ -39,6 +39,15 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-3M1MP9NSGT');
+    </script>
+    
     <style>
         .recommendation-badge {
             font-size: 1.1rem;
@@ -330,16 +339,54 @@
             const text = `Just saw AI analysis for ${{ ticker }} on @SaneApe_com! 🧠📈 Recommendation: {{ analysis.recommendation }}`;
             const url = window.location.href;
             const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+            
+            // Google Analytics share event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'share', {
+                    'method': 'twitter',
+                    'content_type': 'shared_analysis',
+                    'item_id': '{{ ticker }}',
+                    'analysis_type': '{{ "maximum_brain" if maximum_brain else "standard" }}',
+                    'event_category': 'social',
+                    'event_label': '{{ ticker }}'
+                });
+            }
+            
             window.open(twitterUrl, '_blank', 'width=550,height=420');
         }
 
         function shareToFacebook() {
             const url = window.location.href;
             const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+            
+            // Google Analytics share event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'share', {
+                    'method': 'facebook',
+                    'content_type': 'shared_analysis',
+                    'item_id': '{{ ticker }}',
+                    'analysis_type': '{{ "maximum_brain" if maximum_brain else "standard" }}',
+                    'event_category': 'social',
+                    'event_label': '{{ ticker }}'
+                });
+            }
+            
             window.open(facebookUrl, '_blank', 'width=550,height=420');
         }
 
         function copyShareLink() {
+            // Google Analytics share event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'share', {
+                    'method': 'copy_link',
+                    'content_type': 'shared_analysis',
+                    'item_id': '{{ ticker }}',
+                    'analysis_type': '{{ "maximum_brain" if maximum_brain else "standard" }}',
+                    'event_category': 'social',
+                    'event_label': '{{ ticker }}'
+                });
+            }
+            
             navigator.clipboard.writeText(window.location.href).then(function() {
                 // Show temporary success message
                 const btn = event.target.closest('button');

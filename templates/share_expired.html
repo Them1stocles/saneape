@@ -38,6 +38,15 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-3M1MP9NSGT');
+    </script>
 </head>
 <body class="bg-light">
     <div class="container-fluid">
@@ -89,11 +98,11 @@
                                 Generate a new analysis with the latest stock data, price movements, and AI insights.
                             </p>
                             <div class="d-grid gap-2 d-md-block">
-                                <a href="{{ url_for('index') }}?ticker={{ ticker }}" class="btn btn-primary btn-lg">
+                                <a href="{{ url_for('index') }}?ticker={{ ticker }}" class="btn btn-primary btn-lg" onclick="trackExpiredAnalysis('{{ ticker }}', '{{ maximum_brain }}')">
                                     <i data-feather="search" class="me-2"></i>
                                     Analyze {{ ticker }}
                                 </a>
-                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg" onclick="trackHomeClick()">
                                     <i data-feather="home" class="me-2"></i>
                                     Analyze Any Stock
                                 </a>
@@ -150,12 +159,43 @@
     <script>
         // Initialize Feather Icons
         feather.replace();
+        
+        // Google Analytics event tracking functions
+        function trackExpiredAnalysis(ticker, maxBrain) {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'expired_analysis_reanalyze', {
+                    'ticker_symbol': ticker,
+                    'analysis_type': maxBrain === 'True' ? 'maximum_brain' : 'standard',
+                    'event_category': 'conversion',
+                    'event_label': ticker
+                });
+            }
+        }
+        
+        function trackHomeClick() {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'expired_analysis_home', {
+                    'event_category': 'navigation',
+                    'event_label': 'home_from_expired'
+                });
+            }
+        }
 
         // Pre-fill ticker if redirected from main page
         document.addEventListener('DOMContentLoaded', function() {
             // Check if we have a ticker parameter in the URL for the analyze button
             const urlParams = new URLSearchParams(window.location.search);
             const ticker = '{{ ticker }}';
+            
+            // Track page view
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'expired_page_view', {
+                    'ticker_symbol': ticker,
+                    'analysis_type': '{{ "maximum_brain" if maximum_brain else "standard" }}',
+                    'event_category': 'page_view',
+                    'event_label': ticker
+                });
+            }
             
             // Add fade in animation
             document.body.style.opacity = '0';

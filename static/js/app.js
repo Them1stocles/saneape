@@ -49,7 +49,18 @@ class SaneApeApp {
         this.tickerInput.addEventListener('input', () => this.validateInput());
         
         // Maximum Brain checkbox change
-        this.maxBrainCheck.addEventListener('change', () => this.updateButtonState());
+        this.maxBrainCheck.addEventListener('change', () => {
+            this.updateButtonState();
+            
+            // Google Analytics toggle event
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'maximum_brain_toggle', {
+                    'enabled': this.maxBrainCheck.checked,
+                    'event_category': 'ui_interaction',
+                    'event_label': this.maxBrainCheck.checked ? 'enabled' : 'disabled'
+                });
+            }
+        });
         
         // Enter key support
         this.tickerInput.addEventListener('keypress', (e) => {
@@ -169,6 +180,16 @@ class SaneApeApp {
         this.clearAlerts();
         this.hideResults();
         
+        // Google Analytics event tracking
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'stock_analysis_start', {
+                'ticker_symbol': ticker,
+                'analysis_type': maximumBrain ? 'maximum_brain' : 'standard',
+                'event_category': 'analysis',
+                'event_label': ticker
+            });
+        }
+        
         try {
             const formData = new FormData();
             formData.append('ticker', ticker);
@@ -185,10 +206,34 @@ class SaneApeApp {
                 this.displayResults(data);
                 this.showAlert('Analysis completed successfully!', 'success');
                 
+                // Google Analytics success event
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'stock_analysis_complete', {
+                        'ticker_symbol': ticker,
+                        'analysis_type': maximumBrain ? 'maximum_brain' : 'standard',
+                        'recommendation': data.recommendation,
+                        'confidence': data.confidence,
+                        'event_category': 'analysis',
+                        'event_label': ticker
+                    });
+                }
+                
                 // Refresh user status to update remaining requests
                 await this.loadUserStatus();
             } else {
                 this.handleError(data.error, data.type);
+                
+                // Google Analytics error event
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'stock_analysis_error', {
+                        'ticker_symbol': ticker,
+                        'analysis_type': maximumBrain ? 'maximum_brain' : 'standard',
+                        'error_type': data.type || 'unknown',
+                        'error_message': data.error,
+                        'event_category': 'analysis',
+                        'event_label': ticker
+                    });
+                }
             }
             
         } catch (error) {
@@ -433,6 +478,18 @@ class SaneApeApp {
         const text = `Just got AI analysis for $${ticker} on @SaneApe_com! 🧠📈 Recommendation: ${recommendation}`;
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
         
+        // Google Analytics share event
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'share', {
+                'method': 'twitter',
+                'content_type': 'stock_analysis',
+                'item_id': ticker,
+                'analysis_type': maximum_brain ? 'maximum_brain' : 'standard',
+                'event_category': 'social',
+                'event_label': ticker
+            });
+        }
+        
         window.open(twitterUrl, '_blank', 'width=550,height=420');
     }
     
@@ -445,6 +502,18 @@ class SaneApeApp {
             : `${window.location.origin}/share/${ticker}`;
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
         
+        // Google Analytics share event
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'share', {
+                'method': 'facebook',
+                'content_type': 'stock_analysis',
+                'item_id': ticker,
+                'analysis_type': maximum_brain ? 'maximum_brain' : 'standard',
+                'event_category': 'social',
+                'event_label': ticker
+            });
+        }
+        
         window.open(facebookUrl, '_blank', 'width=550,height=420');
     }
     
@@ -455,6 +524,18 @@ class SaneApeApp {
         const shareUrl = maximum_brain 
             ? `${window.location.origin}/share/${ticker}?brain=true`
             : `${window.location.origin}/share/${ticker}`;
+        
+        // Google Analytics share event
+        if (typeof gtag !== 'undefined') {
+            gtag('event', 'share', {
+                'method': 'copy_link',
+                'content_type': 'stock_analysis',
+                'item_id': ticker,
+                'analysis_type': maximum_brain ? 'maximum_brain' : 'standard',
+                'event_category': 'social',
+                'event_label': ticker
+            });
+        }
         
         navigator.clipboard.writeText(shareUrl).then(() => {
             const btn = document.getElementById('shareLinkBtn');
@@ -540,6 +621,17 @@ class SaneApeApp {
                 e.preventDefault();
                 const ticker = btn.dataset.ticker;
                 const maxBrain = btn.dataset.maxBrain === 'true';
+                
+                // Google Analytics event tracking
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'recent_analysis_click', {
+                        'ticker_symbol': ticker,
+                        'analysis_type': maxBrain ? 'maximum_brain' : 'standard',
+                        'event_category': 'engagement',
+                        'event_label': ticker
+                    });
+                }
+                
                 this.loadCachedAnalysis(ticker, maxBrain);
             });
         });
@@ -580,6 +672,16 @@ class SaneApeApp {
             if (data.success) {
                 this.displayResults(data);
                 this.showAlert('success', `Loaded cached analysis for ${ticker} (no rate limit used)`);
+                
+                // Google Analytics cached analysis event
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'cached_analysis_load', {
+                        'ticker_symbol': ticker,
+                        'analysis_type': maxBrain ? 'maximum_brain' : 'standard',
+                        'event_category': 'analysis',
+                        'event_label': ticker
+                    });
+                }
             } else {
                 this.showAlert('warning', data.error || 'Cached analysis not available');
             }
