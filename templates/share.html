@@ -195,6 +195,99 @@
                             </div>
                             {% endif %}
 
+                            <!-- Income Analysis Details (shown when income analysis exists) -->
+                            {% if analysis.income_analysis %}
+                            <div class="mt-4">
+                                <h6 class="text-muted mb-3">
+                                    <i data-feather="dollar-sign" class="me-1"></i>
+                                    Income Analysis Details
+                                    <span class="badge bg-success ms-2">Income ETF</span>
+                                </h6>
+                                <div class="income-analysis-container">
+                                    <!-- Income Recommendation -->
+                                    <div class="border-start border-3 border-success ps-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-0 me-2">Income Recommendation</h6>
+                                            <div class="d-flex gap-1">
+                                                {% set income_rec = analysis.income_analysis.recommendation %}
+                                                {% if 'buy' in income_rec.lower() and 'no' not in income_rec.lower() %}
+                                                    <span class="badge bg-success">{{ income_rec }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ income_rec }}</span>
+                                                {% endif %}
+                                                <span class="badge bg-info">{{ analysis.income_analysis.confidence|title }}</span>
+                                            </div>
+                                        </div>
+                                        <p class="mb-0 text-muted">{{ analysis.income_analysis.explanation }}</p>
+                                    </div>
+
+                                    <!-- Dividend Information -->
+                                    {% if analysis.income_analysis.dividend_info %}
+                                    <div class="border-start border-3 border-primary ps-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-0 me-2">Dividend Information</h6>
+                                            <div class="d-flex gap-1">
+                                                <span class="badge bg-primary">{{ analysis.income_analysis.dividend_info.frequency|title }}</span>
+                                                {% if analysis.income_analysis.dividend_info.frequency_note %}
+                                                    <span class="badge bg-warning" data-bs-toggle="tooltip" 
+                                                          title="{{ analysis.income_analysis.dividend_info.frequency_note }}">
+                                                        <i data-feather="info" style="width: 12px; height: 12px;"></i>
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-6 col-md-3">
+                                                <div class="text-center p-2 bg-light rounded">
+                                                    <div class="fw-bold text-primary">{{ "%.2f"|format(analysis.income_analysis.dividend_info.yield_percent) }}%</div>
+                                                    <small class="text-muted">Yield</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="text-center p-2 bg-light rounded">
+                                                    <div class="fw-bold text-success">${{ "%.4f"|format(analysis.income_analysis.dividend_info.monthly_income) }}</div>
+                                                    <small class="text-muted">Monthly</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="text-center p-2 bg-light rounded">
+                                                    <div class="fw-bold text-info">${{ "%.2f"|format(analysis.income_analysis.dividend_info.annual_income) }}</div>
+                                                    <small class="text-muted">Annual</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-6 col-md-3">
+                                                <div class="text-center p-2 bg-light rounded">
+                                                    <div class="fw-bold text-warning">{{ analysis.income_analysis.dividend_info.payments_per_year }}</div>
+                                                    <small class="text-muted">Payments/Year</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    <!-- Risk Assessment -->
+                                    {% if analysis.income_analysis.risk_assessment %}
+                                    <div class="border-start border-3 border-warning ps-3 mb-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-0 me-2">Risk Assessment</h6>
+                                            <div class="d-flex gap-1">
+                                                {% set risk_level = analysis.income_analysis.risk_assessment.level %}
+                                                {% if risk_level.lower() == 'low' %}
+                                                    <span class="badge bg-success">{{ risk_level }} Risk</span>
+                                                {% elif risk_level.lower() == 'medium' %}
+                                                    <span class="badge bg-warning">{{ risk_level }} Risk</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ risk_level }} Risk</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <p class="mb-0 text-muted">{{ analysis.income_analysis.risk_assessment.explanation }}</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
+
                             <!-- Technical Analysis Details -->
                             {% if analysis.analysis_details %}
                             <div class="mt-4">
