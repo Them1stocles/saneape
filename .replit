@@ -5,7 +5,7 @@ channel = "stable-25_05"
 packages = ["glibcLocales", "libxcrypt", "openssl", "pkg-config", "postgresql", "xsimd"]
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "gce"
 run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
 
 [workflows]
