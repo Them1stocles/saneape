@@ -120,3 +120,6 @@ Two main models:
 - **Dynamic Frontend**: Enhanced user interface with real-time remaining request display and intelligent button state management
 - **Error Handling**: Improved to deny requests during database errors instead of allowing them (security-first approach)
 - **API Endpoints**: Added admin controls for emergency stop, limit updates, and system monitoring
+- **Recently Analyzed Feature**: Fully implemented with clickable ticker buttons showing cached results without rate limit usage
+- **Real-Time Price Updates**: Cached analyses now fetch current stock prices via yfinance, eliminating "NaN" price display issues
+- **Badge Overflow Fix**: Enhanced CSS for responsive technical analysis badge layout preventing overflow on mobile devices

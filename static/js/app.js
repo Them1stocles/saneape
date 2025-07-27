@@ -218,8 +218,8 @@ class SaneApeApp {
         // Update stock information
         document.getElementById('stockTitle').textContent = 
             `${data.ticker} - ${data.company_name}`;
-        document.getElementById('stockPrice').textContent = 
-            `Current Price: $${parseFloat(data.current_price).toFixed(2)}`;
+        document.getElementById('stockPrice').innerHTML = 
+            `Current Price: <strong>$${parseFloat(data.current_price).toFixed(2)}</strong> <small class="text-success"><i data-feather="refresh-cw" style="width: 12px; height: 12px;"></i> Live</small>`;
         
         // Update recommendation badge
         const recBadge = document.getElementById('recommendationBadge');

@@ -309,7 +309,7 @@ def get_recent_analyses():
 
 @app.route('/api/cached-analysis/<ticker>')
 def get_cached_analysis(ticker):
-    """Get cached analysis result without using rate limits"""
+    """Get cached analysis result with current price update (no rate limits used)"""
     try:
         ticker = ticker.upper()
         maximum_brain = request.args.get('maximum_brain', 'false').lower() == 'true'
@@ -319,6 +319,22 @@ def get_cached_analysis(ticker):
         cached_result = cache_manager.get_cached_analysis(ticker, maximum_brain)
         
         if cached_result:
+            # Update with current price for cached results
+            try:
+                import yfinance as yf
+                stock = yf.Ticker(ticker)
+                current_data = stock.history(period="1d")
+                if not current_data.empty:
+                    current_price = round(current_data['Close'].iloc[-1], 2)
+                    cached_result['current_price'] = f"${current_price}"
+                    logging.info(f"Updated cached {ticker} with current price: ${current_price}")
+                else:
+                    cached_result['current_price'] = "Price unavailable"
+                    logging.warning(f"No current price data available for {ticker}")
+            except Exception as e:
+                logging.warning(f"Could not fetch current price for {ticker}: {str(e)}")
+                cached_result['current_price'] = "Price unavailable"
+            
             return jsonify(cached_result)
         else:
             return jsonify({
