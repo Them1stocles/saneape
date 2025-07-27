@@ -8,7 +8,8 @@ from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache, User, 
 from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
-from credit_manager import credit_manager
+from credit_manager import credit_manager, CreditManager
+from stripe_manager import StripeManager
 from feature_flags import is_user_auth_enabled, is_credit_system_enabled
 import replit_auth  # Import to register authentication routes
 from datetime import date, datetime, timedelta
@@ -360,27 +361,24 @@ def account_dashboard():
         # Note: gtag events are handled client-side in the template
         
         # Get comprehensive user data using existing managers
-        from credit_manager import CreditManager
-        from stripe_manager import StripeManager
-        
-        credit_manager = CreditManager()
-        stripe_manager = StripeManager()
+        credit_mgr = CreditManager()
+        stripe_mgr = StripeManager()
         
         # Gather all user account data safely
         try:
-            credit_info = credit_manager.get_user_credit_info(current_user.id)
+            credit_info = credit_mgr.get_user_credit_info(current_user.id)
         except Exception as e:
             logging.error(f"Error getting credit info: {e}")
             credit_info = {'total_credits': 0, 'subscription_credits': 0, 'topup_credits': 0}
         
         try:
-            subscription_info = stripe_manager.get_user_subscription_info(current_user.id)
+            subscription_info = stripe_mgr.get_user_subscription_info(current_user.id)
         except Exception as e:
             logging.error(f"Error getting subscription info: {e}")
             subscription_info = None
         
         try:
-            usage_analytics = credit_manager.get_usage_analytics(current_user.id)
+            usage_analytics = credit_mgr.get_usage_analytics(current_user.id)
         except Exception as e:
             logging.error(f"Error getting usage analytics: {e}")
             usage_analytics = {'daily_usage': [], 'total_analyses': 0}
@@ -396,16 +394,21 @@ def account_dashboard():
         return redirect(url_for('index'))
 
 @app.route('/api/account/credits')
-@login_required
+@login_required  
 def api_account_credits():
-    """Real-time credit balance API for dashboard updates"""
+    """Real-time credit balance API for dashboard updates with rate limiting"""
     try:
         if not is_user_auth_enabled():
             return jsonify({'error': 'User accounts not available'}), 404
         
-        from credit_manager import CreditManager
-        credit_manager = CreditManager()
-        credit_info = credit_manager.get_user_credit_info(current_user.id)
+        # Rate limiting for API endpoints
+        rate_limiter = RateLimiter()
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        if not rate_limiter.check_api_rate_limit(client_ip, 'account_api'):
+            return jsonify({'error': 'Rate limit exceeded'}), 429
+        
+        credit_mgr = CreditManager()
+        credit_info = credit_mgr.get_user_credit_info(current_user.id)
         
         return jsonify({
             'success': True,
@@ -422,19 +425,30 @@ def api_account_credits():
 @app.route('/api/account/transactions')
 @login_required
 def api_account_transactions():
-    """Transaction history API with pagination and filtering"""
+    """Transaction history API with pagination, filtering and security validation"""
     try:
         if not is_user_auth_enabled():
             return jsonify({'error': 'User accounts not available'}), 404
         
-        # Pagination parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = min(request.args.get('per_page', 20, type=int), 100)  # Max 100 per request
-        transaction_type = request.args.get('type')  # Optional filter
+        # Rate limiting for API endpoints
+        rate_limiter = RateLimiter()
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        if not rate_limiter.check_api_rate_limit(client_ip, 'account_api'):
+            return jsonify({'error': 'Rate limit exceeded'}), 429
         
-        from credit_manager import CreditManager
-        credit_manager = CreditManager()
-        transactions = credit_manager.get_credit_history(
+        # Enhanced input validation
+        page = max(1, request.args.get('page', 1, type=int))
+        per_page = min(max(1, request.args.get('per_page', 20, type=int)), 100)  # 1-100 range
+        transaction_type = request.args.get('type')
+        
+        # Validate transaction_type if provided
+        if transaction_type:
+            valid_types = ['analysis', 'subscription', 'topup', 'refund']
+            if transaction_type not in valid_types:
+                return jsonify({'error': 'Invalid transaction type'}), 400
+        
+        credit_mgr = CreditManager()
+        transactions = credit_mgr.get_credit_history(
             current_user.id, 
             page=page, 
             per_page=per_page,
@@ -469,12 +483,17 @@ def api_usage_analytics():
         if not is_user_auth_enabled():
             return jsonify({'error': 'User accounts not available'}), 404
         
-        days = request.args.get('days', 30, type=int)  # Default 30 days
-        days = min(days, 365)  # Max 1 year
+        # Rate limiting for API endpoints
+        rate_limiter = RateLimiter()
+        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+        if not rate_limiter.check_api_rate_limit(client_ip, 'account_api'):
+            return jsonify({'error': 'Rate limit exceeded'}), 429
         
-        from credit_manager import CreditManager  
-        credit_manager = CreditManager()
-        analytics = credit_manager.get_usage_analytics(current_user.id, days=days)
+        # Enhanced input validation
+        days = max(1, min(request.args.get('days', 30, type=int), 365))  # 1-365 days range
+        
+        credit_mgr = CreditManager()
+        analytics = credit_mgr.get_usage_analytics(current_user.id, days=days)
         
         return jsonify({
             'success': True,

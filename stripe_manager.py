@@ -152,7 +152,7 @@ class StripeManager:
                 try:
                     customer = stripe.Customer.retrieve(existing_subscription.stripe_customer_id)
                     return customer.id
-                except stripe.error.InvalidRequestError:
+                except stripe.InvalidRequestError:
                     logger.warning(f"Stripe customer {existing_subscription.stripe_customer_id} not found, creating new one")
             
             # Create new Stripe customer
@@ -253,7 +253,7 @@ class StripeManager:
                     event = stripe.Webhook.construct_event(
                         payload, signature, self.webhook_secret
                     )
-                except stripe.error.SignatureVerificationError:
+                except stripe.SignatureVerificationError:
                     logger.error("Invalid Stripe webhook signature")
                     return False, "Invalid signature"
             else:
@@ -314,7 +314,11 @@ class StripeManager:
             plan_type = metadata.get('plan_type')
             credits = int(metadata.get('credits', 0))
             
-            # Find user by customer ID
+            # Validate customer_id and find user
+            if not customer_id:
+                logger.error("Missing customer_id in checkout session")
+                return False
+                
             user = self._find_user_by_customer_id(customer_id)
             if not user:
                 logger.error(f"User not found for customer {customer_id}")
@@ -339,6 +343,11 @@ class StripeManager:
             subscription_id = subscription_data['id']
             metadata = subscription_data.get('metadata', {})
             
+            # Validate customer_id and find user
+            if not customer_id:
+                logger.error("Missing customer_id in subscription data")
+                return False
+                
             user = self._find_user_by_customer_id(customer_id)
             if not user:
                 logger.error(f"User not found for customer {customer_id}")
@@ -348,18 +357,18 @@ class StripeManager:
             credits_per_period = int(metadata.get('credits_per_period', 0))
             
             # Create subscription record
-            subscription = Subscription(
-                user_id=user.id,
-                stripe_subscription_id=subscription_id,
-                stripe_customer_id=customer_id,
-                plan_type=plan_type,
-                status='active'
-            )
+            subscription = Subscription()
+            subscription.user_id = user.id
+            subscription.stripe_subscription_id = subscription_id
+            subscription.stripe_customer_id = customer_id
+            subscription.plan_type = plan_type
+            subscription.status = 'active'
             
             db.session.add(subscription)
             
-            # Grant initial subscription credits
-            self._grant_subscription_credits(user.id, credits_per_period, subscription_id)
+            # Grant initial subscription credits with null safety
+            if subscription_id:
+                self._grant_subscription_credits(user.id, credits_per_period, subscription_id)
             
             db.session.commit()
             
@@ -676,8 +685,8 @@ class StripeManager:
                         'status': stripe_sub.status,
                         'cancel_at_period_end': stripe_sub.cancel_at_period_end,
                         'canceled_at': stripe_sub.canceled_at,
-                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start),
-                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end)
+                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start).isoformat() if hasattr(stripe_sub, 'current_period_start') else None,
+                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end).isoformat() if hasattr(stripe_sub, 'current_period_end') else None
                     }
                 except Exception as e:
                     logger.warning(f"Could not retrieve Stripe subscription details: {e}")
