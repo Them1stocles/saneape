@@ -614,14 +614,28 @@ body {
     transform: translateY(-1px);
 }
 
-/* Compact User Info */
+/* Compact User Info - Mobile Responsive */
 .user-info-compact {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 12px;
+    padding: 8px 12px;
     backdrop-filter: blur(10px);
-    text-align: center;
+    max-width: 280px;
+}
+
+@media (min-width: 768px) {
+    .user-info-compact {
+        position: absolute;
+        top: 1rem;
+        left: 2rem;
+        right: auto;
+        max-width: none;
+    }
 }
 
 .user-avatar-small {
@@ -630,6 +644,7 @@ body {
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
 }
 
 .user-avatar-small-placeholder {
@@ -641,11 +656,32 @@ body {
     align-items: center;
     justify-content: center;
     border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
 }
 
 .user-avatar-small-placeholder i {
     width: 16px;
     height: 16px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Enhanced mobile text display */
+.user-info-compact .text-white {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.user-info-compact .fw-semibold {
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 150px;
+}
+
+.user-info-compact small {
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 /* User Account Section Styling */

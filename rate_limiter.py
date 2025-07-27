@@ -279,6 +279,87 @@ class RateLimiter:
                 'used_brain': self.max_brain_requests_per_day
             }
     
+    def check_api_rate_limit(self, ip_address: str, endpoint_type: str = 'general') -> bool:
+        """
+        Production-grade API rate limiting for account endpoints
+        
+        Args:
+            ip_address: Client IP address
+            endpoint_type: Type of endpoint ('account_api', 'general', etc.)
+        
+        Returns:
+            bool: True if request is allowed, False if rate limited
+        """
+        try:
+            from datetime import timedelta
+            
+            # More lenient limits for authenticated API endpoints
+            if endpoint_type == 'account_api':
+                max_per_minute = 60  # 60 requests per minute for authenticated APIs
+                max_per_hour = 1000   # 1000 requests per hour
+            else:
+                max_per_minute = 20   # 20 requests per minute for general APIs
+                max_per_hour = 200    # 200 requests per hour
+            
+            # Check minute-based rate limit
+            minute_key = f"api_limit_{endpoint_type}_{ip_address}_{datetime.now().strftime('%Y%m%d%H%M')}"
+            minute_requests = self._get_cache_value(minute_key, 0)
+            
+            if minute_requests >= max_per_minute:
+                self.logger.warning(f"API rate limit exceeded for {ip_address} on {endpoint_type}: {minute_requests}/min")
+                return False
+            
+            # Check hourly rate limit
+            hour_key = f"api_limit_{endpoint_type}_{ip_address}_{datetime.now().strftime('%Y%m%d%H')}"
+            hour_requests = self._get_cache_value(hour_key, 0)
+            
+            if hour_requests >= max_per_hour:
+                self.logger.warning(f"Hourly API rate limit exceeded for {ip_address} on {endpoint_type}: {hour_requests}/hour")
+                return False
+            
+            # Increment counters
+            self._increment_cache_value(minute_key, expiry_minutes=1)
+            self._increment_cache_value(hour_key, expiry_minutes=60)
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error checking API rate limit for {ip_address}: {e}")
+            # Fail secure - deny on error
+            return False
+    
+    def _get_cache_value(self, key: str, default: int = 0) -> int:
+        """Get value from cache with fallback"""
+        try:
+            # Simple in-memory cache for now
+            if not hasattr(self, '_rate_cache'):
+                self._rate_cache = {}
+            
+            if key in self._rate_cache:
+                value, expiry = self._rate_cache[key]
+                if datetime.now() < expiry:
+                    return value
+                else:
+                    del self._rate_cache[key]
+            
+            return default
+        except Exception:
+            return default
+    
+    def _increment_cache_value(self, key: str, expiry_minutes: int = 60):
+        """Increment cache value with expiry"""
+        try:
+            from datetime import timedelta
+            if not hasattr(self, '_rate_cache'):
+                self._rate_cache = {}
+            
+            current_value = self._get_cache_value(key, 0)
+            expiry_time = datetime.now() + timedelta(minutes=expiry_minutes)
+            self._rate_cache[key] = (current_value + 1, expiry_time)
+            
+        except Exception as e:
+            self.logger.error(f"Error incrementing cache value {key}: {e}")
+    
     def reset_limits_for_ip(self, ip_address):
         """Admin function to reset limits for a specific IP"""
         try:

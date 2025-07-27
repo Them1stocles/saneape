@@ -442,7 +442,7 @@ def api_account_transactions():
         transaction_type = request.args.get('type')
         
         # Validate transaction_type if provided
-        if transaction_type:
+        if transaction_type and transaction_type in ['subscription', 'topup', 'deduction', 'refund']:
             valid_types = ['analysis', 'subscription', 'topup', 'refund']
             if transaction_type not in valid_types:
                 return jsonify({'error': 'Invalid transaction type'}), 400
@@ -452,7 +452,7 @@ def api_account_transactions():
             current_user.id, 
             page=page, 
             per_page=per_page,
-            transaction_type=transaction_type
+            transaction_type=transaction_type or 'all' if transaction_type else None
         )
         
         return jsonify({
