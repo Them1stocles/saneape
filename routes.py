@@ -91,27 +91,27 @@ def analyze_stock():
                 'type': 'validation'
             }), 400
         
-        # Simple rate limit check first (performance critical)
+        # Enhanced hybrid rate limiting (credit-based for authenticated users, IP-based for anonymous)
         rate_limiter = RateLimiter()
         
-        # Quick IP-based rate limit check
-        today = date.today()
-        rate_limit = RateLimit.query.filter_by(
-            ip_address=client_ip,
-            date_created=today
-        ).first()
+        # Comprehensive rate limit check with hybrid support
+        allowed, rate_error, credit_info = rate_limiter.is_allowed(client_ip, maximum_brain, ticker)
         
-        if rate_limit:
-            if maximum_brain and rate_limit.maximum_brain_count >= 2:
-                return jsonify({
-                    'error': 'Maximum Brain analysis limit exceeded. You can only make 2 Maximum Brain analyses per day.',
-                    'type': 'rate_limit'
-                }), 429
-            elif not maximum_brain and rate_limit.request_count >= 6:
-                return jsonify({
-                    'error': 'Daily limit exceeded. You can only make 6 requests per day.',
-                    'type': 'rate_limit'
-                }), 429
+        if not allowed:
+            # Determine error type for frontend handling
+            error_type = 'rate_limit'
+            if credit_info and 'total_credits' in credit_info:
+                error_type = 'insufficient_credits'
+            elif 'cost limit' in rate_error.lower():
+                error_type = 'cost_limit'
+            elif 'suspicious' in rate_error.lower():
+                error_type = 'security_block'
+                
+            return jsonify({
+                'error': rate_error,
+                'type': error_type,
+                'credit_info': credit_info
+            }), 429
         
         # Proceed with analysis
         analyzer = StockAnalyzer()
@@ -122,21 +122,9 @@ def analyze_stock():
             cost_manager = CostManager()
             cost_manager.record_api_call(maximum_brain)
             
-            # Record the successful request (simple database update)
-            if rate_limit:
-                if maximum_brain:
-                    rate_limit.maximum_brain_count += 1
-                else:
-                    rate_limit.request_count += 1
-                rate_limit.last_request = datetime.utcnow()
-            else:
-                rate_limit = RateLimit()
-                rate_limit.ip_address = client_ip
-                rate_limit.request_count = 1 if not maximum_brain else 0
-                rate_limit.maximum_brain_count = 1 if maximum_brain else 0
-                rate_limit.last_request = datetime.utcnow()
-                rate_limit.date_created = today
-                db.session.add(rate_limit)
+            # Record request based on user type (credit-based vs IP-based)
+            user_id = current_user.id if current_user.is_authenticated else None
+            rate_limiter.record_request(client_ip, maximum_brain, user_id)
             
             # Save analysis to database
             analysis = StockAnalysis()
@@ -155,7 +143,18 @@ def analyze_stock():
             # Commit everything together
             db.session.commit()
             
-            return jsonify(result)
+            # Add credit information to response for authenticated users
+            response_data = result.copy()
+            if current_user.is_authenticated and is_credit_system_enabled():
+                try:
+                    updated_credit_info = rate_limiter.get_user_credit_info(current_user.id)
+                    if updated_credit_info:
+                        response_data['credit_info'] = updated_credit_info
+                        response_data['credit_deduction'] = credit_info.get('deduction_result') if credit_info else None
+                except Exception as e:
+                    logging.error(f"Error getting updated credit info: {e}")
+            
+            return jsonify(response_data)
         else:
             return jsonify({
                 'error': result['error'],

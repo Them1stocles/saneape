@@ -83,13 +83,12 @@ class CreditManager:
             credit_balance.subscription_credits_expiry = None
             
             # Record expiration transaction
-            expiry_transaction = CreditTransaction(
-                user_id=user_id,
-                transaction_type='expiry',
-                credit_type='subscription',
-                credits_amount=-expired_credits,
-                description=f'Subscription credits expired - {expired_credits} credits removed'
-            )
+            expiry_transaction = CreditTransaction()
+            expiry_transaction.user_id = user_id
+            expiry_transaction.transaction_type = 'expiry'
+            expiry_transaction.credit_type = 'subscription'
+            expiry_transaction.credits_amount = -expired_credits
+            expiry_transaction.description = f'Subscription credits expired - {expired_credits} credits removed'
             db.session.add(expiry_transaction)
             
             db.session.commit()
@@ -121,13 +120,12 @@ class CreditManager:
                 logger.info(f"Replacing {credit_balance.subscription_credits} existing subscription credits for user {user_id}")
                 
                 # Record the credit replacement
-                replacement_transaction = CreditTransaction(
-                    user_id=user_id,
-                    transaction_type='expiry',
-                    credit_type='subscription',
-                    credits_amount=-credit_balance.subscription_credits,
-                    description='Previous subscription credits replaced (no rollover)'
-                )
+                replacement_transaction = CreditTransaction()
+                replacement_transaction.user_id = user_id
+                replacement_transaction.transaction_type = 'expiry'
+                replacement_transaction.credit_type = 'subscription'
+                replacement_transaction.credits_amount = -credit_balance.subscription_credits
+                replacement_transaction.description = 'Previous subscription credits replaced (no rollover)'
                 db.session.add(replacement_transaction)
             
             # Grant new subscription credits
@@ -136,13 +134,12 @@ class CreditManager:
             credit_balance.credits_used_this_cycle = 0  # Reset cycle usage
             
             # Record credit grant transaction
-            grant_transaction = CreditTransaction(
-                user_id=user_id,
-                transaction_type='subscription_grant',
-                credit_type='subscription',
-                credits_amount=credits,
-                description=f'Subscription credits granted - expires {expiry_date}'
-            )
+            grant_transaction = CreditTransaction()
+            grant_transaction.user_id = user_id
+            grant_transaction.transaction_type = 'subscription_grant'
+            grant_transaction.credit_type = 'subscription'
+            grant_transaction.credits_amount = credits
+            grant_transaction.description = f'Subscription credits granted - expires {expiry_date}'
             db.session.add(grant_transaction)
             
             db.session.commit()
@@ -171,15 +168,14 @@ class CreditManager:
             description = f'Bonus credits added: {credits}' if is_bonus else f'Top-up purchase: {credits} credits'
             
             # Record credit purchase transaction
-            purchase_transaction = CreditTransaction(
-                user_id=user_id,
-                transaction_type=transaction_type,
-                credit_type='topup',
-                credits_amount=credits,
-                description=description,
-                stripe_payment_id=stripe_payment_id,
-                amount_paid=payment_amount
-            )
+            purchase_transaction = CreditTransaction()
+            purchase_transaction.user_id = user_id
+            purchase_transaction.transaction_type = transaction_type
+            purchase_transaction.credit_type = 'topup'
+            purchase_transaction.credits_amount = credits
+            purchase_transaction.description = description
+            purchase_transaction.stripe_payment_id = stripe_payment_id
+            purchase_transaction.amount_paid = payment_amount
             db.session.add(purchase_transaction)
             
             db.session.commit()
@@ -278,15 +274,14 @@ class CreditManager:
             credit_balance.updated_at = datetime.utcnow()
             
             # Record usage transaction
-            usage_transaction = CreditTransaction(
-                user_id=user_id,
-                transaction_type='usage',
-                credit_type='mixed' if topup_used > 0 and subscription_used > 0 else ('topup' if topup_used > 0 else 'subscription'),
-                credits_amount=-cost,
-                analysis_type=analysis_type,
-                ticker_symbol=ticker,
-                description=f'{analysis_type.title()} analysis for {ticker} - {cost} credits'
-            )
+            usage_transaction = CreditTransaction()
+            usage_transaction.user_id = user_id
+            usage_transaction.transaction_type = 'usage'
+            usage_transaction.credit_type = 'mixed' if topup_used > 0 and subscription_used > 0 else ('topup' if topup_used > 0 else 'subscription')
+            usage_transaction.credits_amount = -cost
+            usage_transaction.analysis_type = analysis_type
+            usage_transaction.ticker_symbol = ticker
+            usage_transaction.description = f'{analysis_type.title()} analysis for {ticker} - {cost} credits'
             db.session.add(usage_transaction)
             
             db.session.commit()
@@ -333,13 +328,12 @@ class CreditManager:
             credit_balance.updated_at = datetime.utcnow()
             
             # Record refund transaction
-            refund_transaction = CreditTransaction(
-                user_id=user_id,
-                transaction_type='refund',
-                credit_type='topup',
-                credits_amount=credits,
-                description=f'Credit refund: {reason}'
-            )
+            refund_transaction = CreditTransaction()
+            refund_transaction.user_id = user_id
+            refund_transaction.transaction_type = 'refund'
+            refund_transaction.credit_type = 'topup'
+            refund_transaction.credits_amount = credits
+            refund_transaction.description = f'Credit refund: {reason}'
             db.session.add(refund_transaction)
             
             db.session.commit()
