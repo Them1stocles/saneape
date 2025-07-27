@@ -218,8 +218,20 @@ class SaneApeApp {
         // Update stock information
         document.getElementById('stockTitle').textContent = 
             `${data.ticker} - ${data.company_name}`;
+        // Parse the current price properly - handle both "$123.45" and "123.45" formats
+        let priceValue = data.current_price;
+        let formattedPrice = "Price unavailable";
+        
+        if (priceValue && priceValue !== "Price unavailable" && priceValue !== "N/A") {
+            // Remove $ symbol if present and parse as float
+            const numericPrice = parseFloat(priceValue.toString().replace('$', ''));
+            if (!isNaN(numericPrice)) {
+                formattedPrice = `$${numericPrice.toFixed(2)}`;
+            }
+        }
+        
         document.getElementById('stockPrice').innerHTML = 
-            `Current Price: <strong>$${parseFloat(data.current_price).toFixed(2)}</strong> <small class="text-success"><i data-feather="refresh-cw" style="width: 12px; height: 12px;"></i> Live</small>`;
+            `Current Price: <strong>${formattedPrice}</strong> <small class="text-success"><i data-feather="refresh-cw" style="width: 12px; height: 12px;"></i> Live</small>`;
         
         // Update recommendation badge
         const recBadge = document.getElementById('recommendationBadge');
