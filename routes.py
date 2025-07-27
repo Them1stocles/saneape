@@ -70,14 +70,14 @@ def analyze_stock():
         ).first()
         
         if rate_limit:
-            if maximum_brain and rate_limit.maximum_brain_count >= 1:
+            if maximum_brain and rate_limit.maximum_brain_count >= 2:
                 return jsonify({
-                    'error': 'Maximum Brain analysis limit exceeded. You can only make 1 Maximum Brain analysis per day.',
+                    'error': 'Maximum Brain analysis limit exceeded. You can only make 2 Maximum Brain analyses per day.',
                     'type': 'rate_limit'
                 }), 429
-            elif not maximum_brain and rate_limit.request_count >= 2:
+            elif not maximum_brain and rate_limit.request_count >= 6:
                 return jsonify({
-                    'error': 'Daily limit exceeded. You can only make 2 requests per day.',
+                    'error': 'Daily limit exceeded. You can only make 6 requests per day.',
                     'type': 'rate_limit'
                 }), 429
         

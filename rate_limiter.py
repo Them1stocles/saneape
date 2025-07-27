@@ -9,7 +9,7 @@ import logging
 class RateLimiter:
     """Enhanced rate limiter with cost management, caching, and security monitoring"""
     
-    def __init__(self, max_requests_per_day=2, max_brain_requests_per_day=1):
+    def __init__(self, max_requests_per_day=6, max_brain_requests_per_day=2):
         self.max_requests_per_day = max_requests_per_day
         self.max_brain_requests_per_day = max_brain_requests_per_day
         self.logger = logging.getLogger(__name__)

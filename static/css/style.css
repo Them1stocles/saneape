@@ -66,6 +66,43 @@ body {
     text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
 }
 
+/* Glowing yellow pulse animation for Maximum Brain Analysis */
+.maximum-brain-option {
+    position: relative;
+    padding: 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.maximum-brain-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 193, 7, 0.15);
+    border-radius: 8px;
+    animation: yellowPulse 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes yellowPulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4);
+        background: rgba(255, 193, 7, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 20px 8px rgba(255, 193, 7, 0.2);
+        background: rgba(255, 193, 7, 0.2);
+    }
+}
+
+.maximum-brain-option:hover::before {
+    animation-duration: 1.5s;
+    box-shadow: 0 0 25px 10px rgba(255, 193, 7, 0.3);
+}
+
 /* Responsive hero header */
 @media (max-width: 768px) {
     .hero-header {

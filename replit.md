@@ -188,4 +188,7 @@ Two main models:
 - **Production Ready**: Maximum Brain Analysis now provides genuine institutional-grade technical analysis with full reliability
 - **Pandas Modernization**: Updated deprecated `fillna(method='ffill')` to modern `ffill()` syntax
 - **Failsafe Error Handling**: Added comprehensive error handling to prevent analysis failures and ensure data integrity
+- **JSON Format Fix**: Added missing JSON format specification to Maximum Brain Analysis prompt, resolving "No recommendation" parsing errors
+- **Rate Limit Enhancement**: Updated limits from 2 standard/1 Maximum Brain to 6 standard/2 Maximum Brain requests per day
+- **UI Enhancement**: Added glowing yellow pulse animation to Maximum Brain Analysis option for better visibility and engagement
 - **Testing Verified**: Successfully tested with TSLA - complete analysis generation, proper caching, and cost tracking working perfectly
