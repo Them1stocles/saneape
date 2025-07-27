@@ -160,10 +160,9 @@ Respond in JSON format with this structure:
     ]
 }}"""
 
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
+            # Using gpt-4.1 as requested - the flagship model for complex technical analysis
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4.1",
                 messages=[
                     {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
                     {"role": "user", "content": prompt}

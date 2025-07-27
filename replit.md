@@ -37,7 +37,7 @@ Two main models:
 ### Stock Analysis Engine
 - **yfinance integration** for fetching 2 years of historical stock data
 - **Technical indicators calculation** including moving averages (SMA, EMA), RSI, MACD
-- **OpenAI GPT integration** for AI-powered analysis and recommendations
+- **OpenAI GPT-4.1 integration** for AI-powered analysis and recommendations
 - **Data summarization** to optimize API calls and stay within token limits
 
 ### Rate Limiting System
@@ -58,7 +58,7 @@ Two main models:
 3. **Rate Limiting**: Check if IP address has remaining daily requests
 4. **Data Fetching**: Retrieve 2 years of historical stock data via yfinance
 5. **Technical Analysis**: Calculate various technical indicators
-6. **AI Analysis**: Send summarized data to OpenAI GPT for analysis
+6. **AI Analysis**: Send summarized data to OpenAI GPT-4.1 for analysis
 7. **Response Processing**: Parse AI recommendation and confidence level
 8. **Data Storage**: Store analysis results in database
 9. **User Display**: Present recommendation with detailed breakdown
@@ -66,7 +66,7 @@ Two main models:
 ## External Dependencies
 
 ### APIs and Services
-- **OpenAI GPT API**: For AI-powered stock analysis and recommendations
+- **OpenAI GPT-4.1 API**: For AI-powered stock analysis and recommendations
 - **Yahoo Finance (yfinance)**: For historical stock data retrieval
 
 ### Python Packages
