@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, flash, redirect, url_for, abort
+from flask import render_template, request, jsonify, flash, redirect, url_for, abort, session
 from app import app, db
 import logging
 from stock_analyzer import StockAnalyzer
@@ -86,6 +86,10 @@ def analyze_stock():
         result = analyzer.analyze_stock(ticker, maximum_brain)
         
         if result['success']:
+            # Record the successful API call for cost tracking
+            cost_manager = CostManager()
+            cost_manager.record_api_call(maximum_brain)
+            
             # Record the successful request (simple database update)
             if rate_limit:
                 if maximum_brain:
@@ -146,11 +150,39 @@ def analyze_stock():
 @app.route('/admin')
 def admin_dashboard():
     """Admin dashboard for system monitoring and control"""
+    # Check if user is authenticated
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('admin_login'))
     return render_template('admin.html')
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin login page"""
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == 'Fluent1!':
+            session['admin_authenticated'] = True
+            session.permanent = True
+            return redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid password', 'error')
+    
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    """Admin logout"""
+    session.pop('admin_authenticated', None)
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('admin_login'))
 
 @app.route('/admin/api/dashboard')
 def admin_api_dashboard():
     """API endpoint for dashboard data"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
     try:
         rate_limiter = RateLimiter()
         system_status = rate_limiter.get_system_status()
@@ -170,6 +202,10 @@ def admin_api_dashboard():
 @app.route('/admin/api/emergency-stop', methods=['POST'])
 def admin_emergency_stop():
     """Emergency stop endpoint"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
     try:
         cost_manager = CostManager()
         success = cost_manager.set_emergency_stop(True)
@@ -195,6 +231,10 @@ def admin_emergency_stop():
 @app.route('/admin/api/update-limit', methods=['POST'])
 def admin_update_limit():
     """Update daily spending limit"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
     try:
         data = request.get_json()
         new_limit = data.get('daily_limit')
@@ -229,6 +269,10 @@ def admin_update_limit():
 @app.route('/admin/api/reset-ip', methods=['POST'])
 def admin_reset_ip():
     """Reset rate limits for specific IP"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
     try:
         data = request.get_json()
         ip_address = data.get('ip_address')
