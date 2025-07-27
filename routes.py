@@ -412,11 +412,11 @@ def api_user_status():
         ).first()
         
         if rate_limit:
-            standard_remaining = max(0, 2 - rate_limit.request_count)
-            brain_remaining = max(0, 1 - rate_limit.maximum_brain_count)
+            standard_remaining = max(0, 6 - rate_limit.request_count)
+            brain_remaining = max(0, 2 - rate_limit.maximum_brain_count)
         else:
-            standard_remaining = 2
-            brain_remaining = 1
+            standard_remaining = 6
+            brain_remaining = 2
         
         return jsonify({
             'success': True,
