@@ -560,7 +560,9 @@ Respond in JSON format with this structure:
             
             content = response.choices[0].message.content
             if content:
+                logging.info(f"OpenAI Response: {content}")
                 analysis = json.loads(content)
+                logging.info(f"Parsed Analysis: {analysis}")
                 return analysis, None
             else:
                 return None, "Empty response from AI analysis"
