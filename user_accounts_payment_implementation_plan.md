@@ -185,29 +185,36 @@ class PaymentFailure(db.Model):
 
 ## **🔄 Migration Strategy**
 
+### **Phase 0: Production Foundation (Week 0)**
+1. **Testing Framework**: Unit, integration, and E2E test setup
+2. **Monitoring & Alerting**: Error tracking, payment monitoring, reconciliation
+3. **Feature Flags**: Gradual rollout capability with environment-based toggles
+4. **Database Optimization**: Performance indexes and query optimization
+5. **Admin Dashboard Foundation**: Core monitoring and management interface
+
 ### **Phase 1: Non-Breaking Foundation (Week 1)**
-1. Add new database models (additive only)
-2. Implement Replit Auth (optional login)
-3. Create user registration flow
-4. Maintain full IP-based functionality
+1. Add new database models with performance indexes (additive only)
+2. Implement Replit Auth with comprehensive error handling (optional login)
+3. Create user registration flow with session management
+4. Maintain full IP-based functionality with hybrid rate limiting
 
 ### **Phase 2: Credit System (Week 2)**
-1. Add Stripe integration
-2. Implement credit purchasing
-3. Create subscription management
-4. Add credit display to UI
+1. Add Stripe integration with webhook reliability and deduplication
+2. Implement credit purchasing with fraud protection and audit trails
+3. Create subscription management with payment failure handling
+4. Add credit display to UI with clear expiration indicators
 
 ### **Phase 3: Enhanced Rate Limiting (Week 3)**
-1. Update RateLimiter to support both systems
-2. Add credit deduction logic
-3. Update frontend credit display
-4. Admin dashboard enhancements
+1. Update RateLimiter to support hybrid user/IP systems with burst protection
+2. Add credit deduction logic with atomic operations and reservation
+3. Update frontend credit display with real-time balance updates
+4. Admin dashboard enhancements with revenue analytics and failure monitoring
 
 ### **Phase 4: Optimization & Polish (Week 4)**
-1. Performance optimization
-2. Error handling improvements  
-3. User experience refinements
-4. Analytics and monitoring
+1. Performance optimization with load testing and bottleneck resolution
+2. Error handling improvements with comprehensive logging and recovery
+3. User experience refinements based on testing feedback
+4. Analytics and monitoring with business intelligence dashboard
 
 ---
 
@@ -339,10 +346,11 @@ def handle_billing_cycle_renewal(user_id):
     # Top-up credits remain untouched (unlimited rollover)
 ```
 
-### **Top-up Purchase Restrictions**
-- **Subscriber Only**: Must have active subscription to purchase
-- **Payment Failed**: Can still use existing top-ups during suspension
-- **Post-Cancellation**: No new top-up purchases allowed
+### **Top-up Purchase Rules**
+- **Open Access**: Available to all authenticated users (no subscription required)
+- **Subscription Bonus**: Subscribers get 20% bonus credits on top-up purchases
+- **Payment Independent**: Top-up credits remain available during subscription payment failures
+- **Fraud Protection**: Rate limiting and monitoring for suspicious purchase patterns
 
 ---
 
@@ -420,8 +428,8 @@ def handle_billing_cycle_renewal(user_id):
 7. **Frontend Polish**: Credit display and subscription management
 8. **Testing & Optimization**: Performance and error handling
 
-**Estimated Timeline:** 3-4 weeks for full implementation  
-**Risk Level:** Low (backwards compatible, incremental)  
+**Estimated Timeline:** 4-5 weeks for production-grade implementation  
+**Risk Level:** Low (backwards compatible, incremental, comprehensive testing)  
 **Revenue Impact:** Potential $500-2000/month with 100-400 paying users
 
 ---
