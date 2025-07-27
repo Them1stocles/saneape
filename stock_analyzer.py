@@ -106,8 +106,12 @@ class StockAnalyzer:
     def calculate_comprehensive_indicators(self, df):
         """Calculate all 35 technical indicators for Maximum Brain Analysis"""
         try:
+            # Ensure proper column names for stockstats
+            df_clean = df.copy()
+            df_clean.columns = df_clean.columns.str.lower()
+            
             # Convert to StockDataFrame for enhanced functionality
-            stock_df = stockstats.StockDataFrame.retype(df.copy())
+            stock_df = stockstats.StockDataFrame.retype(df_clean)
             
             # === CORE INDICATORS (pandas_ta alternatives using stockstats and custom) ===
             
@@ -330,8 +334,8 @@ class StockAnalyzer:
                 if len(support_peaks) > 0:
                     stock_df.iloc[support_peaks, stock_df.columns.get_loc('support_level')] = lows[support_peaks]
                     
-                stock_df['resistance_level'] = stock_df['resistance_level'].fillna(method='ffill')
-                stock_df['support_level'] = stock_df['support_level'].fillna(method='ffill')
+                stock_df['resistance_level'] = stock_df['resistance_level'].ffill()
+                stock_df['support_level'] = stock_df['support_level'].ffill()
             except:
                 stock_df['resistance_level'] = df['High'].rolling(20).max()
                 stock_df['support_level'] = df['Low'].rolling(20).min()
@@ -350,7 +354,7 @@ class StockAnalyzer:
             lower_band = hl2 - atr_mult
             stock_df['supertrend'] = np.where(df['Close'] <= lower_band, lower_band, 
                                             np.where(df['Close'] >= upper_band, upper_band, np.nan))
-            stock_df['supertrend'] = stock_df['supertrend'].fillna(method='ffill')
+            stock_df['supertrend'] = stock_df['supertrend'].ffill()
             
             # 30-35. Pattern Detection Flags
             stock_df['trend_strength'] = abs(stock_df['adx'])
@@ -456,7 +460,15 @@ class StockAnalyzer:
             
         except Exception as e:
             logging.error(f"Error summarizing data: {str(e)}")
-            return {}
+            # Return a minimal but valid summary to prevent total failure
+            return {
+                'ticker': info.get('symbol', 'UNKNOWN') if info else 'UNKNOWN',
+                'company_name': info.get('longName', 'Unknown Company') if info else 'Unknown Company',
+                'current_price': df['Close'].iloc[-1] if not df.empty else 0,
+                'price_change_30d': 0,
+                'volume_avg_30d': 0,
+                'volatility_30d': 0,
+            }
     
     def safe_get_value(self, row, column):
         """Safely get value from dataframe row, return 0 if not available"""
