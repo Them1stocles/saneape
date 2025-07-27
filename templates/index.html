@@ -49,7 +49,7 @@
 </head>
 <body>
     <div class="container-fluid">
-        <!-- Mobile Navigation -->
+        <!-- Mobile Navigation (Blue dropdown like dashboard) -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-absolute w-100 py-2" style="z-index: 1000; top: 0;">
             <div class="container-fluid">
                 <!-- Empty brand space to push hamburger to the right -->
@@ -70,16 +70,12 @@
                                         {% endif %}
                                         <div>
                                             <div class="fw-semibold">{{ current_user.display_name }}</div>
-                                            {% if show_credits and user_credits %}
-                                                <small class="text-light">{{ user_credits.total_credits }} credits</small>
-                                            {% else %}
-                                                <small class="text-light">0 credits</small>
-                                            {% endif %}
+                                            <small class="text-light" id="nav-credits">Loading credits...</small>
                                         </div>
                                     </div>
                                 </div>
                                 <hr class="my-2 border-light opacity-25">
-                                <a class="nav-link" href="{{ url_for('user_account') }}">
+                                <a class="nav-link" href="{{ url_for('account_dashboard') }}">
                                     <i data-feather="user" class="me-1"></i> Account
                                 </a>
                                 <a class="nav-link" href="{{ url_for('subscription_plans') }}">
@@ -433,6 +429,53 @@
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     
     <!-- Initialize Feather Icons -->
-    <script>feather.replace()</script>
+    <script>
+        feather.replace();
+        
+        // Load user credits if authenticated
+        {% if show_auth and current_user.is_authenticated %}
+        async function loadCreditBalance() {
+            try {
+                const response = await fetch('/payment/credit-balance', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to load credits:', response.status);
+                    const navCredits = document.getElementById('nav-credits');
+                    if (navCredits) {
+                        navCredits.textContent = '0 credits';
+                    }
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                // Update navigation credits
+                const navCredits = document.getElementById('nav-credits');
+                if (navCredits) {
+                    navCredits.textContent = `${data.total_credits} credits`;
+                }
+            } catch (error) {
+                console.error('Error loading credit balance:', error);
+                const navCredits = document.getElementById('nav-credits');
+                if (navCredits) {
+                    navCredits.textContent = '0 credits';
+                }
+            }
+        }
+        
+        // Load credits on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCreditBalance();
+        });
+        {% endif %}
+    </script>
 </body>
 </html>
