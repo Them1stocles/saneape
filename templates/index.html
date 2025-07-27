@@ -18,7 +18,13 @@
     <div class="container-fluid">
         <!-- Header -->
         <header class="text-center py-4">
-            <h1 class="display-4 fw-bold text-white mb-2">SaneApe.com</h1>
+            <div class="d-flex justify-content-center align-items-center mb-2">
+                <img src="{{ url_for('static', filename='images/saneape-logo.png') }}" 
+                     alt="SaneApe Logo" 
+                     class="me-3" 
+                     style="height: 50px; width: auto;">
+                <h1 class="display-4 fw-bold text-white mb-0">SaneApe.com</h1>
+            </div>
             <p class="lead text-white fw-bold" style="text-transform: uppercase; letter-spacing: 1px;">AI-POWERED SANITY CHECK</p>
         </header>
 
@@ -166,9 +172,10 @@
                             Support Free Analysis
                         </h6>
                         <p class="card-text small">
-                            Sponsor additional free requests by paying for API credits to the public by donating crypto at 
-                            <a href="https://covertwars.com" target="_blank" class="text-info">covertwars.com</a>, 
-                            or by emailing <a href="mailto:themistocles@covertwars.com" class="text-info">themistocles@covertwars.com</a>
+                            Sponsor this free sanity check for the public by emailing 
+                            <a href="mailto:themistocles@covertwars.com" class="text-info">themistocles@covertwars.com</a>. 
+                            Not ready to sponsor, but want to buy me a coffee? You can here: 
+                            <a href="https://covertwars.com" target="_blank" class="text-info">covertwars.com</a>
                         </p>
                     </div>
                 </div>
