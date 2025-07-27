@@ -428,3 +428,63 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: #0056b3;
 }
+
+/* Share buttons styling */
+.share-buttons {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.share-buttons h6 {
+    color: #6c757d;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.share-buttons .btn {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.share-buttons .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Share page specific styling */
+.recommendation-badge {
+    font-size: 1.25rem;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.confidence-badge {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Social sharing enhancements */
+.share-analysis-section {
+    background: #f8f9fb;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border: 1px solid #e9ecef;
+}
+
+.share-analysis-section .btn {
+    min-width: 120px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.share-analysis-section .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}

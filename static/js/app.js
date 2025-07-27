@@ -266,6 +266,9 @@ class SaneApeApp {
         // Update technical analysis details
         this.displayTechnicalAnalysis(data.analysis_details);
         
+        // Update share functionality
+        this.updateShareButtons(data);
+        
         // Show results
         this.resultsSection.classList.remove('d-none');
         this.resultsSection.scrollIntoView({ behavior: 'smooth' });
@@ -394,6 +397,93 @@ class SaneApeApp {
     
     hideResults() {
         this.resultsSection.classList.add('d-none');
+    }
+    
+    updateShareButtons(data) {
+        // Store current analysis data for sharing
+        this.currentAnalysis = {
+            ticker: data.ticker,
+            recommendation: data.recommendation,
+            maximum_brain: data.maximum_brain || false
+        };
+        
+        // Update share button onclick handlers
+        const twitterBtn = document.getElementById('shareTwitterBtn');
+        const facebookBtn = document.getElementById('shareFacebookBtn');
+        const linkBtn = document.getElementById('shareLinkBtn');
+        
+        if (twitterBtn) {
+            twitterBtn.onclick = () => this.shareToTwitter();
+        }
+        if (facebookBtn) {
+            facebookBtn.onclick = () => this.shareToFacebook();
+        }
+        if (linkBtn) {
+            linkBtn.onclick = () => this.copyShareLink();
+        }
+    }
+    
+    shareToTwitter() {
+        if (!this.currentAnalysis) return;
+        
+        const { ticker, recommendation, maximum_brain } = this.currentAnalysis;
+        const analysisType = maximum_brain ? '/brain' : '';
+        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        const text = `Just got AI analysis for $${ticker} on @SaneApe_com! 🧠📈 Recommendation: ${recommendation}`;
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
+        
+        window.open(twitterUrl, '_blank', 'width=550,height=420');
+    }
+    
+    shareToFacebook() {
+        if (!this.currentAnalysis) return;
+        
+        const { ticker, maximum_brain } = this.currentAnalysis;
+        const analysisType = maximum_brain ? '/brain' : '';
+        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+        
+        window.open(facebookUrl, '_blank', 'width=550,height=420');
+    }
+    
+    copyShareLink() {
+        if (!this.currentAnalysis) return;
+        
+        const { ticker, maximum_brain } = this.currentAnalysis;
+        const analysisType = maximum_brain ? '/brain' : '';
+        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            const btn = document.getElementById('shareLinkBtn');
+            if (btn) {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i data-feather="check" class="me-1"></i>Copied!';
+                feather.replace();
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    feather.replace();
+                }, 2000);
+            }
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            const btn = document.getElementById('shareLinkBtn');
+            if (btn) {
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i data-feather="check" class="me-1"></i>Copied!';
+                feather.replace();
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    feather.replace();
+                }, 2000);
+            }
+        });
     }
     
     async loadRecentAnalyses() {

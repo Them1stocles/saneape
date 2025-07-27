@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, flash, redirect, url_for
+from flask import render_template, request, jsonify, flash, redirect, url_for, abort
 from app import app, db
 import logging
 from stock_analyzer import StockAnalyzer
@@ -9,6 +9,7 @@ from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
 from datetime import date, datetime, timedelta
 import json
+import re
 
 @app.route('/')
 def index():
@@ -386,21 +387,79 @@ def api_user_status():
             'error': 'Failed to get user status',
             'success': False
         }), 500
+
+# Sharing Routes
+def validate_ticker(ticker):
+    """Validate ticker symbol format"""
+    if not ticker or not re.match(r'^[A-Z]{1,5}$', ticker):
+        return False
+    return True
+
+@app.route('/share/<ticker>')
+@app.route('/share/<ticker>/')
+def share_analysis(ticker):
+    """Share individual stock analysis results"""
+    try:
+        ticker = ticker.upper().strip()
         
-        rate_limiter = RateLimiter()
-        remaining_info = rate_limiter.get_remaining_requests(client_ip)
+        # Validate ticker format
+        if not validate_ticker(ticker):
+            abort(404)
         
-        return jsonify({
-            'success': True,
-            'data': remaining_info
-        })
+        # Get maximum brain parameter
+        maximum_brain = request.args.get('brain', 'false').lower() == 'true'
+        
+        # Get cached analysis
+        cache_manager = CacheManager()
+        cached_result = cache_manager.get_cached_analysis(ticker, maximum_brain)
+        
+        if not cached_result or not cached_result.get('success'):
+            # Analysis not found or expired - render expired page
+            return render_template('share_expired.html', 
+                                 ticker=ticker, 
+                                 maximum_brain=maximum_brain), 404
+        
+        # Update with current price
+        try:
+            import yfinance as yf
+            stock = yf.Ticker(ticker)
+            current_data = stock.history(period="1d")
+            if not current_data.empty:
+                current_price = round(current_data['Close'].iloc[-1], 2)
+                cached_result['current_price'] = f"${current_price}"
+            else:
+                cached_result['current_price'] = "Price unavailable"
+        except Exception as e:
+            logging.warning(f"Could not fetch current price for {ticker}: {str(e)}")
+            cached_result['current_price'] = "Price unavailable"
+        
+        # Prepare social meta data
+        recommendation = cached_result.get('recommendation', 'Unknown')
+        confidence = cached_result.get('confidence', 'Unknown')
+        company_name = cached_result.get('company_name', ticker)
+        analysis_type = "Maximum Brain" if maximum_brain else "Standard"
+        
+        # Create dynamic social sharing content
+        social_title = f"${ticker} Analysis - {recommendation} Recommendation | SaneApe.com"
+        social_description = f"AI recommends: {recommendation} with {confidence} confidence for {company_name}. {analysis_type} analysis with 35+ technical indicators."
+        
+        return render_template('share.html', 
+                             analysis=cached_result,
+                             ticker=ticker,
+                             maximum_brain=maximum_brain,
+                             social_title=social_title,
+                             social_description=social_description)
         
     except Exception as e:
-        logging.error(f"Error getting user status: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to retrieve user status'
-        }), 500
+        logging.error(f"Error in share route for {ticker}: {str(e)}")
+        abort(500)
+
+@app.route('/share/<ticker>/brain')
+@app.route('/share/<ticker>/brain/')
+def share_brain_analysis(ticker):
+    """Share Maximum Brain analysis results"""
+    # Redirect to main share route with brain parameter
+    return redirect(url_for('share_analysis', ticker=ticker, brain='true'))
 
 # Error Handlers
 @app.errorhandler(404)

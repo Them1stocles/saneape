@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ social_title }}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
+    <link rel="alternate icon" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
+    
+    <!-- Dynamic Open Graph / Social Media Meta Tags -->
+    <meta property="og:title" content="{{ social_title }}">
+    <meta property="og:description" content="{{ social_description }}">
+    <meta property="og:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="SaneApe.com">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ social_title }}">
+    <meta name="twitter:description" content="{{ social_description }}">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
+    
+    <!-- Additional Meta Tags -->
+    <meta name="description" content="{{ social_description }}">
+    <meta name="keywords" content="stock analysis, AI, {{ ticker }}, {{ analysis.company_name }}, technical analysis, {{ analysis.recommendation }}">
+    <meta name="robots" content="noindex, follow">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-light">
+    <div class="container-fluid">
+        <!-- Header Section -->
+        <header class="hero-header">
+            <div class="hero-content">
+                <div class="hero-text">
+                    <h1 class="hero-title">SaneApe.com</h1>
+                    <p class="hero-tagline">AI-POWERED<br>SANITY CHECK</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Shared Analysis Content -->
+        <div class="container mt-4">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <!-- Share Header -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-3">
+                                <i data-feather="share-2" class="text-primary me-2"></i>
+                                <h5 class="mb-0 text-muted">Shared Analysis</h5>
+                            </div>
+                            <h2 class="mb-2">{{ analysis.company_name }} ({{ ticker }})</h2>
+                            <p class="text-muted mb-0">
+                                {% if maximum_brain %}
+                                    <i data-feather="cpu" class="text-warning me-1"></i>
+                                    Maximum Brain Analysis
+                                {% else %}
+                                    <i data-feather="activity" class="text-primary me-1"></i>
+                                    Standard Analysis
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Results -->
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-body">
+                            <!-- Main Recommendation -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="recommendation-badge 
+                                            {% if analysis.recommendation == 'Buy' %}
+                                                bg-success
+                                            {% else %}
+                                                bg-danger
+                                            {% endif %} 
+                                            text-white px-3 py-2 rounded me-3">
+                                            <strong>{{ analysis.recommendation }}</strong>
+                                        </div>
+                                        <div>
+                                            <div class="confidence-badge bg-secondary text-white px-2 py-1 rounded-pill small">
+                                                {{ analysis.confidence }} Confidence
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="text-md-end">
+                                        <h4 class="text-primary mb-0">{{ analysis.current_price }}</h4>
+                                        <small class="text-muted">Current Price</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Overall Explanation -->
+                            {% if analysis.overall_explanation %}
+                            <div class="mt-4">
+                                <h6 class="text-muted mb-2">
+                                    <i data-feather="message-square" class="me-1"></i>
+                                    AI Analysis Summary
+                                </h6>
+                                <div class="bg-light p-3 rounded">
+                                    <p class="mb-0">{{ analysis.overall_explanation }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Technical Analysis Details -->
+                            {% if analysis.technical_analysis %}
+                            <div class="mt-4">
+                                <h6 class="text-muted mb-3">
+                                    <i data-feather="trending-up" class="me-1"></i>
+                                    Technical Indicators
+                                </h6>
+                                <div class="row g-2">
+                                    {% for indicator, value in analysis.technical_analysis.items() %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="badge-container">
+                                            <span class="badge 
+                                                {% if 'bullish' in value.lower() or 'buy' in value.lower() or 'strong' in value.lower() %}
+                                                    bg-success
+                                                {% elif 'bearish' in value.lower() or 'sell' in value.lower() or 'weak' in value.lower() %}
+                                                    bg-danger
+                                                {% else %}
+                                                    bg-secondary
+                                                {% endif %} 
+                                                text-wrap p-2 w-100">
+                                                <strong>{{ indicator.replace('_', ' ').title() }}:</strong><br>
+                                                {{ value }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Call to Action -->
+                    <div class="card shadow-sm mb-4 border-primary">
+                        <div class="card-body text-center">
+                            <h5 class="card-title text-primary mb-3">
+                                <i data-feather="trending-up" class="me-2"></i>
+                                Want Your Own AI Stock Analysis?
+                            </h5>
+                            <p class="card-text text-muted mb-4">
+                                Get instant AI-powered recommendations for any stock ticker with comprehensive technical analysis.
+                            </p>
+                            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">
+                                <i data-feather="search" class="me-2"></i>
+                                Analyze Your Stock
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Share Options -->
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">
+                                <i data-feather="share-2" class="me-1"></i>
+                                Share This Analysis
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button onclick="shareToTwitter()" class="btn btn-outline-primary btn-sm">
+                                    <i data-feather="twitter" class="me-1"></i>
+                                    Share on Twitter
+                                </button>
+                                <button onclick="copyShareLink()" class="btn btn-outline-secondary btn-sm">
+                                    <i data-feather="link" class="me-1"></i>
+                                    Copy Link
+                                </button>
+                                <button onclick="shareToFacebook()" class="btn btn-outline-primary btn-sm">
+                                    <i data-feather="facebook" class="me-1"></i>
+                                    Share on Facebook
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Timestamp -->
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            <i data-feather="clock" class="me-1"></i>
+                            Analysis generated at {{ analysis.created_at.strftime('%Y-%m-%d %H:%M') }} UTC
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Initialize Feather Icons
+        feather.replace();
+
+        // Social sharing functions
+        function shareToTwitter() {
+            const text = `Just saw AI analysis for ${{ ticker }} on @SaneApe_com! 🧠📈 Recommendation: {{ analysis.recommendation }}`;
+            const url = window.location.href;
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+            window.open(twitterUrl, '_blank', 'width=550,height=420');
+        }
+
+        function shareToFacebook() {
+            const url = window.location.href;
+            const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+            window.open(facebookUrl, '_blank', 'width=550,height=420');
+        }
+
+        function copyShareLink() {
+            navigator.clipboard.writeText(window.location.href).then(function() {
+                // Show temporary success message
+                const btn = event.target.closest('button');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i data-feather="check" class="me-1"></i>Copied!';
+                feather.replace();
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    feather.replace();
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = window.location.href;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+            });
+        }
+
+        // Add smooth scrolling for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fade in animation
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.3s ease-in';
+            setTimeout(() => {
+                document.body.style.opacity = '1';
+            }, 100);
+        });
+    </script>
+</body>
+</html>
