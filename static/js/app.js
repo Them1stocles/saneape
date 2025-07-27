@@ -584,11 +584,24 @@ class SaneApeApp {
     }
     
     updateShareButtons(data) {
+        // Determine effective recommendation (with income override)
+        let effectiveRecommendation = data.recommendation;
+        
+        const hasIncomeOverride = data.income_analysis && 
+                                 data.income_analysis.recommendation && 
+                                 data.income_analysis.recommendation.toLowerCase().includes('buy for income') &&
+                                 (data.income_focus || data.is_yield_etf);
+        
+        if (hasIncomeOverride) {
+            effectiveRecommendation = "Buy for Income";
+        }
+        
         // Store current analysis data for sharing
         this.currentAnalysis = {
             ticker: data.ticker,
-            recommendation: data.recommendation,
-            maximum_brain: data.maximum_brain || false
+            recommendation: effectiveRecommendation,
+            maximum_brain: data.maximum_brain || false,
+            has_income_override: hasIncomeOverride
         };
         
         // Update share button onclick handlers
@@ -781,7 +794,9 @@ class SaneApeApp {
     
     getRecommendationBadgeClass(recommendation) {
         const rec = recommendation.toLowerCase();
-        if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
+        if (rec.includes("buy for income")) {
+            return 'bg-success';
+        } else if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
             return 'bg-danger';
         } else if (rec.includes("yes,") || (rec.includes('buy') && !rec.includes("don't"))) {
             return 'bg-success';
@@ -792,7 +807,9 @@ class SaneApeApp {
     
     getShortRecommendation(recommendation) {
         const rec = recommendation.toLowerCase();
-        if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
+        if (rec.includes("buy for income")) {
+            return 'Buy Income';
+        } else if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
             return 'No';
         } else if (rec.includes("yes,") || (rec.includes('buy') && !rec.includes("don't"))) {
             return 'Buy';

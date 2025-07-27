@@ -329,14 +329,32 @@ def get_recent_analyses():
                 
                 try:
                     analysis_data = json.loads(analysis.analysis_data)
+                    
+                    # Determine effective recommendation (with income override)
+                    technical_recommendation = analysis_data.get('recommendation', 'N/A')
+                    effective_recommendation = technical_recommendation
+                    
+                    income_analysis = analysis_data.get('income_analysis')
+                    income_focus = analysis_data.get('income_focus', False)
+                    is_yield_etf = analysis_data.get('is_yield_etf', False)
+                    
+                    # Check for income override
+                    if (income_analysis and 
+                        income_analysis.get('recommendation') and 
+                        'buy for income' in income_analysis.get('recommendation', '').lower() and
+                        (income_focus or is_yield_etf)):
+                        effective_recommendation = "Buy for Income"
+                    
                     recent_tickers.append({
                         'ticker': analysis.ticker_symbol,
                         'company_name': analysis_data.get('company_name', 'N/A'),
-                        'recommendation': analysis_data.get('recommendation', 'N/A'),
+                        'recommendation': effective_recommendation,
+                        'technical_recommendation': technical_recommendation,
                         'confidence': analysis_data.get('confidence', 'Unknown'),
                         'maximum_brain': analysis.maximum_brain,
                         'analyzed_at': analysis.created_at.strftime('%H:%M'),
-                        'expires_at': analysis.cache_expiry.strftime('%H:%M')
+                        'expires_at': analysis.cache_expiry.strftime('%H:%M'),
+                        'has_income_override': effective_recommendation != technical_recommendation
                     })
                 except json.JSONDecodeError:
                     continue
