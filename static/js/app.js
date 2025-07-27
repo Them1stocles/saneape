@@ -259,17 +259,51 @@ class SaneApeApp {
             const indicator = item.method || item.indicator || 'Technical Indicator';
             const analysis = item.explanation || item.analysis || 'Analysis not available';
             const signal = item.signal || 'Unknown';
+            const strength = item.strength || 'Unknown';
+            
+            // Get signal badge styling
+            const signalBadge = this.getSignalBadge(signal);
+            const strengthBadge = this.getStrengthBadge(strength);
             
             return `
                 <div class="border-start border-3 border-primary ps-3 mb-3">
-                    <h6 class="mb-1">${indicator}</h6>
-                    <p class="mb-1">${analysis}</p>
-                    <small class="text-muted">Signal: ${signal}</small>
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="mb-0 flex-grow-1">${indicator}</h6>
+                        <div class="d-flex gap-2 ms-2">
+                            ${signalBadge}
+                            ${strengthBadge}
+                        </div>
+                    </div>
+                    <p class="mb-0 text-muted">${analysis}</p>
                 </div>
             `;
         }).join('');
         
         container.innerHTML = html;
+    }
+    
+    getSignalBadge(signal) {
+        const signalLower = signal.toLowerCase();
+        if (signalLower.includes('buy') && !signalLower.includes('no')) {
+            return '<span class="badge bg-success">Buy</span>';
+        } else if (signalLower.includes('no buy') || signalLower === 'no buy') {
+            return '<span class="badge bg-danger">No Buy</span>';
+        } else {
+            return '<span class="badge bg-secondary">Neutral</span>';
+        }
+    }
+    
+    getStrengthBadge(strength) {
+        const strengthLower = strength.toLowerCase();
+        if (strengthLower.includes('strong')) {
+            return '<span class="badge bg-success">Strong</span>';
+        } else if (strengthLower.includes('moderate')) {
+            return '<span class="badge bg-warning">Moderate</span>';
+        } else if (strengthLower.includes('weak')) {
+            return '<span class="badge bg-secondary">Weak</span>';
+        } else {
+            return '<span class="badge bg-light text-dark">Unknown</span>';
+        }
     }
     
     getConfidenceClass(confidence) {
