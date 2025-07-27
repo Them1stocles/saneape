@@ -1,0 +1,114 @@
+[2025-07-27 19:01:02 +0000] [5149] [INFO] Handling signal: winch
+DEBUG:yfinance:Entering history()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_tz_kv" ("key" VARCHAR(255) NOT NULL PRIMARY KEY, "value" VARCHAR(255)) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['TSLA', 1, 0])
+DEBUG:yfinance: Entering history()
+DEBUG:yfinance:TSLA: Yahoo GET parameters: {'period1': '2023-07-28 19:01:21-04:00', 'period2': '2025-07-27 19:01:21-04:00', 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:  Entering get()
+DEBUG:yfinance:   Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/TSLA
+DEBUG:yfinance:params={'period1': 1690585281, 'period2': 1753657281, 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:    Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:     Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:      Entering _get_cookie_basic()
+DEBUG:yfinance:       Entering _load_cookie_curlCffi()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_cookieschema" ("strategy" VARCHAR(255) NOT NULL PRIMARY KEY, "fetch_date" DATETIME NOT NULL, "cookie_bytes" BLOB NOT NULL) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."strategy", "t1"."fetch_date", "t1"."cookie_bytes" FROM "_cookieschema" AS "t1" WHERE ("t1"."strategy" = ?) LIMIT ? OFFSET ?', ['curlCffi', 1, 0])
+DEBUG:yfinance:       Exiting _load_cookie_curlCffi()
+DEBUG:yfinance:reusing persistent cookie
+DEBUG:yfinance:      Exiting _get_cookie_basic()
+DEBUG:yfinance:      Entering _get_crumb_basic()
+DEBUG:yfinance:       Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:       Exiting _get_cookie_basic()
+DEBUG:yfinance:crumb = '.C15y9rR4y4'
+DEBUG:yfinance:      Exiting _get_crumb_basic()
+DEBUG:yfinance:     Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance:   Exiting _make_request()
+DEBUG:yfinance:  Exiting get()
+DEBUG:yfinance:TSLA: yfinance received OHLC data: 2023-07-28 13:30:00 -> 2025-07-25 13:30:00
+DEBUG:yfinance:TSLA: OHLC after cleaning: 2023-07-28 09:30:00-04:00 -> 2025-07-25 09:30:00-04:00
+DEBUG:yfinance:TSLA: OHLC after combining events: 2023-07-28 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance:TSLA: yfinance returning OHLC: 2023-07-28 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance: Exiting history()
+DEBUG:yfinance:Exiting history()
+DEBUG:yfinance:get_raw_json(): https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLA
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLA
+DEBUG:yfinance:params={'modules': 'financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail', 'corsDomain': 'finance.yahoo.com', 'formatted': 'false', 'symbol': 'TSLA'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:get_raw_json(): https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:params={'symbols': 'TSLA', 'formatted': 'false'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/TSLA?symbol=TSLA&type=trailingPegRatio&period1=1737849600&period2=1753660800
+DEBUG:yfinance:params=None
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:openai._base_client:Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-4575f6c4-c7c3-43df-ba78-4abb8f5fbb8a', 'json_data': {'messages': [{'role': 'system', 'content': 'You are an expert technical analyst. Always respond with valid JSON format.'}, {'role': 'user', 'content': 'You are an expert stock technical analyst performing MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities. Given the following pre-computed technical indicator values for stock ticker TSLA (Tesla, Inc.):\n\nCurrent Price: $316.06\n30-day Price Change: -0.96%\n30-day Average Volume: 102,312,200\n30-day Volatility (StdDev): 12.56\n\nPRE-COMPUTED TECHNICAL INDICATOR VALUES:\n{\n  "RSI": 48.8833,\n  "ADX": 62.45,\n  "MACD": 0.5673,\n  "MACD_Signal": 0.0887,\n  "MACD_Histogram": 0.4787,\n  "SMA_20": 314.847,\n  "SMA_50": 325.991,\n  "SMA_200": 319.6215,\n  "EMA_12": 319.1848,\n  "EMA_26": 318.6175,\n  "Bollinger_Upper": 338.2305,\n  "Bollinger_Middle": 314.847,\n  "Bollinger_Lower": 291.4635,\n  "Stochastic_K": 50.6412,\n  "Stochastic_D": 57.7227,\n  "CCI": 10.0594,\n  "Williams_R": -49.3588,\n  "MFI": 71.4217,\n  "OBV": 1770357500.0,\n  "ATR": 12.49,\n  "Ultimate_Oscillator": 45.5613,\n  "TRIX": -2.3898,\n  "Momentum": 2.55,\n  "ROC": 6.8203,\n  "Donchian_Upper": 338.0,\n  "Donchian_Lower": 288.77,\n  "Keltner_Upper": 343.8134,\n  "Keltner_Lower": 293.7877,\n  "Aroon_Up": 28.5714,\n  "Aroon_Down": 100.0,\n  "Parabolic_SAR": 338.0,\n  "VWAP": 256.6876,\n  "AD_Line": 1942784216.8916,\n  "Tenkan_Sen": 319.205,\n  "Kijun_Sen": 323.155,\n  "Pivot_Point": 315.9,\n  "Resistance_R1": 323.79,\n  "Support_S1": 308.17,\n  "Fibonacci_23.6": 345.408,\n  "Fibonacci_38.2": 331.611,\n  "Fibonacci_61.8": 309.309,\n  "Resistance_Level": 357.54,\n  "Support_Level": 288.77,\n  "RMI": 58.2551,\n  "Supertrend": 0,\n  "Trend_Strength": 62.45,\n  "Volume_Trend": 1.0,\n  "Price_Momentum": 0.0,\n  "Volatility": 11.6917,\n  "RSI_Divergence_Flag": 0.0,\n  "MACD_Crossover_Flag": 1.0\n}\n\nAnalyze this stock using ALL of these technical analysis methods and indicators: Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns.\n\nUse the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.'}], 'model': 'gpt-4o', 'response_format': {'type': 'json_object'}, 'temperature': 0.3}}
+DEBUG:openai._base_client:Sending HTTP Request: POST https://api.openai.com/v1/chat/completions
+DEBUG:httpcore.connection:connect_tcp.started host='api.openai.com' port=443 local_address=None timeout=5.0 socket_options=None
+DEBUG:httpcore.connection:connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f5a17eac350>
+DEBUG:httpcore.connection:start_tls.started ssl_context=<ssl.SSLContext object at 0x7f5a15dffa40> server_hostname='api.openai.com' timeout=5.0
+DEBUG:httpcore.connection:start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f5a1509bf90>
+DEBUG:httpcore.http11:send_request_headers.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_headers.complete
+DEBUG:httpcore.http11:send_request_body.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_body.complete
+DEBUG:httpcore.http11:receive_response_headers.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Sun, 27 Jul 2025 19:01:40 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'access-control-expose-headers', b'X-Request-ID'), (b'openai-organization', b'user-ts5baauwb90d1rfvrj6gsjer'), (b'openai-processing-ms', b'17155'), (b'openai-project', b'proj_9qsS1cRhQam2UbWCwrVbmY9g'), (b'openai-version', b'2020-10-01'), (b'x-envoy-upstream-service-time', b'17158'), (b'x-ratelimit-limit-requests', b'500'), (b'x-ratelimit-limit-tokens', b'30000'), (b'x-ratelimit-remaining-requests', b'499'), (b'x-ratelimit-remaining-tokens', b'29305'), (b'x-ratelimit-reset-requests', b'120ms'), (b'x-ratelimit-reset-tokens', b'1.39s'), (b'x-request-id', b'53404603-f124-443d-aea9-be9242aa0ef8'), (b'cf-cache-status', b'DYNAMIC'), (b'Set-Cookie', b'__cf_bm=82NWfNlSrr40Qh1xYLGTir81AuHbmgAmKtEFjPWqodE-1753642900-1.0.1.1-JGT6Vu5qsSJ.4CH.TkS1HzuzLzlDC9FMY2J2ybRblcj.4RHPVGQ0vjemR8RAAD_u4jRf9hnemzXTbvU.qd9GcHzwFDvh99xjHecvFkxehxQ; path=/; expires=Sun, 27-Jul-25 19:31:40 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Set-Cookie', b'_cfuvid=_i4ebk4r7vm2004nrYbEcCp3kvNa4m9txWj.KVSVG4w-1753642900169-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'Server', b'cloudflare'), (b'CF-RAY', b'965e6290de305eb1-ORD'), (b'Content-Encoding', b'gzip'), (b'alt-svc', b'h3=":443"; ma=86400')])
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+DEBUG:httpcore.http11:receive_response_body.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:receive_response_body.complete
+DEBUG:httpcore.http11:response_closed.started
+DEBUG:httpcore.http11:response_closed.complete
+DEBUG:openai._base_client:HTTP Response: POST https://api.openai.com/v1/chat/completions "200 OK" Headers([('date', 'Sun, 27 Jul 2025 19:01:40 GMT'), ('content-type', 'application/json'), ('transfer-encoding', 'chunked'), ('connection', 'keep-alive'), ('access-control-expose-headers', 'X-Request-ID'), ('openai-organization', 'user-ts5baauwb90d1rfvrj6gsjer'), ('openai-processing-ms', '17155'), ('openai-project', 'proj_9qsS1cRhQam2UbWCwrVbmY9g'), ('openai-version', '2020-10-01'), ('x-envoy-upstream-service-time', '17158'), ('x-ratelimit-limit-requests', '500'), ('x-ratelimit-limit-tokens', '30000'), ('x-ratelimit-remaining-requests', '499'), ('x-ratelimit-remaining-tokens', '29305'), ('x-ratelimit-reset-requests', '120ms'), ('x-ratelimit-reset-tokens', '1.39s'), ('x-request-id', '53404603-f124-443d-aea9-be9242aa0ef8'), ('cf-cache-status', 'DYNAMIC'), ('set-cookie', '__cf_bm=82NWfNlSrr40Qh1xYLGTir81AuHbmgAmKtEFjPWqodE-1753642900-1.0.1.1-JGT6Vu5qsSJ.4CH.TkS1HzuzLzlDC9FMY2J2ybRblcj.4RHPVGQ0vjemR8RAAD_u4jRf9hnemzXTbvU.qd9GcHzwFDvh99xjHecvFkxehxQ; path=/; expires=Sun, 27-Jul-25 19:31:40 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('strict-transport-security', 'max-age=31536000; includeSubDomains; preload'), ('x-content-type-options', 'nosniff'), ('set-cookie', '_cfuvid=_i4ebk4r7vm2004nrYbEcCp3kvNa4m9txWj.KVSVG4w-1753642900169-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('server', 'cloudflare'), ('cf-ray', '965e6290de305eb1-ORD'), ('content-encoding', 'gzip'), ('alt-svc', 'h3=":443"; ma=86400')])
+DEBUG:openai._base_client:request_id: 53404603-f124-443d-aea9-be9242aa0ef8
+INFO:cost_manager:Recorded API call: 1 calls, $0.0180 cost
+INFO:cache_manager:Cached analysis for TSLA_True until 2025-07-28 01:01:40.253568
