@@ -254,13 +254,20 @@ class SaneApeApp {
             return;
         }
         
-        const html = details.map(item => `
-            <div class="border-start border-3 border-primary ps-3 mb-3">
-                <h6 class="mb-1">${item.indicator}</h6>
-                <p class="mb-1">${item.analysis}</p>
-                <small class="text-muted">Signal: ${item.signal}</small>
-            </div>
-        `).join('');
+        const html = details.map(item => {
+            // Handle different data structures from the API
+            const indicator = item.method || item.indicator || 'Technical Indicator';
+            const analysis = item.explanation || item.analysis || 'Analysis not available';
+            const signal = item.signal || 'Unknown';
+            
+            return `
+                <div class="border-start border-3 border-primary ps-3 mb-3">
+                    <h6 class="mb-1">${indicator}</h6>
+                    <p class="mb-1">${analysis}</p>
+                    <small class="text-muted">Signal: ${signal}</small>
+                </div>
+            `;
+        }).join('');
         
         container.innerHTML = html;
     }
