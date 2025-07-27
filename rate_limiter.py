@@ -111,12 +111,14 @@ class RateLimiter:
                 return False, f"Insufficient credits. Need {affordability['cost']} credits, have {affordability['total_credits']}", affordability
             
             # Check cache first to avoid unnecessary credit deduction
-            if ticker and self.cache_manager.has_valid_cache(ticker, maximum_brain):
-                self.logger.info(f"Cache hit for {ticker} (brain={maximum_brain}) - no credit deduction")
-                return True, None, affordability
+            if ticker:
+                cached_result = self.cache_manager.get_cached_analysis(ticker, maximum_brain)
+                if cached_result:
+                    self.logger.info(f"Cache hit for {ticker} (brain={maximum_brain}) - no credit deduction")
+                    return True, None, affordability
             
             # Deduct credits atomically (this commits to database immediately)
-            deduction_result = self.credit_manager.deduct_credits(user_id, maximum_brain, ticker)
+            deduction_result = self.credit_manager.deduct_credits_for_analysis(user_id, ticker, maximum_brain)
             
             if not deduction_result['success']:
                 self.logger.error(f"Credit deduction failed for user {user_id}: {deduction_result.get('error')}")
@@ -275,37 +277,6 @@ class RateLimiter:
                 'remaining_brain': 0,
                 'used_standard': self.max_requests_per_day,
                 'used_brain': self.max_brain_requests_per_day
-            }
-            
-            rate_limit = RateLimit.query.filter_by(
-                ip_address=ip_address,
-                date_created=today
-            ).first()
-            
-            if not rate_limit:
-                return {
-                    'standard_remaining': self.max_requests_per_day,
-                    'brain_remaining': self.max_brain_requests_per_day,
-                    'total_used': 0
-                }
-            
-            standard_remaining = max(0, self.max_requests_per_day - rate_limit.request_count)
-            brain_remaining = max(0, self.max_brain_requests_per_day - rate_limit.maximum_brain_count)
-            
-            return {
-                'standard_remaining': standard_remaining,
-                'brain_remaining': brain_remaining,
-                'total_used': rate_limit.request_count + rate_limit.maximum_brain_count,
-                'last_request': rate_limit.last_request.isoformat() if rate_limit.last_request else None
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error getting remaining requests: {str(e)}")
-            return {
-                'standard_remaining': 0,
-                'brain_remaining': 0,
-                'total_used': 0,
-                'error': 'Could not retrieve limit information'
             }
     
     def reset_limits_for_ip(self, ip_address):
