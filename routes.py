@@ -101,8 +101,6 @@ def analyze_stock():
                 rate_limit.date_created = today
                 db.session.add(rate_limit)
             
-            db.session.commit()
-            
             # Save analysis to database
             analysis = StockAnalysis()
             analysis.ticker = ticker
@@ -112,6 +110,12 @@ def analyze_stock():
             analysis.analysis_data = json.dumps(result['analysis_details'])
             analysis.maximum_brain = maximum_brain
             db.session.add(analysis)
+            
+            # CRITICAL: Store in cache for Recently Analyzed feature
+            cache_manager = CacheManager()
+            cache_manager.store_analysis(ticker, result, maximum_brain)
+            
+            # Commit everything together
             db.session.commit()
             
             return jsonify(result)

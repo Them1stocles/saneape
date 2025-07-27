@@ -242,6 +242,49 @@ header {
     outline-offset: 2px;
 }
 
+/* Technical Analysis badge overflow fix */
+.technical-analysis-item {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.technical-analysis-item .d-flex {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.technical-analysis-item h6 {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.technical-analysis-badges {
+    flex-shrink: 0;
+    min-width: fit-content;
+}
+
+/* Ensure badges don't overflow on mobile */
+@media (max-width: 576px) {
+    .technical-analysis-item .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .technical-analysis-badges {
+        margin-top: 0.25rem;
+    }
+}
+
+/* Recently analyzed styles */
+#recentAnalyses {
+    border-radius: 0.5rem;
+    border: 1px solid #e9ecef;
+}
+
+#recentAnalysesList .btn {
+    font-size: 0.875rem;
+}
+
 /* High contrast for better readability */
 .text-muted {
     color: #6c757d !important;

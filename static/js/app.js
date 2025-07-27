@@ -282,10 +282,10 @@ class SaneApeApp {
             const strengthBadge = this.getStrengthBadge(strength);
             
             return `
-                <div class="border-start border-3 border-primary ps-3 mb-3">
+                <div class="border-start border-3 border-primary ps-3 mb-3 technical-analysis-item">
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-0 flex-grow-1">${indicator}</h6>
-                        <div class="d-flex gap-2 ms-2">
+                        <h6 class="mb-0 me-2" style="flex: 1; min-width: 0;">${indicator}</h6>
+                        <div class="d-flex gap-1 flex-wrap technical-analysis-badges">
                             ${signalBadge}
                             ${strengthBadge}
                         </div>
