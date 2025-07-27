@@ -69,7 +69,7 @@ body {
 /* Glowing yellow pulse animation for Maximum Brain Analysis */
 .maximum-brain-option {
     position: relative;
-    padding: 12px;
+    padding: 12px 12px 12px 40px; /* Increased left padding for checkbox */
     border-radius: 8px;
     transition: all 0.3s ease;
 }
@@ -85,6 +85,20 @@ body {
     border-radius: 8px;
     animation: yellowPulse 3s ease-in-out infinite;
     pointer-events: none;
+}
+
+/* Ensure checkbox is positioned within the glow area */
+.maximum-brain-option .form-check-input {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+.maximum-brain-option .form-check-label {
+    padding-left: 0;
+    margin-left: 0;
 }
 
 @keyframes yellowPulse {
