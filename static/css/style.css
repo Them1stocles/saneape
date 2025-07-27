@@ -16,12 +16,105 @@ body {
     line-height: 1.6;
 }
 
-/* Header styles */
-header {
-    background: linear-gradient(135deg, var(--primary-color), #0056b3);
-    color: white;
+/* Hero Header styles */
+.hero-header {
+    position: relative;
+    background-image: url('../images/hero-ape.png');
+    background-size: cover;
+    background-position: left center;
+    background-repeat: no-repeat;
+    min-height: 300px;
     margin-bottom: 2rem;
     border-radius: 0 0 1rem 1rem;
+    overflow: hidden;
+}
+
+.hero-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.85), rgba(0, 86, 179, 0.9));
+    z-index: 1;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 2rem;
+}
+
+.hero-text {
+    text-align: center;
+    color: white;
+    margin-right: 2rem;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hero-tagline {
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive hero header */
+@media (max-width: 768px) {
+    .hero-header {
+        min-height: 200px;
+        background-position: center left;
+    }
+    
+    .hero-content {
+        min-height: 200px;
+        justify-content: center;
+        padding: 1rem;
+    }
+    
+    .hero-text {
+        margin-right: 0;
+    }
+    
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-tagline {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-header {
+        min-height: 160px;
+    }
+    
+    .hero-content {
+        min-height: 160px;
+    }
+    
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .hero-tagline {
+        font-size: 0.9rem;
+    }
 }
 
 /* Card enhancements */
