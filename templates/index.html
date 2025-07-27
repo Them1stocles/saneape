@@ -98,6 +98,25 @@
                 <!-- Alert Messages -->
                 <div id="alertContainer"></div>
 
+                <!-- Recently Analyzed Box -->
+                <div class="card border-info mb-4" id="recentAnalysesCard">
+                    <div class="card-body">
+                        <h6 class="card-title text-info">
+                            <i data-feather="clock" class="me-2"></i>
+                            Recently Analyzed (Cached Results)
+                        </h6>
+                        <p class="card-text small text-muted mb-3">
+                            Click any ticker below to view cached analysis results without using your daily limits.
+                        </p>
+                        <div id="recentAnalysesList" class="d-flex flex-wrap gap-2">
+                            <div class="spinner-border spinner-border-sm text-info me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span class="text-muted">Loading recent analyses...</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Results Section -->
                 <div id="resultsSection" class="d-none">
                     <div class="card shadow-lg border-0 mb-4">

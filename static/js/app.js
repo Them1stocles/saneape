@@ -32,9 +32,13 @@ class SaneApeApp {
     init() {
         this.setupEventListeners();
         this.loadUserStatus();
+        this.loadRecentAnalyses();
         
         // Auto-refresh user status every 30 seconds
         setInterval(() => this.loadUserStatus(), 30000);
+        
+        // Auto-refresh recent analyses every 2 minutes
+        setInterval(() => this.loadRecentAnalyses(), 120000);
     }
     
     setupEventListeners() {
@@ -378,6 +382,105 @@ class SaneApeApp {
     
     hideResults() {
         this.resultsSection.classList.add('d-none');
+    }
+    
+    async loadRecentAnalyses() {
+        try {
+            const response = await fetch('/api/recent-analyses');
+            const data = await response.json();
+            
+            if (data.success && data.recent_analyses) {
+                this.displayRecentAnalyses(data.recent_analyses);
+            } else {
+                this.displayRecentAnalyses([]);
+            }
+        } catch (error) {
+            console.error('Error loading recent analyses:', error);
+            this.displayRecentAnalyses([]);
+        }
+    }
+    
+    displayRecentAnalyses(analyses) {
+        const container = document.getElementById('recentAnalysesList');
+        
+        if (!analyses || analyses.length === 0) {
+            container.innerHTML = '<span class="text-muted small">No recent analyses available</span>';
+            return;
+        }
+        
+        const html = analyses.map(analysis => {
+            const badgeClass = this.getRecommendationBadgeClass(analysis.recommendation);
+            const brainIcon = analysis.maximum_brain ? 
+                '<i data-feather="cpu" class="me-1" style="width: 12px; height: 12px;"></i>' : '';
+            
+            return `
+                <button class="btn btn-outline-info btn-sm me-2 mb-2 recent-analysis-btn" 
+                        data-ticker="${analysis.ticker}" 
+                        data-max-brain="${analysis.maximum_brain}"
+                        title="${analysis.company_name} - ${analysis.recommendation} (${analysis.confidence}) - Analyzed at ${analysis.analyzed_at}">
+                    ${brainIcon}${analysis.ticker}
+                    <span class="badge ${badgeClass} ms-1">${this.getShortRecommendation(analysis.recommendation)}</span>
+                </button>
+            `;
+        }).join('');
+        
+        container.innerHTML = html;
+        
+        // Add click handlers for recent analysis buttons
+        container.querySelectorAll('.recent-analysis-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const ticker = btn.dataset.ticker;
+                const maxBrain = btn.dataset.maxBrain === 'true';
+                this.loadCachedAnalysis(ticker, maxBrain);
+            });
+        });
+        
+        // Re-initialize feather icons
+        feather.replace();
+    }
+    
+    getRecommendationBadgeClass(recommendation) {
+        const rec = recommendation.toLowerCase();
+        if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
+            return 'bg-danger';
+        } else if (rec.includes("yes,") || (rec.includes('buy') && !rec.includes("don't"))) {
+            return 'bg-success';
+        } else {
+            return 'bg-secondary';
+        }
+    }
+    
+    getShortRecommendation(recommendation) {
+        const rec = recommendation.toLowerCase();
+        if (rec.includes("don't buy") || rec.includes("no,") || rec.includes("no buy")) {
+            return 'No';
+        } else if (rec.includes("yes,") || (rec.includes('buy') && !rec.includes("don't"))) {
+            return 'Buy';
+        } else {
+            return '?';
+        }
+    }
+    
+    async loadCachedAnalysis(ticker, maxBrain) {
+        try {
+            this.setAnalyzingState(true);
+            
+            const response = await fetch(`/api/cached-analysis/${ticker}?maximum_brain=${maxBrain}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.displayResults(data);
+                this.showAlert('success', `Loaded cached analysis for ${ticker} (no rate limit used)`);
+            } else {
+                this.showAlert('warning', data.error || 'Cached analysis not available');
+            }
+        } catch (error) {
+            console.error('Error loading cached analysis:', error);
+            this.showAlert('danger', 'Failed to load cached analysis');
+        } finally {
+            this.setAnalyzingState(false);
+        }
     }
 }
 

@@ -3,11 +3,11 @@ from app import app, db
 import logging
 from stock_analyzer import StockAnalyzer
 from rate_limiter import RateLimiter
-from models import StockAnalysis, SystemLimits, RateLimit
+from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache
 from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import json
 
 @app.route('/')
@@ -253,6 +253,80 @@ def admin_reset_ip():
         return jsonify({
             'success': False,
             'error': 'System error during IP reset'
+        }), 500
+
+@app.route('/api/recent-analyses')
+def get_recent_analyses():
+    """Get recently analyzed stocks from cache (no rate limit cost)"""
+    try:
+        # Get cached analyses from the past 6 hours
+        six_hours_ago = datetime.utcnow() - timedelta(hours=6)
+        
+        recent_analyses = AnalysisCache.query.filter(
+            AnalysisCache.created_at >= six_hours_ago,
+            AnalysisCache.cache_expiry > datetime.utcnow()  # Only non-expired
+        ).order_by(AnalysisCache.created_at.desc()).limit(10).all()
+        
+        # Format the results
+        recent_tickers = []
+        seen_tickers = set()
+        
+        for analysis in recent_analyses:
+            # Avoid duplicates (prefer most recent)
+            cache_key = f"{analysis.ticker_symbol}_{analysis.maximum_brain}"
+            if cache_key not in seen_tickers:
+                seen_tickers.add(cache_key)
+                
+                try:
+                    analysis_data = json.loads(analysis.analysis_data)
+                    recent_tickers.append({
+                        'ticker': analysis.ticker_symbol,
+                        'company_name': analysis_data.get('company_name', 'N/A'),
+                        'recommendation': analysis_data.get('recommendation', 'N/A'),
+                        'confidence': analysis_data.get('confidence', 'Unknown'),
+                        'maximum_brain': analysis.maximum_brain,
+                        'analyzed_at': analysis.created_at.strftime('%H:%M'),
+                        'expires_at': analysis.cache_expiry.strftime('%H:%M')
+                    })
+                except json.JSONDecodeError:
+                    continue
+        
+        return jsonify({
+            'success': True,
+            'recent_analyses': recent_tickers
+        })
+        
+    except Exception as e:
+        logging.error(f"Error fetching recent analyses: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch recent analyses'
+        }), 500
+
+@app.route('/api/cached-analysis/<ticker>')
+def get_cached_analysis(ticker):
+    """Get cached analysis result without using rate limits"""
+    try:
+        ticker = ticker.upper()
+        maximum_brain = request.args.get('maximum_brain', 'false').lower() == 'true'
+        
+        # Use cache manager to get the analysis
+        cache_manager = CacheManager()
+        cached_result = cache_manager.get_cached_analysis(ticker, maximum_brain)
+        
+        if cached_result:
+            return jsonify(cached_result)
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No cached analysis found for this ticker'
+            }), 404
+            
+    except Exception as e:
+        logging.error(f"Error fetching cached analysis for {ticker}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to fetch cached analysis'
         }), 500
 
 @app.route('/api/user-status')
