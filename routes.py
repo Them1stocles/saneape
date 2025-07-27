@@ -414,7 +414,17 @@ def share_analysis(ticker):
         cached_result = cache_manager.get_cached_analysis(ticker, maximum_brain)
         
         if not cached_result or not cached_result.get('success'):
-            # Analysis not found or expired - render expired page
+            # Try the other analysis type if this one doesn't exist
+            other_maximum_brain = not maximum_brain
+            other_cached_result = cache_manager.get_cached_analysis(ticker, other_maximum_brain)
+            if other_cached_result and other_cached_result.get('success'):
+                # Redirect to the correct share URL
+                if other_maximum_brain:
+                    return redirect(url_for('share_analysis', ticker=ticker, brain='true'))
+                else:
+                    return redirect(url_for('share_analysis', ticker=ticker))
+            
+            # Neither analysis type found - render expired page
             return render_template('share_expired.html', 
                                  ticker=ticker, 
                                  maximum_brain=maximum_brain), 404

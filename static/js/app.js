@@ -427,8 +427,9 @@ class SaneApeApp {
         if (!this.currentAnalysis) return;
         
         const { ticker, recommendation, maximum_brain } = this.currentAnalysis;
-        const analysisType = maximum_brain ? '/brain' : '';
-        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        const shareUrl = maximum_brain 
+            ? `${window.location.origin}/share/${ticker}?brain=true`
+            : `${window.location.origin}/share/${ticker}`;
         const text = `Just got AI analysis for $${ticker} on @SaneApe_com! 🧠📈 Recommendation: ${recommendation}`;
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
         
@@ -439,8 +440,9 @@ class SaneApeApp {
         if (!this.currentAnalysis) return;
         
         const { ticker, maximum_brain } = this.currentAnalysis;
-        const analysisType = maximum_brain ? '/brain' : '';
-        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        const shareUrl = maximum_brain 
+            ? `${window.location.origin}/share/${ticker}?brain=true`
+            : `${window.location.origin}/share/${ticker}`;
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
         
         window.open(facebookUrl, '_blank', 'width=550,height=420');
@@ -450,8 +452,9 @@ class SaneApeApp {
         if (!this.currentAnalysis) return;
         
         const { ticker, maximum_brain } = this.currentAnalysis;
-        const analysisType = maximum_brain ? '/brain' : '';
-        const shareUrl = `${window.location.origin}/share/${ticker}${analysisType}`;
+        const shareUrl = maximum_brain 
+            ? `${window.location.origin}/share/${ticker}?brain=true`
+            : `${window.location.origin}/share/${ticker}`;
         
         navigator.clipboard.writeText(shareUrl).then(() => {
             const btn = document.getElementById('shareLinkBtn');
@@ -466,6 +469,9 @@ class SaneApeApp {
             }
         }).catch(() => {
             // Fallback for older browsers
+            const shareUrl = this.currentAnalysis.maximum_brain 
+                ? `${window.location.origin}/share/${this.currentAnalysis.ticker}?brain=true`
+                : `${window.location.origin}/share/${this.currentAnalysis.ticker}`;
             const textArea = document.createElement('textarea');
             textArea.value = shareUrl;
             document.body.appendChild(textArea);
