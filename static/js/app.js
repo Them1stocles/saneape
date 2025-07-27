@@ -307,7 +307,17 @@ class SaneApeApp {
         // Standardize the text for consistency
         let displayText;
         let badgeClass;
-        if (recommendation.includes("don't buy") || recommendation.includes("no,") || recommendation.includes("no buy")) {
+        
+        // Check for income-focused override
+        const hasIncomeOverride = data.income_analysis && 
+                                 data.income_analysis.recommendation && 
+                                 data.income_analysis.recommendation.toLowerCase().includes('buy for income') &&
+                                 (data.income_focus || data.is_yield_etf);
+        
+        if (hasIncomeOverride) {
+            displayText = "Buy for Income";
+            badgeClass = 'bg-success';
+        } else if (recommendation.includes("don't buy") || recommendation.includes("no,") || recommendation.includes("no buy")) {
             displayText = "No Buy";
             badgeClass = 'bg-danger';
         } else if (recommendation.includes("yes,") || (recommendation.includes('buy') && !recommendation.includes("don't"))) {
@@ -345,6 +355,12 @@ class SaneApeApp {
         
         // Re-initialize feather icons for new content
         feather.replace();
+        
+        // Initialize Bootstrap tooltips for new content
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
     }
     
     displayTechnicalAnalysis(details) {
@@ -444,8 +460,14 @@ class SaneApeApp {
                         <div class="col-md-6">
                             <div class="card border-primary">
                                 <div class="card-body text-center">
-                                    <h6 class="card-title">Return of Capital %</h6>
+                                    <h6 class="card-title">
+                                        Return of Capital %
+                                        <i data-feather="info" class="ms-1" style="width: 14px; height: 14px;" 
+                                           data-bs-toggle="tooltip" data-bs-placement="top" 
+                                           title="Percentage of distributions that are return of your original investment (principal) rather than earnings. Return of capital is not immediately taxable but reduces your cost basis."></i>
+                                    </h6>
                                     <div class="h5 text-primary">${metrics.roc_percentage.toFixed(2)}%</div>
+                                    <small class="text-muted">Of total distributions</small>
                                 </div>
                             </div>
                         </div>
