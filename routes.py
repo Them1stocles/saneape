@@ -3,10 +3,11 @@ from app import app, db
 import logging
 from stock_analyzer import StockAnalyzer
 from rate_limiter import RateLimiter
-from models import StockAnalysis, SystemLimits
+from models import StockAnalysis, SystemLimits, RateLimit
 from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
+from datetime import date, datetime
 import json
 
 @app.route('/')
@@ -57,32 +58,50 @@ def analyze_stock():
                 'type': 'validation'
             }), 400
         
-        # Initialize enhanced rate limiter
+        # Simple rate limit check first (performance critical)
         rate_limiter = RateLimiter()
         
-        # Check cache first (saves API calls and costs)
-        cached_result = rate_limiter.check_cache_first(ticker, maximum_brain)
-        if cached_result:
-            return jsonify(cached_result)
+        # Quick IP-based rate limit check
+        today = date.today()
+        rate_limit = RateLimit.query.filter_by(
+            ip_address=client_ip,
+            date_created=today
+        ).first()
         
-        # Check all rate limits and protections
-        allowed, error_msg = rate_limiter.is_allowed(client_ip, maximum_brain)
-        if not allowed:
-            return jsonify({
-                'error': error_msg,
-                'type': 'rate_limit'
-            }), 429
+        if rate_limit:
+            if maximum_brain and rate_limit.maximum_brain_count >= 1:
+                return jsonify({
+                    'error': 'Maximum Brain analysis limit exceeded. You can only make 1 Maximum Brain analysis per day.',
+                    'type': 'rate_limit'
+                }), 429
+            elif not maximum_brain and rate_limit.request_count >= 2:
+                return jsonify({
+                    'error': 'Daily limit exceeded. You can only make 2 requests per day.',
+                    'type': 'rate_limit'
+                }), 429
         
         # Proceed with analysis
         analyzer = StockAnalyzer()
         result = analyzer.analyze_stock(ticker, maximum_brain)
         
         if result['success']:
-            # Record the successful request (updates all tracking systems)
-            rate_limiter.record_request(client_ip, maximum_brain)
+            # Record the successful request (simple database update)
+            if rate_limit:
+                if maximum_brain:
+                    rate_limit.maximum_brain_count += 1
+                else:
+                    rate_limit.request_count += 1
+                rate_limit.last_request = datetime.utcnow()
+            else:
+                rate_limit = RateLimit()
+                rate_limit.ip_address = client_ip
+                rate_limit.request_count = 1 if not maximum_brain else 0
+                rate_limit.maximum_brain_count = 1 if maximum_brain else 0
+                rate_limit.last_request = datetime.utcnow()
+                rate_limit.date_created = today
+                db.session.add(rate_limit)
             
-            # Cache the result for 6 hours
-            rate_limiter.cache_result(ticker, result, maximum_brain)
+            db.session.commit()
             
             # Save analysis to database
             analysis = StockAnalysis()

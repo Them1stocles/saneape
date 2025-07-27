@@ -28,10 +28,8 @@ class CacheManager:
             
             # Find non-expired cache entry
             cached = AnalysisCache.query.filter(
-                AnalysisCache.ticker_symbol == ticker.upper()
-            ).filter(
-                AnalysisCache.maximum_brain == maximum_brain
-            ).filter(
+                AnalysisCache.ticker_symbol == ticker.upper(),
+                AnalysisCache.maximum_brain.is_(maximum_brain),
                 AnalysisCache.cache_expiry > datetime.utcnow()
             ).first()
             
@@ -63,9 +61,8 @@ class CacheManager:
             
             # Remove any existing cache for this ticker/type combination
             existing = AnalysisCache.query.filter(
-                AnalysisCache.ticker_symbol == ticker.upper()
-            ).filter(
-                AnalysisCache.maximum_brain == maximum_brain
+                AnalysisCache.ticker_symbol == ticker.upper(),
+                AnalysisCache.maximum_brain.is_(maximum_brain)
             ).all()
             
             for cache_entry in existing:
@@ -95,10 +92,8 @@ class CacheManager:
         """Check if analysis is cached without retrieving the data"""
         try:
             cached = AnalysisCache.query.filter(
-                AnalysisCache.ticker_symbol == ticker.upper()
-            ).filter(
-                AnalysisCache.maximum_brain == maximum_brain
-            ).filter(
+                AnalysisCache.ticker_symbol == ticker.upper(),
+                AnalysisCache.maximum_brain.is_(maximum_brain),
                 AnalysisCache.cache_expiry > datetime.utcnow()
             ).first()
             
@@ -112,9 +107,8 @@ class CacheManager:
         """Get cache information including expiry time"""
         try:
             cached = AnalysisCache.query.filter(
-                AnalysisCache.ticker_symbol == ticker.upper()
-            ).filter(
-                AnalysisCache.maximum_brain == maximum_brain
+                AnalysisCache.ticker_symbol == ticker.upper(),
+                AnalysisCache.maximum_brain.is_(maximum_brain)
             ).first()
             
             if not cached:

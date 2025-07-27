@@ -12,10 +12,30 @@ class RateLimiter:
     def __init__(self, max_requests_per_day=2, max_brain_requests_per_day=1):
         self.max_requests_per_day = max_requests_per_day
         self.max_brain_requests_per_day = max_brain_requests_per_day
-        self.cost_manager = CostManager()
-        self.cache_manager = CacheManager()
-        self.security_monitor = SecurityMonitor()
         self.logger = logging.getLogger(__name__)
+        
+        # Lazy initialization to avoid circular imports and improve performance
+        self._cost_manager = None
+        self._cache_manager = None
+        self._security_monitor = None
+    
+    @property
+    def cost_manager(self):
+        if self._cost_manager is None:
+            self._cost_manager = CostManager()
+        return self._cost_manager
+    
+    @property
+    def cache_manager(self):
+        if self._cache_manager is None:
+            self._cache_manager = CacheManager()
+        return self._cache_manager
+    
+    @property
+    def security_monitor(self):
+        if self._security_monitor is None:
+            self._security_monitor = SecurityMonitor()
+        return self._security_monitor
     
     def is_allowed(self, ip_address, maximum_brain=False):
         """Enhanced permission check with multiple protection layers"""

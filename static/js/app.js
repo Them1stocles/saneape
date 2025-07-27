@@ -54,6 +54,14 @@ class SaneApeApp {
             }
         } catch (error) {
             console.error('Error loading user status:', error);
+            // Provide fallback values to prevent UI breaking
+            this.remainingRequests = {
+                standard_remaining: 2,
+                brain_remaining: 1,
+                total_used: 0
+            };
+            this.updateRateLimitDisplay();
+            this.updateButtonState();
         }
     }
     
