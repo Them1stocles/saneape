@@ -97,6 +97,20 @@
                                 </div>
                             </div>
                             
+                            <div class="mb-3">
+                                <div class="form-check income-focus-option">
+                                    <input class="form-check-input" type="checkbox" id="incomeFocus" name="income_focus">
+                                    <label class="form-check-label fw-semibold" for="incomeFocus">
+                                        <i data-feather="dollar-sign" class="me-2"></i>
+                                        Income-Focused Analysis
+                                    </label>
+                                </div>
+                                <div class="form-text text-info">
+                                    <i data-feather="info" class="me-1"></i>
+                                    Specialized analysis for yield ETFs (YieldMax, dividend funds) focusing on income generation
+                                </div>
+                            </div>
+                            
                             <button type="submit" class="btn btn-primary btn-lg w-100" id="analyzeBtn">
                                 <i data-feather="search" class="me-2"></i>
                                 Analyze Stock
@@ -176,6 +190,26 @@
                                         <i data-feather="link" class="me-1"></i>
                                         Copy Link
                                     </button>
+                                </div>
+                            </div>
+
+                            <!-- Income Analysis Details (shown for income-focused analysis) -->
+                            <div class="accordion mb-3" id="incomeAnalysisAccordion" style="display: none;">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button" type="button" 
+                                                data-bs-toggle="collapse" data-bs-target="#incomeDetails">
+                                            <i data-feather="dollar-sign" class="me-2"></i>
+                                            Income Analysis Details
+                                            <span class="badge bg-success ms-2">Income ETF</span>
+                                        </button>
+                                    </h2>
+                                    <div id="incomeDetails" class="accordion-collapse collapse show" 
+                                         data-bs-parent="#incomeAnalysisAccordion">
+                                        <div class="accordion-body">
+                                            <div id="incomeAnalysisList"></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

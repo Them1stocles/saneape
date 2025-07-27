@@ -40,9 +40,10 @@ def analyze_stock():
         if client_ip:
             client_ip = client_ip.split(',')[0].strip()
         
-        # Get ticker and maximum brain option from form
+        # Get ticker and analysis options from form
         ticker = request.form.get('ticker', '').strip().upper()
         maximum_brain = request.form.get('maximum_brain') == 'true'
+        income_focus = request.form.get('income_focus') == 'true'
         
         # Validate input
         if not ticker:
@@ -83,7 +84,7 @@ def analyze_stock():
         
         # Proceed with analysis
         analyzer = StockAnalyzer()
-        result = analyzer.analyze_stock(ticker, maximum_brain)
+        result = analyzer.analyze_stock(ticker, maximum_brain, income_focus)
         
         if result['success']:
             # Record the successful API call for cost tracking

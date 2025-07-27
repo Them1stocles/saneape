@@ -10,10 +10,12 @@ import logging
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
 from scipy.signal import find_peaks
+from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
     def __init__(self):
         self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
         """Fetch historical stock data using yfinance"""
@@ -473,8 +475,8 @@ class StockAnalyzer:
         except:
             return 0
     
-    def analyze_with_ai(self, summary, maximum_brain=False):
-        """Send data to OpenAI for technical analysis"""
+    def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None):
+        """Send data to OpenAI for technical analysis with optional income analysis"""
         try:
             if maximum_brain:
                 # Maximum Brain mode with comprehensive indicator list
@@ -586,6 +588,17 @@ Respond in JSON format with this structure:
                 logging.info(f"OpenAI Response: {content}")
                 analysis = json.loads(content)
                 logging.info(f"Parsed Analysis: {analysis}")
+                
+                # If income analysis was requested but not included in OpenAI response, add it
+                if income_focus and income_metrics and 'income_analysis' not in analysis:
+                    analysis['income_analysis'] = {
+                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics['buy_threshold'] else "No Buy",
+                        'income_confidence': 'medium',
+                        'income_explanation': f"Based on effective income return of {income_metrics['effective_return']:.2f}%",
+                        'key_income_risks': income_metrics.get('risks', []),
+                        'effective_income_return': income_metrics['effective_return']
+                    }
+                
                 return analysis, None
             else:
                 return None, "Empty response from AI analysis"
@@ -594,9 +607,15 @@ Respond in JSON format with this structure:
             logging.error(f"Error in AI analysis: {str(e)}")
             return None, f"Error analyzing stock data: {str(e)}"
     
-    def analyze_stock(self, ticker, maximum_brain=False):
-        """Main method to analyze a stock"""
+    def analyze_stock(self, ticker, maximum_brain=False, income_focus=False):
+        """Main method to analyze a stock with optional income-focused analysis"""
         try:
+            # Auto-detect if ticker is a yield ETF
+            is_yield_etf = self.income_analyzer.is_yield_etf(ticker)
+            if is_yield_etf and not income_focus:
+                logging.info(f"Auto-detected {ticker} as yield ETF, enabling income analysis")
+                income_focus = True
+            
             # Fetch stock data
             stock_data, error = self.fetch_stock_data(ticker)
             if error or stock_data is None:
@@ -608,12 +627,18 @@ Respond in JSON format with this structure:
             # Summarize data (pass maximum_brain parameter)
             summary = self.summarize_data(df_with_indicators, stock_data['info'], maximum_brain)
             
-            # Get AI analysis
-            analysis, error = self.analyze_with_ai(summary, maximum_brain)
+            # Calculate income metrics if requested or auto-detected
+            income_metrics = None
+            if income_focus:
+                income_metrics = self.income_analyzer.calculate_income_metrics(ticker, stock_data['history'])
+                logging.info(f"Income metrics calculated for {ticker}: {income_metrics is not None}")
+            
+            # Get AI analysis (with income focus if applicable)
+            analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics)
             if error or analysis is None:
                 return {'success': False, 'error': error or 'Failed to get AI analysis'}
             
-            return {
+            result = {
                 'success': True,
                 'ticker': ticker,
                 'company_name': summary.get('company_name', 'N/A'),
@@ -621,8 +646,27 @@ Respond in JSON format with this structure:
                 'recommendation': analysis.get('recommendation', 'No recommendation'),
                 'confidence': analysis.get('confidence', 'unknown'),
                 'overall_explanation': analysis.get('overall_explanation', 'No explanation available'),
-                'analysis_details': analysis.get('technical_analysis', [])
+                'analysis_details': analysis.get('technical_analysis', []),
+                'income_focus': income_focus,
+                'is_yield_etf': is_yield_etf
             }
+            
+            # Add income analysis if available
+            if income_focus and income_metrics:
+                result['income_analysis'] = {
+                    'metrics': income_metrics,
+                    'recommendation': analysis.get('income_analysis', {}).get('income_recommendation', 'No income recommendation'),
+                    'confidence': analysis.get('income_analysis', {}).get('income_confidence', 'unknown'),
+                    'explanation': analysis.get('income_analysis', {}).get('income_explanation', 'No income explanation available'),
+                    'key_risks': analysis.get('income_analysis', {}).get('key_income_risks', []),
+                    'effective_return': analysis.get('income_analysis', {}).get('effective_income_return', income_metrics.get('effective_return', 0))
+                }
+            elif income_focus:
+                result['income_analysis'] = {
+                    'error': 'Insufficient data for income analysis'
+                }
+            
+            return result
             
         except Exception as e:
             logging.error(f"Error in analyze_stock: {str(e)}")

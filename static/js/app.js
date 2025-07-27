@@ -4,6 +4,7 @@ class SaneApeApp {
         this.form = document.getElementById('stockForm');
         this.tickerInput = document.getElementById('ticker');
         this.maxBrainCheck = document.getElementById('maximumBrain');
+        this.incomeFocusCheck = document.getElementById('incomeFocus');
         this.analyzeBtn = document.getElementById('analyzeBtn');
         this.loadingState = document.getElementById('loadingState');
         this.alertContainer = document.getElementById('alertContainer');
@@ -61,6 +62,22 @@ class SaneApeApp {
                 });
             }
         });
+        
+        // Income Focus checkbox change
+        if (this.incomeFocusCheck) {
+            this.incomeFocusCheck.addEventListener('change', () => {
+                this.updateButtonState();
+                
+                // Google Analytics toggle event
+                if (typeof gtag !== 'undefined') {
+                    gtag('event', 'income_focus_toggle', {
+                        'enabled': this.incomeFocusCheck.checked,
+                        'event_category': 'ui_interaction',
+                        'event_label': this.incomeFocusCheck.checked ? 'enabled' : 'disabled'
+                    });
+                }
+            });
+        }
         
         // Enter key support
         this.tickerInput.addEventListener('keypress', (e) => {
@@ -175,6 +192,7 @@ class SaneApeApp {
         
         const ticker = this.tickerInput.value.trim().toUpperCase();
         const maximumBrain = this.maxBrainCheck.checked;
+        const incomeFocus = this.incomeFocusCheck ? this.incomeFocusCheck.checked : false;
         
         this.setAnalyzingState(true);
         this.clearAlerts();
@@ -194,6 +212,7 @@ class SaneApeApp {
             const formData = new FormData();
             formData.append('ticker', ticker);
             formData.append('maximum_brain', maximumBrain.toString());
+            formData.append('income_focus', incomeFocus.toString());
             
             const response = await fetch('/analyze', {
                 method: 'POST',
@@ -208,9 +227,12 @@ class SaneApeApp {
                 
                 // Google Analytics success event
                 if (typeof gtag !== 'undefined') {
+                    const analysisType = maximumBrain ? 'maximum_brain' : 'standard';
+                    const finalType = incomeFocus ? `${analysisType}_income` : analysisType;
                     gtag('event', 'stock_analysis_complete', {
                         'ticker_symbol': ticker,
-                        'analysis_type': maximumBrain ? 'maximum_brain' : 'standard',
+                        'analysis_type': finalType,
+                        'income_focus': incomeFocus,
                         'recommendation': data.recommendation,
                         'confidence': data.confidence,
                         'event_category': 'analysis',
@@ -311,6 +333,9 @@ class SaneApeApp {
         // Update technical analysis details
         this.displayTechnicalAnalysis(data.analysis_details);
         
+        // Update income analysis if available
+        this.displayIncomeAnalysis(data.income_analysis, data.income_focus || data.is_yield_etf);
+        
         // Update share functionality
         this.updateShareButtons(data);
         
@@ -356,6 +381,87 @@ class SaneApeApp {
         }).join('');
         
         container.innerHTML = html;
+    }
+    
+    displayIncomeAnalysis(incomeData, showIncomeSection) {
+        const incomeContainer = document.getElementById('incomeAnalysisAccordion');
+        
+        if (!showIncomeSection || !incomeData) {
+            if (incomeContainer) {
+                incomeContainer.style.display = 'none';
+            }
+            return;
+        }
+        
+        if (incomeContainer) {
+            incomeContainer.style.display = 'block';
+            
+            // Update income analysis content
+            const incomeDetailsContainer = document.getElementById('incomeAnalysisList');
+            if (incomeDetailsContainer && incomeData.metrics) {
+                const metrics = incomeData.metrics;
+                
+                const incomeHtml = `
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Effective Income Return</h6>
+                                    <div class="h4 text-success">${metrics.effective_return ? metrics.effective_return.toFixed(2) : 'N/A'}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Annualized Distribution Yield</h6>
+                                    <div class="h4 text-info">${metrics.annualized_yield ? metrics.annualized_yield.toFixed(2) : 'N/A'}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        ${metrics.nav_decay_rate !== undefined ? `
+                        <div class="col-md-6">
+                            <div class="card border-warning">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">NAV Decay Rate</h6>
+                                    <div class="h5 text-warning">${metrics.nav_decay_rate.toFixed(2)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                        ${metrics.roc_percentage !== undefined ? `
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Return of Capital %</h6>
+                                    <div class="h5 text-primary">${metrics.roc_percentage.toFixed(2)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${incomeData.recommendation ? `
+                    <div class="alert alert-${incomeData.recommendation.includes('Buy') ? 'success' : 'warning'} mb-3">
+                        <h6 class="alert-heading">Income Recommendation</h6>
+                        <p class="mb-1"><strong>${incomeData.recommendation}</strong></p>
+                        <p class="mb-0">${incomeData.explanation || ''}</p>
+                    </div>
+                    ` : ''}
+                    
+                    ${incomeData.key_risks && incomeData.key_risks.length > 0 ? `
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">Key Income Risks</h6>
+                        <ul class="mb-0">
+                            ${incomeData.key_risks.map(risk => `<li>${risk}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
+                `;
+                
+                incomeDetailsContainer.innerHTML = incomeHtml;
+            }
+        }
     }
     
     getSignalBadge(signal) {
