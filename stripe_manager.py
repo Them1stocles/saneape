@@ -634,6 +634,86 @@ class StripeManager:
         # This would typically store the event ID in a processed events table
         # For now, we'll just log it
         logger.info(f"Marking webhook event {event_id} as processed")
+    
+    def get_user_subscription_info(self, user_id: str) -> Dict[str, Any]:
+        """Get comprehensive subscription information for dashboard display"""
+        try:
+            # Get active subscription from database
+            subscription = Subscription.query.filter_by(
+                user_id=user_id,
+                status='active'
+            ).filter(
+                Subscription.current_period_end > datetime.utcnow()
+            ).first()
+            
+            if not subscription:
+                return {
+                    'has_subscription': False,
+                    'subscription': None,
+                    'next_billing': None,
+                    'days_until_renewal': None,
+                    'plan_details': None
+                }
+            
+            # Calculate days until renewal
+            days_until_renewal = (subscription.current_period_end - datetime.utcnow()).days
+            
+            # Get plan details
+            plan_details = {
+                'plan_type': subscription.plan_type,
+                'credits_per_cycle': subscription.credits_per_cycle,
+                'amount': subscription.amount,
+                'currency': subscription.currency,
+                'interval': subscription.interval
+            }
+            
+            # Get Stripe subscription details if available
+            stripe_details = None
+            if subscription.stripe_subscription_id:
+                try:
+                    stripe_sub = stripe.Subscription.retrieve(subscription.stripe_subscription_id)
+                    stripe_details = {
+                        'status': stripe_sub.status,
+                        'cancel_at_period_end': stripe_sub.cancel_at_period_end,
+                        'canceled_at': stripe_sub.canceled_at,
+                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start),
+                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end)
+                    }
+                except Exception as e:
+                    logger.warning(f"Could not retrieve Stripe subscription details: {e}")
+            
+            return {
+                'has_subscription': True,
+                'subscription': {
+                    'id': subscription.id,
+                    'stripe_subscription_id': subscription.stripe_subscription_id,
+                    'status': subscription.status,
+                    'plan_type': subscription.plan_type,
+                    'credits_per_cycle': subscription.credits_per_cycle,
+                    'amount': subscription.amount,
+                    'currency': subscription.currency,
+                    'interval': subscription.interval,
+                    'current_period_start': subscription.current_period_start.isoformat() if subscription.current_period_start else None,
+                    'current_period_end': subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+                    'created_at': subscription.created_at.isoformat(),
+                    'updated_at': subscription.updated_at.isoformat()
+                },
+                'next_billing': subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+                'days_until_renewal': days_until_renewal,
+                'plan_details': plan_details,
+                'stripe_details': stripe_details
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting subscription info for user {user_id}: {e}")
+            return {
+                'has_subscription': False,
+                'subscription': None,
+                'next_billing': None,
+                'days_until_renewal': None,
+                'plan_details': None,
+                'error': 'Could not retrieve subscription information'
+            }
 
 # Singleton instance
 stripe_manager = StripeManager()

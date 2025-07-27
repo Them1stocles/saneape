@@ -346,30 +346,218 @@ class CreditManager:
             db.session.rollback()
             return False
     
-    def get_credit_history(self, user_id: str, limit: int = 50) -> list:
-        """Get credit transaction history for user"""
+    def get_user_credit_info(self, user_id: str) -> Dict[str, Any]:
+        """Get comprehensive credit information for dashboard display"""
         try:
-            transactions = db.session.query(CreditTransaction)\
-                .filter_by(user_id=user_id)\
-                .order_by(CreditTransaction.created_at.desc())\
-                .limit(limit)\
-                .all()
+            credit_balance = self.get_or_create_credit_balance(user_id)
             
-            return [{
-                'id': t.id,
-                'type': t.transaction_type,
-                'credit_type': t.credit_type,
-                'amount': t.credits_amount,
-                'description': t.description,
-                'analysis_type': t.analysis_type,
-                'ticker': t.ticker_symbol,
-                'amount_paid': t.amount_paid,
-                'created_at': t.created_at.isoformat()
-            } for t in transactions]
+            # Check and reset daily usage if needed
+            self.check_and_reset_daily_usage(credit_balance)
+            
+            # Expire subscription credits if needed  
+            self.expire_subscription_credits(user_id)
+            
+            # Refresh after potential changes
+            db.session.refresh(credit_balance)
+            
+            return {
+                'total_credits': credit_balance.total_credits,
+                'subscription_credits': credit_balance.subscription_credits,
+                'topup_credits': credit_balance.topup_credits,
+                'credits_used_today': credit_balance.credits_used_today,
+                'subscription_expiry': credit_balance.subscription_credits_expiry.isoformat() if credit_balance.subscription_credits_expiry else None,
+                'standard_cost': self.standard_analysis_cost,
+                'brain_cost': self.brain_analysis_cost,
+                'daily_reset_time': credit_balance.last_reset_date.isoformat() if credit_balance.last_reset_date else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting credit info for user {user_id}: {e}")
+            return {
+                'total_credits': 0,
+                'subscription_credits': 0,
+                'topup_credits': 0,
+                'credits_used_today': 0,
+                'subscription_expiry': None,
+                'standard_cost': self.standard_analysis_cost,
+                'brain_cost': self.brain_analysis_cost,
+                'error': 'Could not retrieve credit information'
+            }
+    
+    def get_usage_analytics(self, user_id: str, days: int = 30) -> Dict[str, Any]:
+        """Get comprehensive usage analytics for dashboard charts"""
+        try:
+            from datetime import timedelta
+            from sqlalchemy import func
+            
+            # Calculate date range
+            end_date = datetime.utcnow()
+            start_date = end_date - timedelta(days=days)
+            
+            # Get daily usage breakdown
+            daily_usage = db.session.query(
+                func.date(CreditTransaction.created_at).label('date'),
+                func.sum(CreditTransaction.credits_amount).label('credits_used'),
+                func.count(CreditTransaction.id).label('transaction_count')
+            ).filter(
+                CreditTransaction.user_id == user_id,
+                CreditTransaction.transaction_type == 'usage',
+                CreditTransaction.created_at >= start_date
+            ).group_by(
+                func.date(CreditTransaction.created_at)
+            ).order_by('date').all()
+            
+            # Get analysis type breakdown
+            analysis_breakdown = db.session.query(
+                CreditTransaction.analysis_type,
+                func.count(CreditTransaction.id).label('count'),
+                func.sum(CreditTransaction.credits_amount).label('total_credits')
+            ).filter(
+                CreditTransaction.user_id == user_id,
+                CreditTransaction.transaction_type == 'usage',
+                CreditTransaction.created_at >= start_date
+            ).group_by(
+                CreditTransaction.analysis_type
+            ).all()
+            
+            # Get total statistics
+            total_analyses = db.session.query(func.count(CreditTransaction.id)).filter(
+                CreditTransaction.user_id == user_id,
+                CreditTransaction.transaction_type == 'usage',
+                CreditTransaction.created_at >= start_date
+            ).scalar() or 0
+            
+            total_credits_used = db.session.query(func.sum(CreditTransaction.credits_amount)).filter(
+                CreditTransaction.user_id == user_id,
+                CreditTransaction.transaction_type == 'usage',
+                CreditTransaction.created_at >= start_date
+            ).scalar() or 0
+            
+            return {
+                'daily_usage': [
+                    {
+                        'date': usage.date.isoformat(),
+                        'credits_used': int(abs(usage.credits_used)),
+                        'transaction_count': usage.transaction_count
+                    } for usage in daily_usage
+                ],
+                'analysis_breakdown': [
+                    {
+                        'analysis_type': breakdown.analysis_type or 'Unknown',
+                        'count': breakdown.count,
+                        'total_credits': int(abs(breakdown.total_credits))
+                    } for breakdown in analysis_breakdown
+                ],
+                'summary': {
+                    'total_analyses': total_analyses,
+                    'total_credits_used': int(abs(total_credits_used)) if total_credits_used else 0,
+                    'average_daily_usage': round(abs(total_credits_used) / days, 2) if days > 0 and total_credits_used else 0,
+                    'period_days': days
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting usage analytics for user {user_id}: {e}")
+            return {
+                'daily_usage': [],
+                'analysis_breakdown': [],
+                'summary': {
+                    'total_analyses': 0,
+                    'total_credits_used': 0,
+                    'average_daily_usage': 0,
+                    'period_days': days
+                },
+                'error': 'Could not retrieve usage analytics'
+            }
+
+    def get_credit_history(self, user_id: str, limit: int = 50, page: int = 1, per_page: int = 20, transaction_type: str = None) -> Dict[str, Any]:
+        """Get paginated credit transaction history for user"""
+        try:
+            query = CreditTransaction.query.filter_by(user_id=user_id)
+            
+            if transaction_type:
+                query = query.filter_by(transaction_type=transaction_type)
+            
+            # Order by most recent first
+            query = query.order_by(CreditTransaction.created_at.desc())
+            
+            # Handle pagination
+            if page and per_page:
+                from sqlalchemy.orm import defer
+                pagination = query.paginate(
+                    page=page, 
+                    per_page=per_page, 
+                    error_out=False
+                )
+                
+                transactions = []
+                for transaction in pagination.items:
+                    transactions.append({
+                        'id': transaction.id,
+                        'transaction_type': transaction.transaction_type,
+                        'credit_type': transaction.credit_type,
+                        'credits_amount': transaction.credits_amount,
+                        'analysis_type': transaction.analysis_type,
+                        'ticker_symbol': transaction.ticker_symbol,
+                        'created_at': transaction.created_at.isoformat(),
+                        'description': self._format_transaction_description(transaction)
+                    })
+                
+                return {
+                    'items': transactions,
+                    'total': pagination.total,
+                    'pages': pagination.pages,
+                    'page': page,
+                    'per_page': per_page,
+                    'has_next': pagination.has_next,
+                    'has_prev': pagination.has_prev
+                }
+            else:
+                # Legacy format for backward compatibility
+                transactions = query.limit(limit).all()
+                return [{
+                    'id': t.id,
+                    'type': t.transaction_type,
+                    'credit_type': t.credit_type,
+                    'amount': t.credits_amount,
+                    'description': t.description,
+                    'analysis_type': t.analysis_type,
+                    'ticker': t.ticker_symbol,
+                    'amount_paid': t.amount_paid,
+                    'created_at': t.created_at.isoformat()
+                } for t in transactions]
             
         except Exception as e:
             logger.error(f"Error getting credit history for user {user_id}: {e}")
+            if page and per_page:
+                return {
+                    'items': [],
+                    'total': 0,
+                    'pages': 0,
+                    'page': page,
+                    'per_page': per_page,
+                    'has_next': False,
+                    'has_prev': False,
+                    'error': str(e)
+                }
             return []
+    
+    def _format_transaction_description(self, transaction):
+        """Format a human-readable description for transactions"""
+        if transaction.transaction_type == 'usage':
+            analysis_type = transaction.analysis_type or 'analysis'
+            ticker = f" ({transaction.ticker_symbol})" if transaction.ticker_symbol else ""
+            return f"{analysis_type.title()} analysis{ticker} - {abs(transaction.credits_amount)} credits used"
+        elif transaction.transaction_type == 'subscription_grant':
+            return f"Monthly subscription credits granted - {transaction.credits_amount} credits"
+        elif transaction.transaction_type == 'topup_purchase':
+            return f"Credit pack purchased - {transaction.credits_amount} credits added"
+        elif transaction.transaction_type == 'expiry':
+            return f"Subscription credits expired - {abs(transaction.credits_amount)} credits"
+        elif transaction.transaction_type == 'refund':
+            return f"Credit refund - {transaction.credits_amount} credits restored"
+        else:
+            return f"{transaction.transaction_type.replace('_', ' ').title()} - {transaction.credits_amount} credits"
     
     def get_user_credit_summary(self, user_id: str) -> Dict[str, Any]:
         """Get comprehensive credit summary for user"""

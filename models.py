@@ -131,19 +131,6 @@ class User(UserMixin, db.Model):
         except Exception:
             return False
     
-    def get_active_subscription(self):
-        """Get user's active subscription"""
-        try:
-            from datetime import datetime
-            return Subscription.query.filter_by(
-                user_id=self.id,
-                status='active'
-            ).filter(
-                Subscription.current_period_end > datetime.utcnow()
-            ).first()
-        except Exception:
-            return None
-    
     @property
     def display_name(self):
         """Get user's display name"""
@@ -158,11 +145,15 @@ class User(UserMixin, db.Model):
     
     def get_active_subscription(self):
         """Get user's active subscription"""
-        return self.subscriptions.filter_by(status='active').first()
-    
-    def has_active_subscription(self):
-        """Check if user has an active subscription"""
-        return self.get_active_subscription() is not None
+        try:
+            return Subscription.query.filter_by(
+                user_id=self.id,
+                status='active'
+            ).filter(
+                Subscription.current_period_end > datetime.utcnow()
+            ).first()
+        except Exception:
+            return None
 
 
 class OAuth(OAuthConsumerMixin, db.Model):

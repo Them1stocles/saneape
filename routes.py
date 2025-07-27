@@ -102,9 +102,9 @@ def analyze_stock():
             error_type = 'rate_limit'
             if credit_info and 'total_credits' in credit_info:
                 error_type = 'insufficient_credits'
-            elif 'cost limit' in rate_error.lower():
+            elif rate_error and 'cost limit' in rate_error.lower():
                 error_type = 'cost_limit'
-            elif 'suspicious' in rate_error.lower():
+            elif rate_error and 'suspicious' in rate_error.lower():
                 error_type = 'security_block'
                 
             return jsonify({
@@ -276,24 +276,7 @@ def admin_api_dashboard():
             'error': 'Failed to retrieve dashboard data'
         }), 500
 
-@app.route('/account-dashboard')
-@login_required  
-def account_dashboard():
-    """User account dashboard (requires authentication)"""
-    try:
-        if not is_user_auth_enabled():
-            flash('User accounts are not currently available.', 'info')
-            return redirect(url_for('index'))
-            
-        # Get user's credit information
-        credit_summary = credit_manager.get_user_credit_summary(current_user.id)
-        
-        return render_template('account_dashboard.html', 
-                             user_credits=credit_summary)
-    except Exception as e:
-        logging.error(f"Error loading account dashboard for user {current_user.id}: {e}")
-        flash('Error loading dashboard. Please try again.', 'error')
-        return redirect(url_for('index'))
+# Removed duplicate account_dashboard function - using enhanced version below
 
 @app.route('/admin/api/emergency-stop', methods=['POST'])
 def admin_emergency_stop():
@@ -363,26 +346,153 @@ def admin_update_limit():
         }), 500
 
 # User Account Management Routes
-@app.route('/user/account')
+@app.route('/account')
+@app.route('/dashboard')
 @login_required
-def user_account():
-    """User account management page"""
+def account_dashboard():
+    """Production-grade account dashboard with comprehensive analytics"""
     try:
         if not is_user_auth_enabled():
             flash('User accounts are not currently available.', 'info')
             return redirect(url_for('index'))
-            
-        credit_summary = credit_manager.get_user_credit_summary(current_user.id)
-        credit_history = credit_manager.get_credit_history(current_user.id, limit=20)
         
-        return render_template('user_account.html', 
-                             user=current_user,
-                             credit_summary=credit_summary,
-                             credit_history=credit_history)
+        # Track dashboard visit (Google Analytics)
+        # Note: gtag events are handled client-side in the template
+        
+        # Get comprehensive user data using existing managers
+        from credit_manager import CreditManager
+        from stripe_manager import StripeManager
+        
+        credit_manager = CreditManager()
+        stripe_manager = StripeManager()
+        
+        # Gather all user account data safely
+        try:
+            credit_info = credit_manager.get_user_credit_info(current_user.id)
+        except Exception as e:
+            logging.error(f"Error getting credit info: {e}")
+            credit_info = {'total_credits': 0, 'subscription_credits': 0, 'topup_credits': 0}
+        
+        try:
+            subscription_info = stripe_manager.get_user_subscription_info(current_user.id)
+        except Exception as e:
+            logging.error(f"Error getting subscription info: {e}")
+            subscription_info = None
+        
+        try:
+            usage_analytics = credit_manager.get_usage_analytics(current_user.id)
+        except Exception as e:
+            logging.error(f"Error getting usage analytics: {e}")
+            usage_analytics = {'daily_usage': [], 'total_analyses': 0}
+        
+        return render_template('account_dashboard.html',
+                             credit_info=credit_info,
+                             subscription_info=subscription_info,
+                             usage_analytics=usage_analytics)
+                             
     except Exception as e:
-        logging.error(f"Error in user account page: {e}")
-        flash('Unable to load account information. Please try again.', 'error')
+        logging.error(f"Error in account dashboard: {e}")
+        flash('Unable to load dashboard. Please try again.', 'error')
         return redirect(url_for('index'))
+
+@app.route('/api/account/credits')
+@login_required
+def api_account_credits():
+    """Real-time credit balance API for dashboard updates"""
+    try:
+        if not is_user_auth_enabled():
+            return jsonify({'error': 'User accounts not available'}), 404
+        
+        from credit_manager import CreditManager
+        credit_manager = CreditManager()
+        credit_info = credit_manager.get_user_credit_info(current_user.id)
+        
+        return jsonify({
+            'success': True,
+            'credits': credit_info
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting credit info for user {current_user.id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Unable to fetch credit information'
+        }), 500
+
+@app.route('/api/account/transactions')
+@login_required
+def api_account_transactions():
+    """Transaction history API with pagination and filtering"""
+    try:
+        if not is_user_auth_enabled():
+            return jsonify({'error': 'User accounts not available'}), 404
+        
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 20, type=int), 100)  # Max 100 per request
+        transaction_type = request.args.get('type')  # Optional filter
+        
+        from credit_manager import CreditManager
+        credit_manager = CreditManager()
+        transactions = credit_manager.get_credit_history(
+            current_user.id, 
+            page=page, 
+            per_page=per_page,
+            transaction_type=transaction_type
+        )
+        
+        return jsonify({
+            'success': True,
+            'transactions': transactions['items'],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': transactions['total'],
+                'pages': transactions['pages'],
+                'has_next': transactions['has_next'],
+                'has_prev': transactions['has_prev']
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting transactions for user {current_user.id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Unable to fetch transaction history'
+        }), 500
+
+@app.route('/api/account/usage-analytics')
+@login_required
+def api_usage_analytics():
+    """Advanced usage analytics API for dashboard charts"""
+    try:
+        if not is_user_auth_enabled():
+            return jsonify({'error': 'User accounts not available'}), 404
+        
+        days = request.args.get('days', 30, type=int)  # Default 30 days
+        days = min(days, 365)  # Max 1 year
+        
+        from credit_manager import CreditManager  
+        credit_manager = CreditManager()
+        analytics = credit_manager.get_usage_analytics(current_user.id, days=days)
+        
+        return jsonify({
+            'success': True,
+            'analytics': analytics
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting usage analytics for user {current_user.id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Unable to fetch usage analytics'
+        }), 500
+
+@app.route('/user/account')
+@login_required
+def user_account():
+    """Legacy route - redirect to new dashboard"""
+    return redirect(url_for('account_dashboard'))
 
 @app.route('/subscription-plans')
 @app.route('/subscription/plans')  # Legacy route support
