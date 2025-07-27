@@ -152,11 +152,27 @@ header {
 /* Signal badges */
 .signal-buy {
     background-color: var(--success-color) !important;
+    color: white !important;
 }
 
 .signal-no-buy {
     background-color: var(--danger-color) !important;
+    color: white !important;
 }
+
+/* Override Bootstrap badge defaults for No Buy signals */
+.badge.signal-no-buy {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* Ensure main recommendation badge is red for No Buy */
+.badge.recommendation-no-buy {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+
 
 /* Strength badges */
 .strength-strong {
