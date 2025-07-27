@@ -1,8 +1,8 @@
-# ShouldIBuy.com - AI Stock Analysis Platform
+# SaneApe.com - AI Stock Analysis Platform
 
 ## Overview
 
-ShouldIBuy.com is a Flask-based web application that provides AI-powered stock technical analysis. Users can enter a stock ticker symbol and receive an AI-generated recommendation on whether to buy the stock based on historical data and technical indicators. The application uses OpenAI's GPT API for analysis and implements rate limiting to control usage.
+SaneApe.com is a Flask-based web application that provides AI-powered stock technical analysis. Users can enter a stock ticker symbol and receive an AI-generated recommendation on whether to buy the stock based on historical data and technical indicators. The application uses OpenAI's GPT API for analysis and implements rate limiting to control usage.
 
 ## User Preferences
 
