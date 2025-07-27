@@ -402,12 +402,22 @@ class SaneApeApp {
                 const metrics = incomeData.metrics;
                 
                 const incomeHtml = `
+                    <div class="alert alert-info mb-3">
+                        <h6 class="alert-heading">Payment Schedule</h6>
+                        <p class="mb-0">
+                            <strong>Frequency:</strong> ${metrics.payment_frequency || 'Unknown'} 
+                            (${metrics.payments_per_year || 'N/A'} payments/year)
+                            ${metrics.dividend_count_last_year ? `• ${metrics.dividend_count_last_year} payments in last 12 months` : ''}
+                        </p>
+                    </div>
+                    
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <div class="card border-success">
                                 <div class="card-body text-center">
                                     <h6 class="card-title">Effective Income Return</h6>
                                     <div class="h4 text-success">${metrics.effective_return ? metrics.effective_return.toFixed(2) : 'N/A'}%</div>
+                                    <small class="text-muted">After all costs</small>
                                 </div>
                             </div>
                         </div>
@@ -416,6 +426,7 @@ class SaneApeApp {
                                 <div class="card-body text-center">
                                     <h6 class="card-title">Annualized Distribution Yield</h6>
                                     <div class="h4 text-info">${metrics.annualized_yield ? metrics.annualized_yield.toFixed(2) : 'N/A'}%</div>
+                                    <small class="text-muted">Based on ${metrics.payment_frequency || 'estimated'} payments</small>
                                 </div>
                             </div>
                         </div>

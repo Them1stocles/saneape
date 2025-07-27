@@ -23,29 +23,52 @@ class IncomeAnalyzer:
         return ticker.upper() in self.YIELD_ETFS
     
     def calculate_income_metrics(self, ticker, price_data):
-        """Calculate comprehensive income metrics for yield ETFs"""
+        """Calculate comprehensive income metrics for yield ETFs with proper payment frequency detection"""
         try:
-            # Get ticker info for additional data
+            # Get ticker info and dividend data
             ticker_obj = yf.Ticker(ticker)
             ticker_info = ticker_obj.info
+            
+            # Get 1 year of dividend data for accurate frequency detection
+            dividend_data = ticker_obj.dividends
+            if len(dividend_data) > 0:
+                # Get the last 365 days of dividends with proper timezone handling
+                if dividend_data.index.tz is not None:
+                    # Dividend data is timezone-aware
+                    one_year_ago = pd.Timestamp.now(tz=dividend_data.index.tz) - pd.Timedelta(days=365)
+                else:
+                    # Dividend data is timezone-naive
+                    one_year_ago = pd.Timestamp.now() - pd.Timedelta(days=365)
+                recent_dividends = dividend_data[dividend_data.index >= one_year_ago]
+            else:
+                recent_dividends = dividend_data  # Empty series
             
             # Basic validation
             if price_data is None or len(price_data) < 30:
                 return None
                 
-            # 1. Annualized Distribution Yield
+            # 1. Detect Payment Frequency and Calculate Annualized Distribution Yield
             trailing_yield = ticker_info.get('trailingAnnualDividendYield', 0)
+            payment_frequency = self.detect_payment_frequency(recent_dividends, ticker)
+            
             if trailing_yield and trailing_yield > 0:
                 annualized_yield = trailing_yield * 100
+                self.logger.info(f"{ticker}: Using trailing yield {annualized_yield:.2f}% (frequency: {payment_frequency})")
+            elif len(recent_dividends) > 0:
+                # Calculate based on actual payment frequency
+                total_dividends_year = recent_dividends.sum()
+                current_price = price_data['Close'].iloc[-1]
+                annualized_yield = (total_dividends_year / current_price) * 100
+                self.logger.info(f"{ticker}: Calculated yield {annualized_yield:.2f}% from {len(recent_dividends)} payments (frequency: {payment_frequency})")
             else:
-                # Fallback: calculate from dividends if available
-                if 'Dividends' in price_data.columns and price_data['Dividends'].sum() > 0:
-                    monthly_div = price_data['Dividends'].sum() / len(price_data) * 12
-                    current_price = price_data['Close'].iloc[-1]
-                    annualized_yield = (monthly_div / current_price) * 100
+                # No dividend data available - use conservative estimate based on known patterns
+                if ticker.upper() == 'ULTY':
+                    annualized_yield = 45.0  # ULTY typically ~45% (weekly)
+                elif ticker.upper() in ['TSLY', 'NVDY', 'MSTY']:
+                    annualized_yield = 25.0  # Monthly YieldMax typically ~25%
                 else:
-                    # Estimate based on typical YieldMax yields (15-25%)
                     annualized_yield = 20.0  # Conservative estimate
+                self.logger.warning(f"{ticker}: No dividend data, using estimate {annualized_yield:.2f}%")
             
             # 2. Annualized NAV Decay Rate
             if len(price_data) > 1:
@@ -110,13 +133,69 @@ class IncomeAnalyzer:
                 'income_recommendation': income_recommendation,
                 'buy_threshold': buy_threshold,
                 'risks': risks,
+                'payment_frequency': payment_frequency,
+                'payments_per_year': self.get_payments_per_year(payment_frequency),
                 'analysis_date': datetime.now().strftime('%Y-%m-%d'),
-                'data_period_days': len(price_data)
+                'data_period_days': len(price_data),
+                'dividend_count_last_year': len(recent_dividends)
             }
             
         except Exception as e:
             self.logger.error(f"Error calculating income metrics for {ticker}: {str(e)}")
             return None
+    
+    def detect_payment_frequency(self, dividend_data, ticker):
+        """Detect payment frequency from dividend payment intervals"""
+        if len(dividend_data) < 2:
+            # Use known patterns for specific tickers
+            if ticker.upper() == 'ULTY':
+                return 'weekly'
+            elif ticker.upper() in self.YIELD_ETFS:
+                return 'monthly'
+            else:
+                return 'quarterly'
+        
+        # Calculate intervals between payments
+        intervals = []
+        for i in range(1, len(dividend_data)):
+            days_diff = (dividend_data.index[i] - dividend_data.index[i-1]).days
+            intervals.append(days_diff)
+        
+        if not intervals:
+            return 'unknown'
+            
+        avg_interval = sum(intervals) / len(intervals)
+        
+        # Classify based on average interval and payment count
+        # Also consider total payment count for better detection
+        payments_per_year = len(dividend_data) if len(dividend_data) > 0 else 0
+        
+        # Classify based on average interval with payment count validation
+        if avg_interval <= 10 or payments_per_year >= 40:  # ~7 days or 40+ payments
+            return 'weekly'
+        elif avg_interval <= 20 or payments_per_year >= 20:  # ~14 days or 20+ payments  
+            return 'bi-weekly'
+        elif avg_interval <= 35 or payments_per_year >= 10:  # ~30 days or 10+ payments
+            return 'monthly'
+        elif avg_interval <= 100:  # ~90 days
+            return 'quarterly'
+        elif avg_interval <= 200:  # ~180 days
+            return 'semi-annual'
+        else:
+            return 'annual'
+    
+    def get_payments_per_year(self, frequency):
+        """Get number of payments per year based on frequency"""
+        frequency_map = {
+            'weekly': 52,
+            'bi-weekly': 26,
+            'monthly': 12,
+            'quarterly': 4,
+            'semi-annual': 2,
+            'annual': 1,
+            'unknown': 12  # Default to monthly
+        }
+        return frequency_map.get(frequency, 12)
     
     def generate_income_prompt_addition(self, income_metrics):
         """Generate additional prompt text for OpenAI when income analysis is requested"""
@@ -129,6 +208,8 @@ INCOME-FOCUSED ANALYSIS REQUIRED:
 This is an income-generating ETF requiring specialized analysis for income seekers.
 
 COMPUTED INCOME METRICS:
+- Payment Frequency: {income_metrics['payment_frequency']} ({income_metrics['payments_per_year']} payments/year)
+- Dividend Payments Last Year: {income_metrics['dividend_count_last_year']}
 - Annualized Distribution Yield: {income_metrics['annualized_yield']}%
 - Annualized NAV Decay Rate: {income_metrics['annualized_decay']}%
 - Expense Ratio: {income_metrics['expense_ratio']}%

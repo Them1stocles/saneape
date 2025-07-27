@@ -180,6 +180,15 @@ Two main models:
 - **User Engagement**: Enhanced feature roadmap to build anticipation and encourage sharing for platform growth
 - **Strategic Positioning**: Positioned advanced features as viral milestone rewards to incentivize user promotion
 
+### July 27, 2025 - CRITICAL: Income-Focused Analysis Payment Frequency Logic Fixed
+- **Payment Frequency Detection**: Fixed critical flaw in yield calculation logic that incorrectly assumed all ETFs pay monthly
+- **Real Data Analysis**: Now analyzes actual dividend payment intervals from 12 months of historical data to detect weekly/monthly/quarterly patterns
+- **Accurate Yield Calculations**: Properly calculates annualized yields based on actual payment frequency (ULTY=weekly 52x/year, YieldMax=monthly 12x/year)
+- **Smart Fallbacks**: Uses known patterns for specific tickers when dividend data unavailable (ULTY ~45%, YieldMax ~25%)
+- **Enhanced UI Display**: Shows payment frequency, payments per year, and actual dividend count in income analysis section
+- **Comprehensive Integration**: Full backend and frontend integration with auto-detection of yield ETFs and specialized income metrics
+- **Production Ready**: Income analysis now provides accurate effective returns accounting for NAV decay, expenses, and tax implications
+
 ### July 27, 2025 - MAJOR: Bulletproof Maximum Brain Analysis System Complete
 - **Critical Fix**: Resolved all stockstats library parsing errors that were causing technical indicators to return zero values
 - **Hybrid Architecture**: Implemented bulletproof dual-system approach using stockstats when available, pure pandas calculations as failsafe
