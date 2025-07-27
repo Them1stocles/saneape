@@ -9,6 +9,20 @@ class SaneApeApp {
         this.alertContainer = document.getElementById('alertContainer');
         this.resultsSection = document.getElementById('resultsSection');
         
+        // Validate critical elements exist
+        if (!this.loadingState) {
+            console.error('loadingState element not found');
+            this.loadingState = { classList: { add: () => {}, remove: () => {} } }; // Fallback
+        }
+        if (!this.form) {
+            console.error('stockForm element not found');
+            return;
+        }
+        if (!this.analyzeBtn) {
+            console.error('analyzeBtn element not found');
+            return;
+        }
+        
         this.remainingRequests = null;
         this.isAnalyzing = false;
         

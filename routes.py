@@ -264,6 +264,35 @@ def api_user_status():
         if client_ip:
             client_ip = client_ip.split(',')[0].strip()
         
+        # Direct database query for accurate status
+        today = date.today()
+        rate_limit = RateLimit.query.filter_by(
+            ip_address=client_ip,
+            date_created=today
+        ).first()
+        
+        if rate_limit:
+            standard_remaining = max(0, 2 - rate_limit.request_count)
+            brain_remaining = max(0, 1 - rate_limit.maximum_brain_count)
+        else:
+            standard_remaining = 2
+            brain_remaining = 1
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'standard_remaining': standard_remaining,
+                'brain_remaining': brain_remaining,
+                'total_used': (rate_limit.request_count + rate_limit.maximum_brain_count) if rate_limit else 0
+            }
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting user status: {str(e)}")
+        return jsonify({
+            'error': 'Failed to get user status',
+            'success': False
+        }), 500
+        
         rate_limiter = RateLimiter()
         remaining_info = rate_limiter.get_remaining_requests(client_ip)
         

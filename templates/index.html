@@ -78,16 +78,20 @@
                             </div>
                             
                             <button type="submit" class="btn btn-primary btn-lg w-100" id="analyzeBtn">
-                                <span id="btnText">
-                                    <i data-feather="search" class="me-2"></i>
-                                    Analyze Stock
-                                </span>
-                                <span id="btnLoader" class="d-none">
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    Analyzing...
-                                </span>
+                                <i data-feather="search" class="me-2"></i>
+                                Analyze Stock
                             </button>
                         </form>
+                        
+                        <!-- Loading State -->
+                        <div id="loadingState" class="d-none mt-3">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="fw-semibold">Analyzing your stock...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
