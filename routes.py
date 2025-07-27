@@ -506,11 +506,22 @@ def share_analysis(ticker):
             logging.warning(f"Could not fetch current price for {ticker}: {str(e)}")
             cached_result['current_price'] = "Price unavailable"
         
-        # Prepare social meta data
-        recommendation = cached_result.get('recommendation', 'Unknown')
-        confidence = cached_result.get('confidence', 'Unknown')
+        # Prepare social meta data - prioritize income analysis if available
+        income_analysis = cached_result.get('income_analysis', {})
+        income_recommendation = income_analysis.get('recommendation', '')
         company_name = cached_result.get('company_name', ticker)
-        analysis_type = "Maximum Brain" if maximum_brain else "Standard"
+        base_analysis_type = "Maximum Brain" if maximum_brain else "Standard"
+        
+        # Use income analysis recommendation if it's a positive "Buy" recommendation
+        if income_recommendation and 'buy' in income_recommendation.lower():
+            recommendation = income_recommendation
+            confidence = income_analysis.get('confidence', 'medium')
+            analysis_type = f"Income-Focused {base_analysis_type}"
+        else:
+            # Fall back to technical analysis
+            recommendation = cached_result.get('recommendation', 'Unknown')
+            confidence = cached_result.get('confidence', 'Unknown')
+            analysis_type = base_analysis_type
         
         # Create dynamic social sharing content
         social_title = f"${ticker} Analysis - {recommendation} Recommendation | SaneApe.com"

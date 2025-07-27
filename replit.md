@@ -212,3 +212,11 @@ Two main models:
 - **Production Validation**: MSII analysis now correctly shows weekly frequency with clear explanation of recent frequency change
 - **Frontend Integration**: Updated Payment Schedule UI to display frequency notes with info icons for user clarity
 - **Accurate Analysis**: Maintains exact match with TotalRealReturns.com data while providing superior explanation of frequency discrepancies
+
+### July 27, 2025 - CRITICAL FIX: Social Media Metadata Income Analysis Priority ✅
+- **Smart Recommendation Logic**: Social sharing now prioritizes income analysis recommendations over technical analysis
+- **Issue Fixed**: When income analysis shows "Buy for Income" but technical shows "No, don't buy!", social media now correctly displays "Buy for Income Recommendation"
+- **Enhanced Metadata**: Social titles and descriptions now indicate "Income-Focused" analysis when income recommendations are positive
+- **Cross-Platform Consistency**: Fix applies to both Open Graph (Facebook) and Twitter Card metadata
+- **Production Validated**: QYLD share pages now correctly show "Buy for Income Recommendation" instead of "No, don't buy!" in social metadata
+- **Variable Scope Fixed**: Resolved analysis_type variable scope error that was causing share page crashes
