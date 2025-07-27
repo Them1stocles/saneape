@@ -475,7 +475,7 @@ class SaneApeApp {
         const shareUrl = maximum_brain 
             ? `${window.location.origin}/share/${ticker}?brain=true`
             : `${window.location.origin}/share/${ticker}`;
-        const text = `Just got AI analysis for $${ticker} on @SaneApe_com! 🧠📈 Recommendation: ${recommendation}`;
+        const text = `Just got AI analysis for $${ticker} on @saneape! 🧠📈 Recommendation: ${recommendation}. Ape on data, not vibes - a sanity check for late night traders & hopium addicts.`;
         const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
         
         // Google Analytics share event

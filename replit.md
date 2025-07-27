@@ -167,3 +167,9 @@ Two main models:
 - **Security Authentication**: All admin API endpoints require authentication - dashboard access, emergency controls, budget management, and IP resets
 - **Real-Time Monitoring**: Admin dashboard now displays accurate API call counts, daily costs, and system metrics
 - **Production Testing**: Verified all components working correctly - rate limiting, cost tracking, caching, and social sharing
+
+### July 27, 2025 - Twitter Handle & Brand Message Update
+- **Twitter Handle Updated**: Changed all social sharing from @SaneApe_com to @saneape to match actual Twitter profile
+- **Brand Messaging Enhanced**: Added signature tagline "Ape on data, not vibes - a sanity check for late night traders & hopium addicts" to Twitter shares
+- **Social Media Consistency**: Updated both main app sharing and individual share page Twitter functionality
+- **Brand Identity**: Reinforced core value proposition of data-driven analysis over emotional trading decisions
