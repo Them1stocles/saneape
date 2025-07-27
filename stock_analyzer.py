@@ -112,37 +112,93 @@ class StockAnalyzer:
             # === CORE INDICATORS (pandas_ta alternatives using stockstats and custom) ===
             
             # 1. RSI (Relative Strength Index)
-            stock_df['rsi_14'] = stock_df['rsi']
+            try:
+                stock_df['rsi_14'] = stock_df['rsi']
+            except:
+                # Fallback: Custom RSI calculation
+                delta = df['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+                rs = gain / loss
+                stock_df['rsi_14'] = 100 - (100 / (1 + rs))
             
             # 2. MACD (Moving Average Convergence Divergence)
-            stock_df['macd'] = stock_df['macd']
-            stock_df['macd_signal'] = stock_df['macds']
-            stock_df['macd_histogram'] = stock_df['macdh']
+            try:
+                stock_df['macd'] = stock_df['macd']
+                stock_df['macd_signal'] = stock_df['macds']
+                stock_df['macd_histogram'] = stock_df['macdh']
+            except:
+                # Fallback: Custom MACD calculation
+                exp1 = df['Close'].ewm(span=12).mean()
+                exp2 = df['Close'].ewm(span=26).mean()
+                stock_df['macd'] = exp1 - exp2
+                stock_df['macd_signal'] = stock_df['macd'].ewm(span=9).mean()
+                stock_df['macd_histogram'] = stock_df['macd'] - stock_df['macd_signal']
             
             # 3-5. Moving Averages
-            stock_df['sma_20'] = stock_df['close_20_sma']
-            stock_df['sma_50'] = stock_df['close_50_sma'] 
-            stock_df['sma_200'] = stock_df['close_200_sma']
-            stock_df['ema_12'] = stock_df['close_12_ema']
-            stock_df['ema_26'] = stock_df['close_26_ema']
+            try:
+                stock_df['sma_20'] = stock_df['close_20_sma']
+                stock_df['sma_50'] = stock_df['close_50_sma'] 
+                stock_df['sma_200'] = stock_df['close_200_sma']
+                stock_df['ema_12'] = stock_df['close_12_ema']
+                stock_df['ema_26'] = stock_df['close_26_ema']
+            except:
+                # Fallback: Direct pandas calculation
+                stock_df['sma_20'] = df['Close'].rolling(20).mean()
+                stock_df['sma_50'] = df['Close'].rolling(50).mean()
+                stock_df['sma_200'] = df['Close'].rolling(200).mean()
+                stock_df['ema_12'] = df['Close'].ewm(span=12).mean()
+                stock_df['ema_26'] = df['Close'].ewm(span=26).mean()
             
             # 6. Bollinger Bands
-            stock_df['bb_upper'] = stock_df['boll_ub']
-            stock_df['bb_middle'] = stock_df['boll']
-            stock_df['bb_lower'] = stock_df['boll_lb']
+            try:
+                stock_df['bb_upper'] = stock_df['boll_ub']
+                stock_df['bb_middle'] = stock_df['boll']
+                stock_df['bb_lower'] = stock_df['boll_lb']
+            except:
+                # Fallback: Custom Bollinger Bands
+                sma_20 = df['Close'].rolling(20).mean()
+                std_20 = df['Close'].rolling(20).std()
+                stock_df['bb_upper'] = sma_20 + (std_20 * 2)
+                stock_df['bb_middle'] = sma_20
+                stock_df['bb_lower'] = sma_20 - (std_20 * 2)
             
             # 7. Stochastic Oscillator
-            stock_df['stoch_k'] = stock_df['kdjk']
-            stock_df['stoch_d'] = stock_df['kdjd']
+            try:
+                stock_df['stoch_k'] = stock_df['kdjk']
+                stock_df['stoch_d'] = stock_df['kdjd']
+            except:
+                # Fallback: Custom Stochastic calculation
+                low_14 = df['Low'].rolling(14).min()
+                high_14 = df['High'].rolling(14).max()
+                stock_df['stoch_k'] = 100 * ((df['Close'] - low_14) / (high_14 - low_14))
+                stock_df['stoch_d'] = stock_df['stoch_k'].rolling(3).mean()
             
             # 8. ADX (Average Directional Index)
-            stock_df['adx'] = stock_df['dx']
+            try:
+                stock_df['adx'] = stock_df['dx']
+            except:
+                # Fallback: Simplified ADX using ATR
+                stock_df['adx'] = stock_df['atr'].rolling(14).mean() * 5  # Simplified proxy
             
             # 9. CCI (Commodity Channel Index)
-            stock_df['cci'] = stock_df['cci']
+            try:
+                stock_df['cci'] = stock_df['cci']
+            except:
+                # Fallback: Custom CCI calculation
+                tp = (df['High'] + df['Low'] + df['Close']) / 3
+                sma_tp = tp.rolling(20).mean()
+                mad = tp.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean())
+                stock_df['cci'] = (tp - sma_tp) / (0.015 * mad)
             
             # 10. Williams %R
-            stock_df['williams_r'] = stock_df['wr_14']
+            try:
+                stock_df['williams_r'] = stock_df['wr_14']
+            except:
+                # Fallback: Custom Williams %R calculation
+                high_14 = df['High'].rolling(14).max()
+                low_14 = df['Low'].rolling(14).min()
+                stock_df['williams_r'] = -100 * ((high_14 - df['Close']) / (high_14 - low_14))
             
             # 11. Money Flow Index (MFI) - Custom calculation
             typical_price = (df['High'] + df['Low'] + df['Close']) / 3
@@ -155,7 +211,15 @@ class StockAnalyzer:
             stock_df['obv'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
             
             # 13. Average True Range (ATR)
-            stock_df['atr'] = stock_df['atr']
+            try:
+                stock_df['atr'] = stock_df['atr']
+            except:
+                # Fallback: Custom ATR calculation
+                high_low = df['High'] - df['Low']
+                high_close = np.abs(df['High'] - df['Close'].shift())
+                low_close = np.abs(df['Low'] - df['Close'].shift())
+                tr = np.maximum(high_low, np.maximum(high_close, low_close))
+                stock_df['atr'] = tr.rolling(14).mean()
             
             # 14. Ultimate Oscillator - Custom calculation
             bp = df['Close'] - np.minimum(df['Low'], df['Close'].shift(1))
@@ -168,7 +232,14 @@ class StockAnalyzer:
             stock_df['ultimate_osc'] = 100 * ((4 * avg7) + (2 * avg14) + avg28) / 7
             
             # 15. TRIX
-            stock_df['trix'] = stock_df['trix']
+            try:
+                stock_df['trix'] = stock_df['trix']
+            except:
+                # Fallback: Custom TRIX calculation
+                ema1 = df['Close'].ewm(span=14).mean()
+                ema2 = ema1.ewm(span=14).mean()
+                ema3 = ema2.ewm(span=14).mean()
+                stock_df['trix'] = ema3.pct_change() * 10000
             
             # 16. Momentum 
             stock_df['momentum'] = df['Close'] - df['Close'].shift(10)
@@ -208,8 +279,14 @@ class StockAnalyzer:
             vwap = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
             stock_df['vwap'] = vwap
             
-            # 23. Accumulation/Distribution Line
-            stock_df['ad_line'] = stock_df['ad']
+            # 23. Accumulation/Distribution Line - Custom calculation (stockstats version has issues)
+            try:
+                stock_df['ad_line'] = stock_df['ad']
+            except:
+                # Fallback: Custom A/D Line calculation
+                clv = ((df['Close'] - df['Low']) - (df['High'] - df['Close'])) / (df['High'] - df['Low'])
+                clv = clv.fillna(0)  # Handle division by zero
+                stock_df['ad_line'] = (clv * df['Volume']).cumsum()
             
             # 24. Ichimoku Cloud components - Custom calculation
             high_9 = df['High'].rolling(9).max()
