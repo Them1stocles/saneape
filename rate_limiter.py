@@ -84,7 +84,8 @@ class RateLimiter:
                 return self._check_credit_limits(current_user.id, maximum_brain, ticker, ip_address)
             else:
                 # IP-BASED RATE LIMITING (Anonymous Users)
-                return self._check_ip_limits(ip_address, maximum_brain), None
+                allowed, error_message = self._check_ip_limits(ip_address, maximum_brain)
+                return allowed, error_message, None
                 
         except Exception as e:
             self.logger.error(f"Error in rate limiting check: {e}")
