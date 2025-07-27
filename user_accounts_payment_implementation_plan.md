@@ -23,6 +23,19 @@
 | **Top-up** | $5/pack | **100 credits** | $0.05 | Pay-as-you-go |
 | **Free Tier** | $0 | **6 standard + 2 brain** | N/A | IP-based (current system) |
 
+### **Credit System Rules:**
+
+#### **Subscription Credits** (Monthly/Weekly Plans):
+- **NO ROLLOVER**: Unused credits expire at end of billing cycle
+- **Automatic Grant**: New credits added on successful payment
+- **Payment Failure**: All subscription credits immediately suspended until payment resolved
+
+#### **Top-up Credits** (Credit Packs):
+- **UNLIMITED ROLLOVER**: Never expire, accumulate indefinitely  
+- **Subscriber Only**: Can only be purchased by users with active subscriptions
+- **Payment Independent**: Remain available even if subscription payment fails
+- **Priority Usage**: Top-up credits used BEFORE subscription credits
+
 ---
 
 ## **🏗️ Implementation Architecture**
@@ -77,23 +90,40 @@ class Subscription(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
 class CreditBalance(db.Model):
-    """User credit tracking"""
+    """User credit tracking with dual credit system"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String, db.ForeignKey('user.id'), nullable=False, unique=True)
-    credits_remaining = db.Column(db.Integer, default=0, nullable=False)
+    subscription_credits = db.Column(db.Integer, default=0, nullable=False)  # Reset monthly, no rollover
+    topup_credits = db.Column(db.Integer, default=0, nullable=False)  # Never expire, rollover enabled
     credits_used_today = db.Column(db.Integer, default=0, nullable=False)
     last_reset_date = db.Column(db.Date, default=datetime.utcnow().date)
+    subscription_credits_expiry = db.Column(db.Date, nullable=True)  # End of current billing cycle
     
 class CreditTransaction(db.Model):
     """Credit usage history"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.String, db.ForeignKey('user.id'), nullable=False)
-    transaction_type = db.Column(db.String, nullable=False)  # 'purchase', 'usage', 'refund'
+    transaction_type = db.Column(db.String, nullable=False)  # 'subscription_grant', 'topup_purchase', 'usage', 'expiry', 'refund'
+    credit_type = db.Column(db.String, nullable=False)  # 'subscription', 'topup'
     credits_amount = db.Column(db.Integer, nullable=False)
     analysis_type = db.Column(db.String, nullable=True)  # 'standard', 'brain'
     ticker_symbol = db.Column(db.String, nullable=True)
     stripe_payment_id = db.Column(db.String, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class PaymentFailure(db.Model):
+    """Payment failure tracking and retry management"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.String, db.ForeignKey('user.id'), nullable=False)
+    stripe_subscription_id = db.Column(db.String, nullable=False)
+    stripe_invoice_id = db.Column(db.String, nullable=False)
+    failure_reason = db.Column(db.String, nullable=False)  # 'insufficient_funds', 'expired_card', 'fraud', etc.
+    failure_type = db.Column(db.String, nullable=False)  # 'soft_decline', 'hard_decline'
+    retry_count = db.Column(db.Integer, default=0, nullable=False)
+    next_retry_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String, nullable=False)  # 'pending_retry', 'resolved', 'abandoned'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime, nullable=True)
 ```
 
 ---
@@ -135,6 +165,22 @@ class CreditTransaction(db.Model):
 - Optional login (anonymous users still work)
 - Clear upgrade prompts
 
+### **6. Payment Failure Management**
+**Problem**: Failed credit card charges and subscription interruptions
+**Solution**:
+- **Smart Retry Policy**: 3 attempts over 10 days (1 day, 3 days, 7 days)
+- **Dunning Management**: Automated email sequences with payment update links
+- **Grace Period**: 7-day access suspension before full cancellation
+- **Credit Suspension**: Subscription credits suspended during payment failures
+
+### **7. Credit Expiration Complexity**
+**Problem**: Dual credit system with different expiration rules
+**Solution**:
+- **Subscription Credits**: Auto-expire at billing cycle end
+- **Top-up Credits**: Never expire, unlimited rollover
+- **Usage Priority**: Always use top-up credits first
+- **Clear UI Indicators**: Show credit types and expiration status
+
 ---
 
 ## **🔄 Migration Strategy**
@@ -169,16 +215,29 @@ class CreditTransaction(db.Model):
 
 ### **New UI Components:**
 - **Login/Logout buttons** (top navigation)
-- **Credit balance display** (dashboard)
-- **Subscription management page**
-- **Purchase credits modal**
+- **Dual credit balance display** (subscription vs top-up credits)
+- **Subscription management page** with payment failure status
+- **Purchase top-up credits modal** (subscribers only)
+- **Payment method update interface**
 - **Upgrade prompts** for free users
 - **User profile menu**
 
 ### **Enhanced Existing:**
-- **Analysis form**: Show credit cost before submission
-- **Results page**: Update credit balance after analysis
+- **Analysis form**: Show credit cost and available balance breakdown
+- **Results page**: Update credit balance with priority usage indication
 - **Rate limit messaging**: Credits vs IP-based limits
+- **Payment failure alerts**: Clear notification of suspended access
+
+### **Credit Display Logic:**
+```javascript
+// Example credit display
+{
+  topup_credits: 47,        // Never expire
+  subscription_credits: 23, // Expire 2025-08-27
+  total_available: 70,
+  usage_priority: "Top-up credits used first"
+}
+```
 
 ---
 
@@ -212,11 +271,78 @@ class CreditTransaction(db.Model):
 ```
 
 ### **Webhook Events to Handle:**
-- `customer.subscription.created`
-- `customer.subscription.updated` 
-- `customer.subscription.deleted`
-- `invoice.payment_succeeded`
-- `invoice.payment_failed`
+- `customer.subscription.created` → Grant initial subscription credits
+- `customer.subscription.updated` → Handle plan changes
+- `customer.subscription.deleted` → Expire subscription credits immediately
+- `invoice.payment_succeeded` → Grant monthly credits, resolve payment failures
+- `invoice.payment_failed` → Suspend subscription credits, initiate retry sequence
+- `invoice.payment_action_required` → Notify user of authentication needs
+- `customer.subscription.past_due` → Suspend access, send dunning emails
+
+---
+
+## **💳 Payment Failure & Recovery Strategy**
+
+### **Smart Retry Policy (Industry Best Practice)**
+```
+Failure Type Classification:
+├── Soft Declines (network issues, temporary fraud alerts)
+│   └── Retry immediately, then 1 day, 3 days
+├── Hard Declines (insufficient funds, expired card)
+│   └── Retry 1 day, 3 days, 7 days (near paydays)
+└── Authentication Required (3D Secure)
+    └── Immediate notification, 72-hour window
+```
+
+### **Dunning Management Sequence**
+1. **Day 0**: Payment fails → Immediate email with payment update link
+2. **Day 1**: First retry attempt + reminder email
+3. **Day 3**: Second retry + "Update Payment Method" email
+4. **Day 7**: Final retry + "Subscription at Risk" warning
+5. **Day 14**: Subscription cancelled, grace period begins
+6. **Day 21**: Account deactivated, final recovery email
+
+### **Credit Suspension Logic**
+```python
+# Payment failure handling
+def handle_payment_failure(user_id, failure_type):
+    if failure_type in ['insufficient_funds', 'expired_card']:
+        suspend_subscription_credits(user_id)  # Keep top-up credits
+        schedule_retry_sequence(user_id)
+        send_payment_failure_notification(user_id)
+    
+    # Top-up credits remain unaffected
+```
+
+### **Recovery Metrics (Industry Standards)**
+- **Target Recovery Rate**: 15-25% of failed payments
+- **Average Recovery Time**: 5-7 days
+- **Grace Period**: 7 days before service suspension
+
+---
+
+## **🔄 Dual Credit System Implementation**
+
+### **Credit Usage Priority (Always This Order):**
+1. **Top-up Credits** (never expire, purchased by subscribers)
+2. **Subscription Credits** (expire monthly, granted with subscription)
+
+### **Monthly Credit Reset Logic**
+```python
+def handle_billing_cycle_renewal(user_id):
+    # Expire all unused subscription credits (NO ROLLOVER)
+    expire_subscription_credits(user_id)
+    
+    # Grant new subscription credits for new billing period
+    grant_subscription_credits(user_id, plan_credits=100)
+    
+    # Top-up credits remain untouched (unlimited rollover)
+```
+
+### **Top-up Purchase Restrictions**
+- **Subscriber Only**: Must have active subscription to purchase
+- **Payment Failed**: Can still use existing top-ups during suspension
+- **Post-Cancellation**: No new top-up purchases allowed
 
 ---
 
@@ -300,5 +426,28 @@ class CreditTransaction(db.Model):
 
 ---
 
-**Status:** Ready for implementation approval  
-**Next Steps:** Await user approval to begin Phase 1
+**Status:** ✅ **COMPREHENSIVE PLAN COMPLETE** ✅  
+**Next Steps:** Ready for implementation approval
+
+---
+
+## **📋 Summary of Key Requirements Addressed:**
+
+### **✅ Payment Failure Handling:**
+- Smart retry policy with 3 attempts over 10 days
+- Dunning management email sequences
+- Grace period before cancellation
+- Credit suspension during payment failures
+
+### **✅ Credit Expiration Rules:**
+- **Subscription Credits**: ZERO rollover, expire monthly
+- **Top-up Credits**: UNLIMITED rollover, never expire
+- **Usage Priority**: Top-up credits always used first
+
+### **✅ Business Model Protection:**
+- Top-up purchases restricted to active subscribers only
+- Payment-independent top-up credit availability
+- Clear separation of credit types with different rules
+- Comprehensive payment failure recovery system
+
+This plan ensures sustainable revenue while providing excellent user experience through the dual credit system.
