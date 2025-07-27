@@ -500,7 +500,30 @@ PRE-COMPUTED TECHNICAL INDICATOR VALUES:
 
 Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
 
-Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data."""
+Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.
+
+For each method/indicator:
+- Briefly explain the method and how it applies to this data
+- State whether it suggests a 'Buy' signal (positive outlook) or 'No Buy' signal (negative or neutral outlook)
+
+Then, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly 'Yes, buy!' if the consensus is positive, or 'No, don't buy!' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.
+
+Do not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the pre-computed indicator values provided.
+
+Respond in JSON format with this structure:
+{{
+    "recommendation": "Yes, buy!" or "No, don't buy!",
+    "confidence": "high" or "medium" or "low",
+    "overall_explanation": "Brief explanation of the overall decision",
+    "technical_analysis": [
+        {{
+            "method": "Method name",
+            "explanation": "How this method applies to the data",
+            "signal": "Buy" or "No Buy",
+            "strength": "Strong" or "Moderate" or "Weak"
+        }}
+    ]
+}}"""
             else:
                 # Standard prompt for regular analysis
                 prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
