@@ -151,13 +151,33 @@
                     </div>
                 </div>
 
-                <!-- Rate Limit Info -->
-                <div class="card bg-light mb-4">
-                    <div class="card-body text-center">
-                        <small class="text-muted">
-                            <i data-feather="clock" class="me-1"></i>
-                            Standard: 2 analyses per day | Maximum Brain: 1 analysis per day
-                        </small>
+                <!-- Enhanced Rate Limit Info -->
+                <div class="card bg-light mb-4" id="rateLimitCard">
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center justify-content-center mb-2">
+                                    <i data-feather="zap" class="me-2 text-primary"></i>
+                                    <strong>Standard Analysis</strong>
+                                </div>
+                                <div id="standardRemaining" class="h5 mb-1">2 remaining</div>
+                                <small class="text-muted">of 2 daily analyses</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center justify-content-center mb-2">
+                                    <i data-feather="cpu" class="me-2 text-warning"></i>
+                                    <strong>Maximum Brain</strong>
+                                </div>
+                                <div id="brainRemaining" class="h5 mb-1">1 remaining</div>
+                                <small class="text-muted">of 1 daily analysis</small>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i data-feather="refresh-cw" class="me-1"></i>
+                                Limits reset daily at midnight UTC
+                            </small>
+                        </div>
                     </div>
                 </div>
 

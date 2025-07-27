@@ -107,3 +107,16 @@ Two main models:
 - **Comprehensive logging** for debugging and monitoring
 - **Error tracking** for API failures and data fetching issues
 - **Rate limit monitoring** for usage analytics
+
+## Recent Changes: Latest modifications with dates
+
+### July 27, 2025 - Production-Grade Rate Limiting Enhancement
+- **Database Schema**: Added SystemLimits, AnalysisCache, and SecurityLog models for comprehensive tracking
+- **Cost Management**: Implemented CostManager with $25 configurable daily spend limits and OpenAI token estimation
+- **6-Hour Caching**: Added CacheManager to prevent duplicate API calls and reduce costs
+- **Security Monitoring**: Implemented SecurityMonitor for suspicious activity detection and threat logging
+- **Enhanced Rate Limiter**: Upgraded with multi-layer protection including global cost limits, cache checking, and security validation
+- **Admin Dashboard**: Created comprehensive monitoring interface at /admin with real-time metrics and emergency controls
+- **Dynamic Frontend**: Enhanced user interface with real-time remaining request display and intelligent button state management
+- **Error Handling**: Improved to deny requests during database errors instead of allowing them (security-first approach)
+- **API Endpoints**: Added admin controls for emergency stop, limit updates, and system monitoring

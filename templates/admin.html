@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - SaneApe.com</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .emergency-stop {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+        .cost-warning {
+            background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-0">SaneApe Admin Dashboard</h1>
+                    <p class="mb-0 opacity-75">System monitoring and controls</p>
+                </div>
+                <div>
+                    <a href="/" class="btn btn-outline-light">
+                        <i data-feather="arrow-left"></i> Back to App
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid py-4">
+        <!-- Emergency Controls -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card emergency-stop">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="card-title text-white mb-1">
+                                    <i data-feather="alert-triangle"></i> Emergency Controls
+                                </h5>
+                                <p class="text-white-50 mb-0">Immediate system controls for critical situations</p>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button id="emergencyStopBtn" class="btn btn-danger btn-lg">
+                                    <i data-feather="square"></i> Emergency Stop
+                                </button>
+                                <button id="resetSystemBtn" class="btn btn-warning btn-lg">
+                                    <i data-feather="refresh-cw"></i> Reset Limits
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Row -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <i data-feather="dollar-sign" class="mb-2" style="width: 48px; height: 48px;"></i>
+                        <div class="metric-value" id="dailyCost">$0.00</div>
+                        <div>Daily Cost</div>
+                        <small class="opacity-75">of $<span id="maxCost">25.00</span> limit</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <i data-feather="activity" class="mb-2" style="width: 48px; height: 48px;"></i>
+                        <div class="metric-value" id="apiCalls">0</div>
+                        <div>API Calls Today</div>
+                        <small class="opacity-75">OpenAI requests</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <i data-feather="users" class="mb-2" style="width: 48px; height: 48px;"></i>
+                        <div class="metric-value" id="uniqueIPs">0</div>
+                        <div>Unique Users</div>
+                        <small class="opacity-75">Active today</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card metric-card">
+                    <div class="card-body text-center">
+                        <i data-feather="shield" class="mb-2" style="width: 48px; height: 48px;"></i>
+                        <div class="metric-value" id="securityEvents">0</div>
+                        <div>Security Events</div>
+                        <small class="opacity-75">Threats blocked</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Details Row -->
+        <div class="row mb-4">
+            <!-- Cost Management -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="trending-up"></i> Cost Management
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="dailyLimitInput" class="form-label">Daily Spending Limit</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="dailyLimitInput" step="0.01" min="1">
+                                <button class="btn btn-primary" id="updateLimitBtn">Update</button>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar" id="costProgressBar" role="progressbar" style="width: 0%">
+                                0%
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <strong id="remainingBudget">$25.00</strong>
+                                <br><small class="text-muted">Remaining</small>
+                            </div>
+                            <div class="col-6">
+                                <strong id="avgCostPerCall">$0.00</strong>
+                                <br><small class="text-muted">Avg per call</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cache Performance -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="database"></i> Cache Performance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-4 text-center">
+                                <div class="h4 mb-1" id="cacheEntries">0</div>
+                                <small class="text-muted">Active Entries</small>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="h4 mb-1" id="cacheHitRate">0%</div>
+                                <small class="text-muted">Hit Rate</small>
+                            </div>
+                            <div class="col-4 text-center">
+                                <div class="h4 mb-1" id="cacheSavings">$0.00</div>
+                                <small class="text-muted">Cost Saved</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-warning" id="cleanupCacheBtn">
+                                <i data-feather="trash-2"></i> Cleanup Expired Cache
+                            </button>
+                            <button class="btn btn-outline-danger" id="clearAllCacheBtn">
+                                <i data-feather="x-circle"></i> Clear All Cache
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security and Recent Activity -->
+        <div class="row">
+            <!-- Security Monitor -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="shield-alert"></i> Security Monitor
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="securityAlerts" class="mb-3">
+                            <!-- Security alerts will be populated here -->
+                        </div>
+                        
+                        <h6>Recent Threats</h6>
+                        <div id="recentThreats" class="list-group list-group-flush">
+                            <!-- Recent threats will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="clock"></i> Recent Activity
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="recentActivity" class="list-group list-group-flush">
+                            <!-- Recent activity will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Initialize Feather icons
+        feather.replace();
+
+        // Auto-refresh dashboard every 30 seconds
+        let refreshInterval;
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                const response = await fetch('/admin/api/dashboard');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateDashboard(data.data);
+                } else {
+                    console.error('Failed to load dashboard data:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        function updateDashboard(data) {
+            // Update key metrics
+            if (data.cost_management) {
+                document.getElementById('dailyCost').textContent = `$${data.cost_management.cost_estimate.toFixed(2)}`;
+                document.getElementById('maxCost').textContent = data.cost_management.max_daily_cost.toFixed(2);
+                document.getElementById('apiCalls').textContent = data.cost_management.api_calls;
+                document.getElementById('remainingBudget').textContent = `$${data.cost_management.remaining_budget.toFixed(2)}`;
+                
+                // Update progress bar
+                const costPercentage = (data.cost_management.cost_estimate / data.cost_management.max_daily_cost) * 100;
+                const progressBar = document.getElementById('costProgressBar');
+                progressBar.style.width = `${Math.min(costPercentage, 100)}%`;
+                progressBar.textContent = `${costPercentage.toFixed(1)}%`;
+                
+                // Change color based on usage
+                if (costPercentage > 80) {
+                    progressBar.className = 'progress-bar bg-danger';
+                } else if (costPercentage > 60) {
+                    progressBar.className = 'progress-bar bg-warning';
+                } else {
+                    progressBar.className = 'progress-bar bg-success';
+                }
+                
+                // Average cost per call
+                if (data.cost_management.api_calls > 0) {
+                    const avgCost = data.cost_management.cost_estimate / data.cost_management.api_calls;
+                    document.getElementById('avgCostPerCall').textContent = `$${avgCost.toFixed(4)}`;
+                }
+                
+                // Set daily limit input
+                document.getElementById('dailyLimitInput').value = data.cost_management.max_daily_cost;
+            }
+
+            // Update cache metrics
+            if (data.cache_performance) {
+                document.getElementById('cacheEntries').textContent = data.cache_performance.active_entries;
+            }
+
+            // Update security metrics
+            if (data.security_metrics) {
+                document.getElementById('securityEvents').textContent = data.security_metrics.today.events;
+                document.getElementById('uniqueIPs').textContent = data.security_metrics.today.unique_ips;
+            }
+        }
+
+        // Emergency Stop
+        document.getElementById('emergencyStopBtn').addEventListener('click', async function() {
+            if (confirm('Are you sure you want to activate emergency stop? This will halt all API requests.')) {
+                try {
+                    const response = await fetch('/admin/api/emergency-stop', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert('Emergency stop activated!');
+                        this.textContent = ' Emergency Stop Active';
+                        this.classList.remove('btn-danger');
+                        this.classList.add('btn-secondary');
+                        this.disabled = true;
+                    } else {
+                        alert('Failed to activate emergency stop: ' + data.error);
+                    }
+                } catch (error) {
+                    alert('Error activating emergency stop: ' + error.message);
+                }
+            }
+        });
+
+        // Update Daily Limit
+        document.getElementById('updateLimitBtn').addEventListener('click', async function() {
+            const newLimit = document.getElementById('dailyLimitInput').value;
+            
+            if (!newLimit || newLimit <= 0) {
+                alert('Please enter a valid daily limit greater than 0');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/update-limit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ daily_limit: parseFloat(newLimit) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Daily limit updated successfully!');
+                    loadDashboardData();
+                } else {
+                    alert('Failed to update limit: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error updating limit: ' + error.message);
+            }
+        });
+
+        // Initialize dashboard
+        loadDashboardData();
+        
+        // Set up auto-refresh
+        refreshInterval = setInterval(loadDashboardData, 30000); // Refresh every 30 seconds
+        
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
