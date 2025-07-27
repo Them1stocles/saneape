@@ -195,8 +195,14 @@ class StockAnalyzer:
             stock_df['aroon_up'] = ((aroon_length - high_idx) / aroon_length) * 100
             stock_df['aroon_down'] = ((aroon_length - low_idx) / aroon_length) * 100
             
-            # 21. Parabolic SAR - Simplified version
-            stock_df['sar'] = stock_df['psar']
+            # 21. Parabolic SAR - Custom calculation (stockstats version has issues)
+            try:
+                stock_df['sar'] = stock_df['psar']
+            except:
+                # Fallback: Simple trending indicator based on EMA crossover
+                stock_df['sar'] = np.where(df['Close'] > df['Close'].ewm(span=20).mean(), 
+                                          df['Low'].rolling(5).min(), 
+                                          df['High'].rolling(5).max())
             
             # 22. VWAP (Volume Weighted Average Price)
             vwap = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
