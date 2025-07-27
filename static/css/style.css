@@ -231,6 +231,26 @@ header {
     color: #6c757d !important;
 }
 
+/* Maximum Brain checkbox styling */
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.form-check-label {
+    cursor: pointer;
+}
+
+.text-warning {
+    color: #856404 !important;
+}
+
+/* Enhanced styling for maximum brain mode */
+.maximum-brain-enabled {
+    border: 2px solid var(--warning-color);
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
+}
+
 /* Enhanced spacing */
 .mb-4 {
     margin-bottom: 1.5rem !important;

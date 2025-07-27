@@ -38,10 +38,12 @@ Two main models:
 - **yfinance integration** for fetching 2 years of historical stock data
 - **Technical indicators calculation** including moving averages (SMA, EMA), RSI, MACD
 - **OpenAI GPT-4.1 integration** for AI-powered analysis and recommendations
+- **Maximum Brain Analysis** with 35+ technical indicators for comprehensive analysis
 - **Data summarization** to optimize API calls and stay within token limits
 
 ### Rate Limiting System
-- **IP-based limiting** allowing 2 requests per day per IP address
+- **IP-based limiting** allowing 2 standard requests per day per IP address
+- **Maximum Brain limiting** allowing 1 comprehensive analysis per day per IP address
 - **Database persistence** to maintain limits across server restarts
 - **Graceful error handling** with user-friendly messaging
 

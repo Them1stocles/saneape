@@ -79,6 +79,7 @@ class StockAnalyzer {
     
     async analyzeStock() {
         const ticker = this.tickerInput.value.trim();
+        const maximumBrain = document.getElementById('maximumBrain').checked;
         
         // Validate ticker
         if (!ticker) {
@@ -101,6 +102,7 @@ class StockAnalyzer {
         try {
             const formData = new FormData();
             formData.append('ticker', ticker);
+            formData.append('maximum_brain', maximumBrain);
             
             const response = await fetch('/analyze', {
                 method: 'POST',

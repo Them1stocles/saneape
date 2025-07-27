@@ -116,10 +116,19 @@ class StockAnalyzer:
             logging.error(f"Error summarizing data: {str(e)}")
             return {}
     
-    def analyze_with_ai(self, summary):
+    def analyze_with_ai(self, summary, maximum_brain=False):
         """Send data to OpenAI for technical analysis"""
         try:
-            prompt = f"""You are an expert stock technical analyst. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
+            if maximum_brain:
+                # Maximum Brain mode with comprehensive indicator list
+                indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns"""
+                analysis_mode = "MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities"
+            else:
+                # Standard mode with basic indicators
+                indicators_list = "Wyckoff Method (accumulation/distribution phases), Bollinger Bands, Moving Averages (SMA and EMA), MACD, RSI, Stochastic Oscillator, On-Balance Volume (OBV), Average Directional Index (ADX), and price action patterns"
+                analysis_mode = "Standard Analysis"
+
+            prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
 
 Current Price: ${summary['current_price']:.2f}
 30-day Price Change: {summary['price_change_30d']:.2f}%
@@ -135,7 +144,7 @@ Stochastic %K: {summary['stoch_k']:.2f}
 Stochastic %D: {summary['stoch_d']:.2f}
 OBV Trend: {summary['obv_trend']}
 
-Analyze this stock using ALL major technical analysis methods and indicators, including but not limited to: Wyckoff Method (accumulation/distribution phases), Bollinger Bands, Moving Averages (SMA and EMA), MACD, RSI, Stochastic Oscillator, On-Balance Volume (OBV), Average Directional Index (ADX), and price action patterns.
+Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
 
 For each method/indicator:
 - Briefly explain the method and how it applies to this data
@@ -182,7 +191,7 @@ Respond in JSON format with this structure:
             logging.error(f"Error in AI analysis: {str(e)}")
             return None, f"Error analyzing stock data: {str(e)}"
     
-    def analyze_stock(self, ticker):
+    def analyze_stock(self, ticker, maximum_brain=False):
         """Main method to analyze a stock"""
         try:
             # Fetch stock data
@@ -197,7 +206,7 @@ Respond in JSON format with this structure:
             summary = self.summarize_data(df_with_indicators, stock_data['info'])
             
             # Get AI analysis
-            analysis, error = self.analyze_with_ai(summary)
+            analysis, error = self.analyze_with_ai(summary, maximum_brain)
             if error or analysis is None:
                 return {'success': False, 'error': error or 'Failed to get AI analysis'}
             

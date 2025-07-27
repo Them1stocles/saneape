@@ -18,16 +18,20 @@ def analyze_stock():
         if client_ip:
             client_ip = client_ip.split(',')[0].strip()
         
+        # Get ticker and maximum brain option from form
+        ticker = request.form.get('ticker', '').strip().upper()
+        maximum_brain = request.form.get('maximum_brain') == 'true'
+        
         # Check rate limit
         rate_limiter = RateLimiter()
-        if not rate_limiter.is_allowed(client_ip):
+        if not rate_limiter.is_allowed(client_ip, maximum_brain):
+            error_msg = ('Rate limit exceeded. You can only make 1 Maximum Brain analysis per day. Please try again tomorrow.' 
+                        if maximum_brain else 
+                        'Rate limit exceeded. You can only make 2 requests per day. Please try again tomorrow.')
             return jsonify({
-                'error': 'Rate limit exceeded. You can only make 2 requests per day. Please try again tomorrow.',
+                'error': error_msg,
                 'type': 'rate_limit'
             }), 429
-        
-        # Get ticker from form
-        ticker = request.form.get('ticker', '').strip().upper()
         
         if not ticker:
             return jsonify({
@@ -46,11 +50,11 @@ def analyze_stock():
         analyzer = StockAnalyzer()
         
         # Fetch and analyze stock data
-        result = analyzer.analyze_stock(ticker)
+        result = analyzer.analyze_stock(ticker, maximum_brain)
         
         if result['success']:
             # Record the request
-            rate_limiter.record_request(client_ip)
+            rate_limiter.record_request(client_ip, maximum_brain)
             
             # Save analysis to database
             analysis = StockAnalysis()
@@ -59,6 +63,7 @@ def analyze_stock():
             analysis.recommendation = result['recommendation']
             analysis.confidence = result['confidence']
             analysis.analysis_data = json.dumps(result['analysis_details'])
+            analysis.maximum_brain = maximum_brain
             db.session.add(analysis)
             db.session.commit()
             

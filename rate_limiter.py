@@ -4,10 +4,11 @@ from datetime import datetime, date
 import logging
 
 class RateLimiter:
-    def __init__(self, max_requests_per_day=2):
+    def __init__(self, max_requests_per_day=2, max_brain_requests_per_day=1):
         self.max_requests_per_day = max_requests_per_day
+        self.max_brain_requests_per_day = max_brain_requests_per_day
     
-    def is_allowed(self, ip_address):
+    def is_allowed(self, ip_address, maximum_brain=False):
         """Check if IP address is allowed to make a request"""
         try:
             today = date.today()
@@ -21,13 +22,16 @@ class RateLimiter:
             if not rate_limit:
                 return True  # First request of the day
             
-            return rate_limit.request_count < self.max_requests_per_day
+            if maximum_brain:
+                return rate_limit.maximum_brain_count < self.max_brain_requests_per_day
+            else:
+                return rate_limit.request_count < self.max_requests_per_day
             
         except Exception as e:
             logging.error(f"Error checking rate limit: {str(e)}")
             return True  # Allow request if there's an error
     
-    def record_request(self, ip_address):
+    def record_request(self, ip_address, maximum_brain=False):
         """Record a request for the IP address"""
         try:
             today = date.today()
@@ -39,12 +43,16 @@ class RateLimiter:
             ).first()
             
             if rate_limit:
-                rate_limit.request_count += 1
+                if maximum_brain:
+                    rate_limit.maximum_brain_count += 1
+                else:
+                    rate_limit.request_count += 1
                 rate_limit.last_request = datetime.utcnow()
             else:
                 rate_limit = RateLimit()
                 rate_limit.ip_address = ip_address
-                rate_limit.request_count = 1
+                rate_limit.request_count = 1 if not maximum_brain else 0
+                rate_limit.maximum_brain_count = 1 if maximum_brain else 0
                 rate_limit.last_request = datetime.utcnow()
                 rate_limit.date_created = today
                 db.session.add(rate_limit)
