@@ -128,7 +128,8 @@ class User(UserMixin, db.Model):
                 Subscription.current_period_end > datetime.utcnow()
             ).first()
             return active_sub is not None
-        except Exception:
+        except Exception as e:
+            print(f"Error checking subscription for user {self.id}: {e}")
             return False
     
     @property

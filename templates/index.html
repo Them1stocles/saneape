@@ -63,6 +63,22 @@
                     <div class="navbar-nav ms-auto">
                         {% if show_auth %}
                             {% if current_user.is_authenticated %}
+                                <div class="nav-item px-3 py-2 text-white">
+                                    <div class="d-flex align-items-center">
+                                        {% if current_user.profile_image_url %}
+                                            <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                        {% endif %}
+                                        <div>
+                                            <div class="fw-semibold">{{ current_user.display_name }}</div>
+                                            {% if show_credits and user_credits %}
+                                                <small class="text-light">{{ user_credits.total_credits }} credits</small>
+                                            {% else %}
+                                                <small class="text-light">0 credits</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr class="my-2 border-light opacity-25">
                                 <a class="nav-link" href="{{ url_for('user_account') }}">
                                     <i data-feather="user" class="me-1"></i> Account
                                 </a>
@@ -91,26 +107,7 @@
                     <p class="hero-tagline">AI-POWERED<br>SANITY CHECK</p>
                 </div>
                 
-                <!-- User Info Section (for authenticated users only) -->
-                {% if show_auth and current_user.is_authenticated %}
-                <div class="user-info-compact">
-                    <div class="d-flex align-items-center justify-content-center">
-                        {% if current_user.profile_image_url %}
-                            <img src="{{ current_user.profile_image_url }}" alt="Profile" class="user-avatar-small me-2">
-                        {% else %}
-                            <div class="user-avatar-small-placeholder me-2">
-                                <i data-feather="user"></i>
-                            </div>
-                        {% endif %}
-                        <div class="text-white">
-                            <div class="fw-semibold">{{ current_user.display_name }}</div>
-                            {% if show_credits and user_credits %}
-                                <small class="text-light">{{ user_credits.total_credits }} credits</small>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+                <!-- Removed large user info box - credits now shown in dropdown menu -->
             </div>
         </header>
 

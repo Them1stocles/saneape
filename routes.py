@@ -349,6 +349,7 @@ def admin_update_limit():
 # User Account Management Routes
 @app.route('/account')
 @app.route('/dashboard')
+@app.route('/user-account')
 @login_required
 def account_dashboard():
     """Production-grade account dashboard with comprehensive analytics"""

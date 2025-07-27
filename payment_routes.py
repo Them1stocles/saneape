@@ -199,25 +199,39 @@ def billing_portal():
 def get_credit_balance():
     """API endpoint to get user's current credit balance"""
     try:
+        # Get credit balance from database
         credit_balance = CreditBalance.query.filter_by(user_id=current_user.id).first()
         
+        # If no credit balance exists, create one
         if not credit_balance:
-            return jsonify({
-                'subscription_credits': 0,
-                'topup_credits': 0,
-                'total_credits': 0,
-                'subscription_expires': None
-            })
+            credit_balance = CreditBalance(
+                user_id=current_user.id,
+                subscription_credits=0,
+                topup_credits=0
+            )
+            db.session.add(credit_balance)
+            db.session.commit()
+        
+        # Check for active subscription
+        subscription = current_user.get_active_subscription()
+        
+        # If user has subscription but no credits, allocate them
+        if subscription and credit_balance.subscription_credits == 0:
+            from credit_manager import CreditManager
+            credit_mgr = CreditManager()
+            credit_mgr.allocate_subscription_credits(current_user.id, 100)
         
         return jsonify({
             'subscription_credits': credit_balance.subscription_credits,
             'topup_credits': credit_balance.topup_credits,
             'total_credits': credit_balance.subscription_credits + credit_balance.topup_credits,
-            'subscription_expires': credit_balance.subscription_credits_expiry.isoformat() if credit_balance.subscription_credits_expiry else None
+            'subscription_expires': credit_balance.subscription_credits_expiry.isoformat() if credit_balance.subscription_credits_expiry else None,
+            'has_subscription': subscription is not None,
+            'subscription_type': subscription.plan_type if subscription else None
         })
         
     except Exception as e:
-        logger.error(f"Error getting credit balance: {e}")
+        logger.error(f"Error getting credit balance for user {current_user.id}: {e}")
         return jsonify({'error': 'Failed to retrieve credit balance'}), 500
 
 # Error handlers for payment blueprint

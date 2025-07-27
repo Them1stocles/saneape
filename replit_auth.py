@@ -29,6 +29,15 @@ logger = logging.getLogger(__name__)
 # Initialize Flask-Login
 login_manager = LoginManager(app)
 login_manager.login_view = 'replit_auth.login'
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    """Handle unauthorized access for both regular and AJAX requests"""
+    # Check if this is an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.headers.get('Accept') == 'application/json':
+        return jsonify({'error': 'Authentication required'}), 401
+    # Regular request - redirect to login
+    return redirect(url_for('replit_auth.login', next=request.url))
 login_manager.login_message = 'Please log in to access your account and credits.'
 login_manager.login_message_category = 'info'
 

@@ -19,34 +19,58 @@
     </script>
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
-                <i data-feather="activity" class="me-2"></i>SaneApe.com
-            </a>
+    <!-- Mobile Navigation (Same as index.html) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-absolute w-100 py-2" style="z-index: 1000; top: 0;">
+        <div class="container-fluid">
+            <!-- Empty brand space to push hamburger to the right -->
+            <div class="navbar-brand"></div>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="margin-top: -5px;">
                 <span class="navbar-toggler-icon"></span>
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('subscription_plans') }}">Subscription</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('account_dashboard') }}">Dashboard</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">Sign Out</a>
-                    </li>
-                </ul>
+                <div class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                        <div class="nav-item px-3 py-2 text-white">
+                            <div class="d-flex align-items-center">
+                                {% if current_user.profile_image_url %}
+                                    <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                {% endif %}
+                                <div>
+                                    <div class="fw-semibold">{{ current_user.display_name }}</div>
+                                    <small class="text-light" id="nav-credits">Loading credits...</small>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="my-2 border-light opacity-25">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i data-feather="home" class="me-1"></i> Home
+                        </a>
+                        <a class="nav-link active" href="{{ url_for('account_dashboard') }}">
+                            <i data-feather="user" class="me-1"></i> Account
+                        </a>
+                        <a class="nav-link" href="{{ url_for('subscription_plans') }}">
+                            <i data-feather="star" class="me-1"></i> Plans
+                        </a>
+                        <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">
+                            <i data-feather="log-out" class="me-1"></i> Logout
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
+
+    <!-- Header (Same as index.html) -->
+    <header class="hero-header">
+        <div class="hero-content">
+            <div class="hero-text">
+                <h1 class="hero-title">SaneApe.com</h1>
+                <p class="hero-tagline">ACCOUNT DASHBOARD</p>
+            </div>
+        </div>
+    </header>
 
     <main class="flex-grow-1">
         <div class="container my-5">
@@ -326,32 +350,56 @@
         
         async function loadCreditBalance() {
             try {
-                const response = await fetch('/payment/credit-balance');
+                const response = await fetch('/payment/credit-balance', {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
-                if (response.ok) {
-                    // Update credit displays
-                    document.getElementById('subscription-credits').textContent = data.subscription_credits;
-                    document.getElementById('topup-credits').textContent = data.topup_credits;
-                    document.getElementById('total-credits').textContent = data.total_credits;
-                    
-                    // Update progress bar (assuming 100 credits per period max)
-                    const progressPercent = Math.min((data.subscription_credits / 100) * 100, 100);
-                    document.getElementById('subscription-progress').style.width = progressPercent + '%';
-                    
-                    // Update expiry display
-                    if (data.subscription_expires) {
-                        const expiryDate = new Date(data.subscription_expires);
-                        document.getElementById('subscription-expiry').textContent = 
-                            'Expires ' + expiryDate.toLocaleDateString();
-                    } else {
-                        document.getElementById('subscription-expiry').textContent = 'No expiry';
-                    }
-                } else {
-                    console.error('Failed to load credit balance:', data.error);
-                    document.getElementById('subscription-credits').textContent = 'Error';
-                    document.getElementById('topup-credits').textContent = 'Error';
-                    document.getElementById('total-credits').textContent = 'Error';
+                // Update navigation credits
+                const navCredits = document.getElementById('nav-credits');
+                if (navCredits) {
+                    navCredits.textContent = `${data.total_credits} credits`;
+                }
+                
+                // Update credit displays
+                document.getElementById('subscription-credits').textContent = data.subscription_credits;
+                document.getElementById('topup-credits').textContent = data.topup_credits;
+                document.getElementById('total-credits').textContent = data.total_credits;
+                
+                // Update progress bar (assuming 100 credits per period max)
+                const progressPercent = Math.min((data.subscription_credits / 100) * 100, 100);
+                const progressBar = document.getElementById('subscription-progress');
+                if (progressBar) {
+                    progressBar.style.width = progressPercent + '%';
+                }
+                
+                // Update expiry display
+                const expiryElement = document.getElementById('subscription-expiry');
+                if (expiryElement && data.subscription_expires) {
+                    const expiryDate = new Date(data.subscription_expires);
+                    expiryElement.textContent = 'Expires ' + expiryDate.toLocaleDateString();
+                } else if (expiryElement) {
+                    expiryElement.textContent = 'No expiry';
+                }
+            } catch (error) {
+                console.error('Error loading credit balance:', error);
+                // Show error state
+                document.getElementById('subscription-credits').textContent = '-';
+                document.getElementById('topup-credits').textContent = '-';
+                document.getElementById('total-credits').textContent = '-';
+                const navCredits = document.getElementById('nav-credits');
+                if (navCredits) {
+                    navCredits.textContent = 'Error loading';
+                }
                 }
             } catch (error) {
                 console.error('Error loading credit balance:', error);
