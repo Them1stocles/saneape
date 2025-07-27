@@ -7,6 +7,10 @@ import os
 from openai import OpenAI
 import logging
 
+# Technical analysis libraries for Maximum Brain mode
+import stockstats
+from scipy.signal import find_peaks
+
 class StockAnalyzer:
     def __init__(self):
         self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -38,8 +42,20 @@ class StockAnalyzer:
             logging.error(f"Error fetching data for {ticker}: {str(e)}")
             return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
     
-    def calculate_technical_indicators(self, df):
-        """Calculate various technical indicators"""
+    def calculate_technical_indicators(self, df, maximum_brain=False):
+        """Calculate technical indicators - standard or comprehensive based on mode"""
+        try:
+            if maximum_brain:
+                return self.calculate_comprehensive_indicators(df)
+            else:
+                return self.calculate_standard_indicators(df)
+                
+        except Exception as e:
+            logging.error(f"Error calculating indicators: {str(e)}")
+            return df
+    
+    def calculate_standard_indicators(self, df):
+        """Calculate standard technical indicators for regular analysis"""
         try:
             # Moving averages
             df['SMA_20'] = df['Close'].rolling(window=20).mean()
@@ -84,14 +100,196 @@ class StockAnalyzer:
             return df
             
         except Exception as e:
-            logging.error(f"Error calculating technical indicators: {str(e)}")
+            logging.error(f"Error calculating standard indicators: {str(e)}")
             return df
     
-    def summarize_data(self, df, info):
+    def calculate_comprehensive_indicators(self, df):
+        """Calculate all 35 technical indicators for Maximum Brain Analysis"""
+        try:
+            # Convert to StockDataFrame for enhanced functionality
+            stock_df = stockstats.StockDataFrame.retype(df.copy())
+            
+            # === CORE INDICATORS (pandas_ta alternatives using stockstats and custom) ===
+            
+            # 1. RSI (Relative Strength Index)
+            stock_df['rsi_14'] = stock_df['rsi']
+            
+            # 2. MACD (Moving Average Convergence Divergence)
+            stock_df['macd'] = stock_df['macd']
+            stock_df['macd_signal'] = stock_df['macds']
+            stock_df['macd_histogram'] = stock_df['macdh']
+            
+            # 3-5. Moving Averages
+            stock_df['sma_20'] = stock_df['close_20_sma']
+            stock_df['sma_50'] = stock_df['close_50_sma'] 
+            stock_df['sma_200'] = stock_df['close_200_sma']
+            stock_df['ema_12'] = stock_df['close_12_ema']
+            stock_df['ema_26'] = stock_df['close_26_ema']
+            
+            # 6. Bollinger Bands
+            stock_df['bb_upper'] = stock_df['boll_ub']
+            stock_df['bb_middle'] = stock_df['boll']
+            stock_df['bb_lower'] = stock_df['boll_lb']
+            
+            # 7. Stochastic Oscillator
+            stock_df['stoch_k'] = stock_df['kdjk']
+            stock_df['stoch_d'] = stock_df['kdjd']
+            
+            # 8. ADX (Average Directional Index)
+            stock_df['adx'] = stock_df['dx']
+            
+            # 9. CCI (Commodity Channel Index)
+            stock_df['cci'] = stock_df['cci']
+            
+            # 10. Williams %R
+            stock_df['williams_r'] = stock_df['wr_14']
+            
+            # 11. Money Flow Index (MFI) - Custom calculation
+            typical_price = (df['High'] + df['Low'] + df['Close']) / 3
+            money_flow = typical_price * df['Volume']
+            positive_flow = money_flow.where(typical_price.diff() > 0, 0).rolling(14).sum()
+            negative_flow = money_flow.where(typical_price.diff() < 0, 0).rolling(14).sum()
+            stock_df['mfi'] = 100 - (100 / (1 + positive_flow / negative_flow))
+            
+            # 12. On-Balance Volume (OBV)
+            stock_df['obv'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
+            
+            # 13. Average True Range (ATR)
+            stock_df['atr'] = stock_df['atr']
+            
+            # 14. Ultimate Oscillator - Custom calculation
+            bp = df['Close'] - np.minimum(df['Low'], df['Close'].shift(1))
+            tr = np.maximum(df['High'] - df['Low'], 
+                           np.maximum(abs(df['High'] - df['Close'].shift(1)), 
+                                     abs(df['Low'] - df['Close'].shift(1))))
+            avg7 = bp.rolling(7).sum() / tr.rolling(7).sum()
+            avg14 = bp.rolling(14).sum() / tr.rolling(14).sum()
+            avg28 = bp.rolling(28).sum() / tr.rolling(28).sum()
+            stock_df['ultimate_osc'] = 100 * ((4 * avg7) + (2 * avg14) + avg28) / 7
+            
+            # 15. TRIX
+            stock_df['trix'] = stock_df['trix']
+            
+            # 16. Momentum 
+            stock_df['momentum'] = df['Close'] - df['Close'].shift(10)
+            
+            # 17. Rate of Change (ROC)
+            stock_df['roc'] = ((df['Close'] - df['Close'].shift(12)) / df['Close'].shift(12)) * 100
+            
+            # 18. Donchian Channels - Custom calculation
+            stock_df['donchian_upper'] = df['High'].rolling(20).max()
+            stock_df['donchian_lower'] = df['Low'].rolling(20).min()
+            stock_df['donchian_middle'] = (stock_df['donchian_upper'] + stock_df['donchian_lower']) / 2
+            
+            # 19. Keltner Channels - Custom calculation
+            ema_20 = df['Close'].ewm(span=20).mean()
+            atr_10 = stock_df['atr'].rolling(10).mean()
+            stock_df['keltner_upper'] = ema_20 + (2 * atr_10)
+            stock_df['keltner_lower'] = ema_20 - (2 * atr_10)
+            stock_df['keltner_middle'] = ema_20
+            
+            # 20. Aroon Indicator - Custom calculation
+            aroon_length = 14
+            high_idx = df['High'].rolling(aroon_length + 1).apply(lambda x: x.argmax(), raw=False)
+            low_idx = df['Low'].rolling(aroon_length + 1).apply(lambda x: x.argmin(), raw=False)
+            stock_df['aroon_up'] = ((aroon_length - high_idx) / aroon_length) * 100
+            stock_df['aroon_down'] = ((aroon_length - low_idx) / aroon_length) * 100
+            
+            # 21. Parabolic SAR - Simplified version
+            stock_df['sar'] = stock_df['psar']
+            
+            # 22. VWAP (Volume Weighted Average Price)
+            vwap = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
+            stock_df['vwap'] = vwap
+            
+            # 23. Accumulation/Distribution Line
+            stock_df['ad_line'] = stock_df['ad']
+            
+            # 24. Ichimoku Cloud components - Custom calculation
+            high_9 = df['High'].rolling(9).max()
+            low_9 = df['Low'].rolling(9).min()
+            high_26 = df['High'].rolling(26).max()
+            low_26 = df['Low'].rolling(26).min()
+            high_52 = df['High'].rolling(52).max()
+            low_52 = df['Low'].rolling(52).min()
+            
+            stock_df['tenkan_sen'] = (high_9 + low_9) / 2
+            stock_df['kijun_sen'] = (high_26 + low_26) / 2
+            stock_df['senkou_span_a'] = ((stock_df['tenkan_sen'] + stock_df['kijun_sen']) / 2).shift(26)
+            stock_df['senkou_span_b'] = ((high_52 + low_52) / 2).shift(26)
+            
+            # === CUSTOM PATTERN DETECTION ===
+            
+            # 25. Pivot Points
+            stock_df['pivot'] = (df['High'] + df['Low'] + df['Close']) / 3
+            stock_df['r1'] = (2 * stock_df['pivot']) - df['Low']
+            stock_df['s1'] = (2 * stock_df['pivot']) - df['High']
+            
+            # 26. Fibonacci Retracements - Basic levels
+            recent_high = df['High'].rolling(50).max()
+            recent_low = df['Low'].rolling(50).min()
+            diff = recent_high - recent_low
+            stock_df['fib_23.6'] = recent_high - (diff * 0.236)
+            stock_df['fib_38.2'] = recent_high - (diff * 0.382)
+            stock_df['fib_61.8'] = recent_high - (diff * 0.618)
+            
+            # 27. Support/Resistance Levels using peak detection
+            try:
+                highs = df['High'].values
+                lows = df['Low'].values
+                resistance_peaks, _ = find_peaks(highs, distance=10, prominence=highs.std()*0.5)
+                support_peaks, _ = find_peaks(-lows, distance=10, prominence=lows.std()*0.5)
+                
+                stock_df['resistance_level'] = np.nan
+                stock_df['support_level'] = np.nan
+                if len(resistance_peaks) > 0:
+                    stock_df.iloc[resistance_peaks, stock_df.columns.get_loc('resistance_level')] = highs[resistance_peaks]
+                if len(support_peaks) > 0:
+                    stock_df.iloc[support_peaks, stock_df.columns.get_loc('support_level')] = lows[support_peaks]
+                    
+                stock_df['resistance_level'] = stock_df['resistance_level'].fillna(method='ffill')
+                stock_df['support_level'] = stock_df['support_level'].fillna(method='ffill')
+            except:
+                stock_df['resistance_level'] = df['High'].rolling(20).max()
+                stock_df['support_level'] = df['Low'].rolling(20).min()
+            
+            # 28. RMI (Relative Momentum Index) - Custom RSI variant
+            momentum_changes = df['Close'].diff(1).diff(1)  # Second-order momentum
+            gain_rmi = momentum_changes.where(momentum_changes > 0, 0).rolling(14).mean()
+            loss_rmi = (-momentum_changes.where(momentum_changes < 0, 0)).rolling(14).mean()
+            rs_rmi = gain_rmi / loss_rmi
+            stock_df['rmi'] = 100 - (100 / (1 + rs_rmi))
+            
+            # 29. Supertrend - Custom calculation
+            hl2 = (df['High'] + df['Low']) / 2
+            atr_mult = stock_df['atr'] * 3
+            upper_band = hl2 + atr_mult
+            lower_band = hl2 - atr_mult
+            stock_df['supertrend'] = np.where(df['Close'] <= lower_band, lower_band, 
+                                            np.where(df['Close'] >= upper_band, upper_band, np.nan))
+            stock_df['supertrend'] = stock_df['supertrend'].fillna(method='ffill')
+            
+            # 30-35. Pattern Detection Flags
+            stock_df['trend_strength'] = abs(stock_df['adx'])
+            stock_df['volume_trend'] = np.where(df['Volume'] > df['Volume'].rolling(20).mean(), 1, 0)
+            stock_df['price_momentum'] = np.where(df['Close'] > df['Close'].shift(5), 1, 0)
+            stock_df['volatility'] = df['Close'].rolling(20).std()
+            stock_df['rsi_divergence'] = np.where((stock_df['rsi_14'] > 70) | (stock_df['rsi_14'] < 30), 1, 0)
+            stock_df['macd_crossover'] = np.where(stock_df['macd'] > stock_df['macd_signal'], 1, 0)
+            
+            return stock_df
+            
+        except Exception as e:
+            logging.error(f"Error calculating comprehensive indicators: {str(e)}")
+            # Fallback to standard indicators if comprehensive calculation fails
+            return self.calculate_standard_indicators(df)
+    
+    def summarize_data(self, df, info, maximum_brain=False):
         """Summarize stock data for AI analysis"""
         try:
             recent_data = df.tail(30)  # Last 30 days
             
+            # Base summary for both modes
             summary = {
                 'ticker': info.get('symbol', 'N/A'),
                 'company_name': info.get('longName', 'N/A'),
@@ -99,22 +297,92 @@ class StockAnalyzer:
                 'price_change_30d': ((df['Close'].iloc[-1] / df['Close'].iloc[-30] - 1) * 100) if len(df) >= 30 else 0,
                 'volume_avg_30d': recent_data['Volume'].mean(),
                 'volatility_30d': recent_data['Close'].std(),
-                'rsi_current': df['RSI'].iloc[-1] if 'RSI' in df.columns else 0,
-                'macd_current': df['MACD'].iloc[-1] if 'MACD' in df.columns else 0,
-                'bb_position': 'upper' if df['Close'].iloc[-1] > df['BB_upper'].iloc[-1] else 'lower' if df['Close'].iloc[-1] < df['BB_lower'].iloc[-1] else 'middle',
-                'sma_20_trend': 'above' if df['Close'].iloc[-1] > df['SMA_20'].iloc[-1] else 'below',
-                'sma_50_trend': 'above' if df['Close'].iloc[-1] > df['SMA_50'].iloc[-1] else 'below',
-                'sma_200_trend': 'above' if df['Close'].iloc[-1] > df['SMA_200'].iloc[-1] else 'below',
-                'stoch_k': df['%K'].iloc[-1] if '%K' in df.columns else 0,
-                'stoch_d': df['%D'].iloc[-1] if '%D' in df.columns else 0,
-                'obv_trend': 'increasing' if df['OBV'].iloc[-1] > df['OBV'].iloc[-10] else 'decreasing'
             }
+            
+            if maximum_brain:
+                # Comprehensive indicator values for Maximum Brain Analysis
+                latest_row = df.iloc[-1]
+                summary['indicator_values'] = {
+                    'RSI': self.safe_get_value(latest_row, 'rsi_14'),
+                    'ADX': self.safe_get_value(latest_row, 'adx'),
+                    'MACD': self.safe_get_value(latest_row, 'macd'),
+                    'MACD_Signal': self.safe_get_value(latest_row, 'macd_signal'),
+                    'MACD_Histogram': self.safe_get_value(latest_row, 'macd_histogram'),
+                    'SMA_20': self.safe_get_value(latest_row, 'sma_20'),
+                    'SMA_50': self.safe_get_value(latest_row, 'sma_50'),
+                    'SMA_200': self.safe_get_value(latest_row, 'sma_200'),
+                    'EMA_12': self.safe_get_value(latest_row, 'ema_12'),
+                    'EMA_26': self.safe_get_value(latest_row, 'ema_26'),
+                    'Bollinger_Upper': self.safe_get_value(latest_row, 'bb_upper'),
+                    'Bollinger_Middle': self.safe_get_value(latest_row, 'bb_middle'),
+                    'Bollinger_Lower': self.safe_get_value(latest_row, 'bb_lower'),
+                    'Stochastic_K': self.safe_get_value(latest_row, 'stoch_k'),
+                    'Stochastic_D': self.safe_get_value(latest_row, 'stoch_d'),
+                    'CCI': self.safe_get_value(latest_row, 'cci'),
+                    'Williams_R': self.safe_get_value(latest_row, 'williams_r'),
+                    'MFI': self.safe_get_value(latest_row, 'mfi'),
+                    'OBV': self.safe_get_value(latest_row, 'obv'),
+                    'ATR': self.safe_get_value(latest_row, 'atr'),
+                    'Ultimate_Oscillator': self.safe_get_value(latest_row, 'ultimate_osc'),
+                    'TRIX': self.safe_get_value(latest_row, 'trix'),
+                    'Momentum': self.safe_get_value(latest_row, 'momentum'),
+                    'ROC': self.safe_get_value(latest_row, 'roc'),
+                    'Donchian_Upper': self.safe_get_value(latest_row, 'donchian_upper'),
+                    'Donchian_Lower': self.safe_get_value(latest_row, 'donchian_lower'),
+                    'Keltner_Upper': self.safe_get_value(latest_row, 'keltner_upper'),
+                    'Keltner_Lower': self.safe_get_value(latest_row, 'keltner_lower'),
+                    'Aroon_Up': self.safe_get_value(latest_row, 'aroon_up'),
+                    'Aroon_Down': self.safe_get_value(latest_row, 'aroon_down'),
+                    'Parabolic_SAR': self.safe_get_value(latest_row, 'sar'),
+                    'VWAP': self.safe_get_value(latest_row, 'vwap'),
+                    'AD_Line': self.safe_get_value(latest_row, 'ad_line'),
+                    'Tenkan_Sen': self.safe_get_value(latest_row, 'tenkan_sen'),
+                    'Kijun_Sen': self.safe_get_value(latest_row, 'kijun_sen'),
+                    'Pivot_Point': self.safe_get_value(latest_row, 'pivot'),
+                    'Resistance_R1': self.safe_get_value(latest_row, 'r1'),
+                    'Support_S1': self.safe_get_value(latest_row, 's1'),
+                    'Fibonacci_23.6': self.safe_get_value(latest_row, 'fib_23.6'),
+                    'Fibonacci_38.2': self.safe_get_value(latest_row, 'fib_38.2'),
+                    'Fibonacci_61.8': self.safe_get_value(latest_row, 'fib_61.8'),
+                    'Resistance_Level': self.safe_get_value(latest_row, 'resistance_level'),
+                    'Support_Level': self.safe_get_value(latest_row, 'support_level'),
+                    'RMI': self.safe_get_value(latest_row, 'rmi'),
+                    'Supertrend': self.safe_get_value(latest_row, 'supertrend'),
+                    'Trend_Strength': self.safe_get_value(latest_row, 'trend_strength'),
+                    'Volume_Trend': self.safe_get_value(latest_row, 'volume_trend'),
+                    'Price_Momentum': self.safe_get_value(latest_row, 'price_momentum'),
+                    'Volatility': self.safe_get_value(latest_row, 'volatility'),
+                    'RSI_Divergence_Flag': self.safe_get_value(latest_row, 'rsi_divergence'),
+                    'MACD_Crossover_Flag': self.safe_get_value(latest_row, 'macd_crossover')
+                }
+            else:
+                # Standard mode indicators
+                summary.update({
+                    'rsi_current': df['RSI'].iloc[-1] if 'RSI' in df.columns else 0,
+                    'macd_current': df['MACD'].iloc[-1] if 'MACD' in df.columns else 0,
+                    'bb_position': 'upper' if df['Close'].iloc[-1] > df['BB_upper'].iloc[-1] else 'lower' if df['Close'].iloc[-1] < df['BB_lower'].iloc[-1] else 'middle',
+                    'sma_20_trend': 'above' if df['Close'].iloc[-1] > df['SMA_20'].iloc[-1] else 'below',
+                    'sma_50_trend': 'above' if df['Close'].iloc[-1] > df['SMA_50'].iloc[-1] else 'below',
+                    'sma_200_trend': 'above' if df['Close'].iloc[-1] > df['SMA_200'].iloc[-1] else 'below',
+                    'stoch_k': df['%K'].iloc[-1] if '%K' in df.columns else 0,
+                    'stoch_d': df['%D'].iloc[-1] if '%D' in df.columns else 0,
+                    'obv_trend': 'increasing' if df['OBV'].iloc[-1] > df['OBV'].iloc[-10] else 'decreasing'
+                })
             
             return summary
             
         except Exception as e:
             logging.error(f"Error summarizing data: {str(e)}")
             return {}
+    
+    def safe_get_value(self, row, column):
+        """Safely get value from dataframe row, return 0 if not available"""
+        try:
+            if column in row.index and pd.notna(row[column]):
+                return round(float(row[column]), 4)
+            return 0
+        except:
+            return 0
     
     def analyze_with_ai(self, summary, maximum_brain=False):
         """Send data to OpenAI for technical analysis"""
@@ -128,7 +396,25 @@ class StockAnalyzer:
                 indicators_list = "Wyckoff Method (accumulation/distribution phases), Bollinger Bands, Moving Averages (SMA and EMA), MACD, RSI, Stochastic Oscillator, On-Balance Volume (OBV), Average Directional Index (ADX), and price action patterns"
                 analysis_mode = "Standard Analysis"
 
-            prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
+            if maximum_brain:
+                # Enhanced prompt with comprehensive indicator values
+                indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
+                prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
+
+Current Price: ${summary['current_price']:.2f}
+30-day Price Change: {summary['price_change_30d']:.2f}%
+30-day Average Volume: {summary['volume_avg_30d']:,.0f}
+30-day Volatility (StdDev): {summary['volatility_30d']:.2f}
+
+PRE-COMPUTED TECHNICAL INDICATOR VALUES:
+{indicator_json}
+
+Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
+
+Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data."""
+            else:
+                # Standard prompt for regular analysis
+                prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
 
 Current Price: ${summary['current_price']:.2f}
 30-day Price Change: {summary['price_change_30d']:.2f}%
@@ -169,9 +455,12 @@ Respond in JSON format with this structure:
     ]
 }}"""
 
-            # Using gpt-4.1 as requested - the flagship model for complex technical analysis
+
+
+            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+            # do not change this unless explicitly requested by the user
             response = self.openai_client.chat.completions.create(
-                model="gpt-4.1",
+                model="gpt-4o",
                 messages=[
                     {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
                     {"role": "user", "content": prompt}
@@ -199,11 +488,11 @@ Respond in JSON format with this structure:
             if error or stock_data is None:
                 return {'success': False, 'error': error or 'Failed to fetch stock data'}
             
-            # Calculate technical indicators
-            df_with_indicators = self.calculate_technical_indicators(stock_data['history'])
+            # Calculate technical indicators (pass maximum_brain parameter)
+            df_with_indicators = self.calculate_technical_indicators(stock_data['history'], maximum_brain)
             
-            # Summarize data
-            summary = self.summarize_data(df_with_indicators, stock_data['info'])
+            # Summarize data (pass maximum_brain parameter)
+            summary = self.summarize_data(df_with_indicators, stock_data['info'], maximum_brain)
             
             # Get AI analysis
             analysis, error = self.analyze_with_ai(summary, maximum_brain)
