@@ -62,6 +62,7 @@ class SaneApeApp {
             };
             this.updateRateLimitDisplay();
             this.updateButtonState();
+            return Promise.resolve(); // Prevent unhandled promise rejection
         }
     }
     
@@ -175,6 +176,7 @@ class SaneApeApp {
         } catch (error) {
             console.error('Analysis error:', error);
             this.showAlert('Network error. Please check your connection and try again.', 'danger');
+            return Promise.resolve(); // Prevent unhandled promise rejection
         } finally {
             this.setAnalyzingState(false);
         }
