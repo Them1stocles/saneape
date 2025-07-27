@@ -38,6 +38,70 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        .recommendation-badge {
+            font-size: 1.1rem;
+            border-radius: 10px !important;
+        }
+        
+        .confidence-badge {
+            font-size: 0.85rem;
+        }
+        
+        .badge-container {
+            min-height: 70px;
+            display: flex;
+            align-items: stretch;
+        }
+        
+        .badge-container .badge {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+        
+        .technical-analysis-container {
+            max-width: 100%;
+        }
+        
+        .technical-analysis-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .technical-analysis-badges {
+            flex-shrink: 0;
+            min-width: fit-content;
+        }
+        
+        @media (max-width: 768px) {
+            .technical-analysis-badges {
+                flex-wrap: wrap;
+                gap: 0.25rem !important;
+            }
+            
+            .technical-analysis-badges .badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+        }
+        
+        .share-buttons .btn {
+            transition: all 0.3s ease;
+        }
+        
+        .share-buttons .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container-fluid">
@@ -82,8 +146,11 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center mb-3">
+                                        {% set rec_lower = analysis.recommendation.lower() %}
                                         <div class="recommendation-badge 
-                                            {% if analysis.recommendation == 'Buy' %}
+                                            {% if 'yes' in rec_lower and 'buy' in rec_lower %}
+                                                bg-success
+                                            {% elif 'buy' in rec_lower and 'no buy' not in rec_lower %}
                                                 bg-success
                                             {% else %}
                                                 bg-danger
@@ -120,7 +187,53 @@
                             {% endif %}
 
                             <!-- Technical Analysis Details -->
-                            {% if analysis.technical_analysis %}
+                            {% if analysis.analysis_details %}
+                            <div class="mt-4">
+                                <h6 class="text-muted mb-3">
+                                    <i data-feather="trending-up" class="me-1"></i>
+                                    Technical Analysis Details
+                                </h6>
+                                <div class="technical-analysis-container">
+                                    {% for detail in analysis.analysis_details %}
+                                    <div class="border-start border-3 border-primary ps-3 mb-3 technical-analysis-item">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="mb-0 me-2" style="flex: 1; min-width: 0;">
+                                                {{ detail.method or detail.indicator or 'Technical Indicator' }}
+                                            </h6>
+                                            <div class="d-flex gap-1 flex-wrap technical-analysis-badges">
+                                                {% set signal = detail.signal or 'Unknown' %}
+                                                {% set strength = detail.strength or 'Unknown' %}
+                                                
+                                                <!-- Signal Badge -->
+                                                {% if 'buy' in signal.lower() and 'no' not in signal.lower() %}
+                                                    <span class="badge bg-success">Buy</span>
+                                                {% elif 'no buy' in signal.lower() or signal.lower() == 'no buy' %}
+                                                    <span class="badge bg-danger">No Buy</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">Neutral</span>
+                                                {% endif %}
+                                                
+                                                <!-- Strength Badge -->
+                                                {% if 'strong' in strength.lower() %}
+                                                    <span class="badge bg-success">Strong</span>
+                                                {% elif 'moderate' in strength.lower() %}
+                                                    <span class="badge bg-warning">Moderate</span>
+                                                {% elif 'weak' in strength.lower() %}
+                                                    <span class="badge bg-secondary">Weak</span>
+                                                {% else %}
+                                                    <span class="badge bg-light text-dark">Unknown</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <p class="mb-0 text-muted">
+                                            {{ detail.explanation or detail.analysis or 'Analysis not available' }}
+                                        </p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% elif analysis.technical_analysis %}
+                            <!-- Fallback for older technical_analysis format -->
                             <div class="mt-4">
                                 <h6 class="text-muted mb-3">
                                     <i data-feather="trending-up" class="me-1"></i>
@@ -131,7 +244,7 @@
                                     <div class="col-md-6 col-lg-4">
                                         <div class="badge-container">
                                             <span class="badge 
-                                                {% if 'bullish' in value.lower() or 'buy' in value.lower() or 'strong' in value.lower() %}
+                                                {% if 'bullish' in value.lower() or ('buy' in value.lower() and 'no' not in value.lower()) or 'strong' in value.lower() %}
                                                     bg-success
                                                 {% elif 'bearish' in value.lower() or 'sell' in value.lower() or 'weak' in value.lower() %}
                                                     bg-danger
