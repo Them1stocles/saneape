@@ -134,6 +134,7 @@ def make_replit_blueprint():
         base_url=issuer_url,
         authorization_url_params={
             "prompt": "login consent",
+            "app_name": "SaneApe.com",
         },
         token_url=issuer_url + "/token",
         token_url_params={
