@@ -222,9 +222,16 @@ class SaneApeApp {
         const recommendation = data.recommendation.toLowerCase();
         
         recBadge.textContent = data.recommendation;
-        recBadge.className = `badge fs-4 p-3 mb-3 ${
-            recommendation.includes('buy') ? 'bg-success' : 'bg-danger'
-        }`;
+        // Check for "no buy" patterns first, then "buy"
+        let badgeClass;
+        if (recommendation.includes("don't buy") || recommendation.includes("no buy") || recommendation.includes("sell")) {
+            badgeClass = 'bg-danger';
+        } else if (recommendation.includes('buy')) {
+            badgeClass = 'bg-success';
+        } else {
+            badgeClass = 'bg-secondary';
+        }
+        recBadge.className = `badge fs-4 p-3 mb-3 ${badgeClass}`;
         
         // Update confidence badge
         const confBadge = document.getElementById('confidenceBadge');
