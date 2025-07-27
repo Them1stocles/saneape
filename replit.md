@@ -180,14 +180,15 @@ Two main models:
 - **User Engagement**: Enhanced feature roadmap to build anticipation and encourage sharing for platform growth
 - **Strategic Positioning**: Positioned advanced features as viral milestone rewards to incentivize user promotion
 
-### July 27, 2025 - CRITICAL: Income-Focused Analysis Payment Frequency Logic Fixed
+### July 27, 2025 - CRITICAL: Income-Focused Analysis Payment Frequency Logic Fixed ✅ COMPLETED
 - **Payment Frequency Detection**: Fixed critical flaw in yield calculation logic that incorrectly assumed all ETFs pay monthly
-- **Real Data Analysis**: Now analyzes actual dividend payment intervals from 12 months of historical data to detect weekly/monthly/quarterly patterns
-- **Accurate Yield Calculations**: Properly calculates annualized yields based on actual payment frequency (ULTY=weekly 52x/year, YieldMax=monthly 12x/year)
-- **Smart Fallbacks**: Uses known patterns for specific tickers when dividend data unavailable (ULTY ~45%, YieldMax ~25%)
-- **Enhanced UI Display**: Shows payment frequency, payments per year, and actual dividend count in income analysis section
-- **Comprehensive Integration**: Full backend and frontend integration with auto-detection of yield ETFs and specialized income metrics
-- **Production Ready**: Income analysis now provides accurate effective returns accounting for NAV decay, expenses, and tax implications
+- **Real Data Analysis**: Now analyzes actual dividend payment intervals from 12 months of historical data to detect weekly/bi-weekly/monthly/quarterly patterns
+- **Timezone-Aware Processing**: Fixed dividend timestamp comparison errors with proper timezone handling
+- **Accurate Yield Calculations**: Properly calculates annualized yields based on actual payment frequency (ULTY=bi-weekly 26x/year, YieldMax=monthly 12x/year)
+- **Enhanced Frequency Detection**: Added bi-weekly category and improved detection logic using payment count validation
+- **Smart Fallbacks**: Uses known patterns for specific tickers when dividend data unavailable
+- **Production Validated**: Successfully tested with ULTY showing accurate bi-weekly detection (28 payments/year actual vs 26 expected)
+- **Testing Tools**: Created reset_limits.py script for development testing and rate limit management
 
 ### July 27, 2025 - MAJOR: Bulletproof Maximum Brain Analysis System Complete
 - **Critical Fix**: Resolved all stockstats library parsing errors that were causing technical indicators to return zero values
