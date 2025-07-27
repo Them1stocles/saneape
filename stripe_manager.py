@@ -15,7 +15,7 @@ from flask import request, current_app
 
 from app import db
 from models import User, Subscription, CreditBalance, CreditTransaction, PaymentFailure
-from monitoring import monitoring
+from monitoring import monitoring, AlertSeverity
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class StripeManager:
             
             # Log successful session creation
             logger.info(f"Checkout session created: {session.id} for user {user.id}")
-            monitoring.create_alert('info', 'payment', f'Checkout session created for user {user.id}', {
+            monitoring.create_alert(AlertSeverity.INFO, 'payment', f'Checkout session created for user {user.id}', {
                 'session_id': session.id,
                 'plan': plan.value['plan_id'],
                 'amount': plan.value['price']
@@ -117,14 +117,14 @@ class StripeManager:
                 transaction_id=session.id
             )
             
-        except stripe.error.InvalidRequestError as e:
+        except stripe.InvalidRequestError as e:
             logger.error(f"Stripe invalid request: {e}")
             return PaymentResult(
                 success=False,
                 error_message="Invalid payment request",
                 error_code="INVALID_REQUEST"
             )
-        except stripe.error.AuthenticationError as e:
+        except stripe.AuthenticationError as e:
             logger.error(f"Stripe authentication error: {e}")
             return PaymentResult(
                 success=False,

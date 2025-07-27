@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Required - SaneApe.com</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-3M1MP9NSGT');
+        
+        // Track subscription requirement page view
+        gtag('event', 'subscription_required_view', {
+            event_category: 'conversion',
+            event_label: 'premium_feature_gated'
+        });
+    </script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+                <i data-feather="activity" class="me-2"></i>SaneApe.com
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('subscription_plans') }}">Subscription</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('account_dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">Sign Out</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('replit_auth.login') }}">Sign In / Register</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow-1">
+        <div class="container my-5">
+            <!-- Subscription Required Message -->
+            <div class="row justify-content-center">
+                <div class="col-lg-8 col-md-10">
+                    <div class="card border-primary shadow-lg">
+                        <div class="card-header bg-primary text-white text-center">
+                            <i data-feather="star" class="me-2" style="width: 24px; height: 24px;"></i>
+                            <h3 class="mb-0">Premium Feature</h3>
+                        </div>
+                        <div class="card-body text-center py-5">
+                            <div class="mb-4">
+                                <i data-feather="lock" class="text-primary mb-3" style="width: 80px; height: 80px;"></i>
+                                <h4 class="text-primary mb-3">Subscription Required</h4>
+                                <p class="lead text-muted mb-4">
+                                    You've reached your daily limit for free analysis. 
+                                    Upgrade to SaneApe Premium for unlimited access to our AI-powered stock analysis.
+                                </p>
+                            </div>
+                            
+                            <!-- Free vs Premium Comparison -->
+                            <div class="row g-4 mb-5">
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-2">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0 text-muted">
+                                                <i data-feather="shield" class="me-2"></i>Free Tier
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-unstyled">
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    6 Standard analyses per day
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    2 Maximum Brain analyses per day
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    Income-focused analysis
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    Social sharing
+                                                </li>
+                                                <li class="mb-2 text-muted">
+                                                    <i data-feather="x" class="text-danger me-2"></i>
+                                                    Daily reset required
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card h-100 border-primary border-2">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i data-feather="star" class="me-2"></i>Premium
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul class="list-unstyled">
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    <strong>Unlimited</strong> stock analyses
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    <strong>Unlimited</strong> Maximum Brain mode
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    Advanced income analysis
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    Priority processing
+                                                </li>
+                                                <li class="mb-2">
+                                                    <i data-feather="check" class="text-success me-2"></i>
+                                                    Top-up credits (never expire)
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="d-grid gap-2 d-md-block">
+                                <a href="{{ url_for('subscription_plans') }}" class="btn btn-primary btn-lg px-5">
+                                    <i data-feather="arrow-right" class="me-2"></i>View Subscription Plans
+                                </a>
+                                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-5">
+                                    <i data-feather="home" class="me-2"></i>Back to Home
+                                </a>
+                            </div>
+                            
+                            <p class="small text-muted mt-4">
+                                Plans start at just $5/month • Cancel anytime • No setup fees
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Value Proposition -->
+            <div class="row justify-content-center mt-5">
+                <div class="col-lg-10">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0 text-center">
+                                <i data-feather="trending-up" class="me-2"></i>Why Choose SaneApe Premium?
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-lg-3 col-md-6 text-center">
+                                    <i data-feather="cpu" class="text-primary mb-3" style="width: 48px; height: 48px;"></i>
+                                    <h6>Advanced AI Analysis</h6>
+                                    <p class="small text-muted">
+                                        35+ technical indicators with institutional-grade insights 
+                                        powered by GPT-4o AI technology.
+                                    </p>
+                                </div>
+                                <div class="col-lg-3 col-md-6 text-center">
+                                    <i data-feather="dollar-sign" class="text-success mb-3" style="width: 48px; height: 48px;"></i>
+                                    <h6>Income Focus Mode</h6>
+                                    <p class="small text-muted">
+                                        Specialized analysis for dividend stocks and yield ETFs 
+                                        with accurate payment frequency detection.
+                                    </p>
+                                </div>
+                                <div class="col-lg-3 col-md-6 text-center">
+                                    <i data-feather="zap" class="text-warning mb-3" style="width: 48px; height: 48px;"></i>
+                                    <h6>Real-Time Data</h6>
+                                    <p class="small text-muted">
+                                        Live market data integration with comprehensive 
+                                        historical analysis and trend identification.
+                                    </p>
+                                </div>
+                                <div class="col-lg-3 col-md-6 text-center">
+                                    <i data-feather="shield" class="text-info mb-3" style="width: 48px; height: 48px;"></i>
+                                    <h6>Risk Assessment</h6>
+                                    <p class="small text-muted">
+                                        Comprehensive risk analysis with volatility metrics 
+                                        and market condition evaluation.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testimonial -->
+            <div class="row justify-content-center mt-4">
+                <div class="col-lg-8">
+                    <div class="card bg-light">
+                        <div class="card-body text-center py-4">
+                            <blockquote class="blockquote mb-3">
+                                <p class="mb-0">
+                                    "SaneApe finally gives me the data-driven analysis I need. 
+                                    No more emotional trading decisions!"
+                                </p>
+                            </blockquote>
+                            <footer class="blockquote-footer">
+                                Active Trader <cite title="Source Title">from Discord Community</cite>
+                            </footer>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-light py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>SaneApe.com</h6>
+                    <p class="small text-muted">Ape on data, not vibes - a sanity check for late night traders & hopium addicts</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small text-muted mb-0">© 2025 SaneApe.com. All rights reserved.</p>
+                    <p class="small text-muted">AI-powered stock analysis for informed decisions</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js"></script>
+    <script>
+        feather.replace();
+        
+        // Track conversion events
+        document.querySelectorAll('a[href*="subscription"]').forEach(link => {
+            link.addEventListener('click', () => {
+                gtag('event', 'subscription_interest', {
+                    event_category: 'conversion',
+                    event_label: 'from_required_page'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
