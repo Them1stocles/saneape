@@ -137,12 +137,22 @@
                             </div>
                             <h2 class="mb-2">{{ analysis.company_name }} ({{ ticker }})</h2>
                             <p class="text-muted mb-0">
-                                {% if maximum_brain %}
-                                    <i data-feather="cpu" class="text-warning me-1"></i>
-                                    Maximum Brain Analysis
+                                {% if analysis.income_analysis %}
+                                    {% if maximum_brain %}
+                                        <i data-feather="cpu" class="text-warning me-1"></i>
+                                        Income-Focused Maximum Brain Analysis
+                                    {% else %}
+                                        <i data-feather="activity" class="text-primary me-1"></i>
+                                        Income-Focused Standard Analysis
+                                    {% endif %}
                                 {% else %}
-                                    <i data-feather="activity" class="text-primary me-1"></i>
-                                    Standard Analysis
+                                    {% if maximum_brain %}
+                                        <i data-feather="cpu" class="text-warning me-1"></i>
+                                        Maximum Brain Analysis
+                                    {% else %}
+                                        <i data-feather="activity" class="text-primary me-1"></i>
+                                        Standard Analysis
+                                    {% endif %}
                                 {% endif %}
                             </p>
                         </div>
@@ -155,7 +165,17 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center mb-3">
-                                        {% set rec_lower = analysis.recommendation.lower() %}
+                                        {% if analysis.income_analysis and analysis.income_analysis.recommendation and 'buy' in analysis.income_analysis.recommendation.lower() %}
+                                            <!-- Prioritize income analysis recommendation if it's a buy recommendation -->
+                                            {% set display_rec = analysis.income_analysis.recommendation %}
+                                            {% set display_confidence = analysis.income_analysis.confidence %}
+                                        {% else %}
+                                            <!-- Fall back to technical analysis -->
+                                            {% set display_rec = analysis.recommendation %}
+                                            {% set display_confidence = analysis.confidence %}
+                                        {% endif %}
+                                        
+                                        {% set rec_lower = display_rec.lower() %}
                                         <div class="recommendation-badge 
                                             {% if 'yes' in rec_lower and 'buy' in rec_lower %}
                                                 bg-success
@@ -165,11 +185,11 @@
                                                 bg-danger
                                             {% endif %} 
                                             text-white px-3 py-2 rounded me-3">
-                                            <strong>{{ analysis.recommendation }}</strong>
+                                            <strong>{{ display_rec }}</strong>
                                         </div>
                                         <div>
                                             <div class="confidence-badge bg-secondary text-white px-2 py-1 rounded-pill small">
-                                                {{ analysis.confidence }} Confidence
+                                                {{ display_confidence }} Confidence
                                             </div>
                                         </div>
                                     </div>
