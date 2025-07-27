@@ -67,8 +67,8 @@ class FeatureFlagManager:
                 name='user_authentication',
                 enabled=True,
                 description='Enable Replit-based user authentication and session management',
-                environments=dev_envs if self.environment == FeatureFlagEnvironment.DEVELOPMENT else staging_envs,
-                rollout_percentage=100 if self.environment != FeatureFlagEnvironment.PRODUCTION else 25
+                environments=all_envs,  # Enable in all environments for demo
+                rollout_percentage=100
             ),
             
             'user_registration': FeatureFlag(
@@ -82,10 +82,10 @@ class FeatureFlagManager:
             # Phase 2: Credit System
             'credit_system': FeatureFlag(
                 name='credit_system',
-                enabled=self.environment == FeatureFlagEnvironment.DEVELOPMENT,
+                enabled=True,
                 description='Enable credit-based analysis system for authenticated users',
-                environments=dev_envs,
-                rollout_percentage=100 if self.environment == FeatureFlagEnvironment.DEVELOPMENT else 0
+                environments=all_envs,  # Enable in all environments for demo
+                rollout_percentage=100
             ),
             
             'credit_display': FeatureFlag(

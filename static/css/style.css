@@ -567,3 +567,158 @@ body {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
+
+/* User Account Section Styling */
+.user-account-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.user-info-card {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-avatar-placeholder {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-details {
+    color: white;
+}
+
+.user-name {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.credit-summary {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.credit-badge, .subscription-badge {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.subscription-badge {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.5);
+}
+
+.user-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.auth-buttons {
+    text-align: center;
+}
+
+.auth-benefits {
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+/* Credit Display */
+.credit-display {
+    padding: 1rem;
+}
+
+.credit-breakdown {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 1rem;
+}
+
+.credit-item {
+    text-align: center;
+}
+
+.credit-count {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.credit-item.subscription .credit-count {
+    color: #28a745;
+}
+
+.credit-item.topup .credit-count {
+    color: #ffc107;
+}
+
+.credit-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .user-info-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .credit-summary {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .credit-breakdown {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .user-account-section {
+        margin-top: 1rem;
+        padding: 1rem;
+    }
+}

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Plans - SaneApe.com</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <i data-feather="trending-up" class="me-2"></i>
+                    SaneApe.com
+                </a>
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('index') }}">
+                        <i data-feather="home" class="me-1"></i> Home
+                    </a>
+                    {% if current_user.is_authenticated %}
+                        <a class="nav-link" href="{{ url_for('user_account') }}">
+                            <i data-feather="user" class="me-1"></i> Account
+                        </a>
+                        <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">
+                            <i data-feather="log-out" class="me-1"></i> Logout
+                        </a>
+                    {% else %}
+                        <a class="nav-link" href="{{ url_for('replit_auth.login') }}">
+                            <i data-feather="log-in" class="me-1"></i> Sign In
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </nav>
+        
+        <div class="container">
+            <div class="text-center mb-5">
+                <h1 class="display-4 mb-3">Choose Your Plan</h1>
+                <p class="lead text-muted">Get unlimited stock analyses with our subscription plans</p>
+            </div>
+            
+            {% if user_summary and user_summary.has_active_subscription %}
+                <div class="alert alert-success text-center mb-4">
+                    <i data-feather="star" class="me-2"></i>
+                    <strong>You currently have an active {{ user_summary.subscription_plan|title }} subscription</strong>
+                    {% if user_summary.days_until_renewal %}
+                        - renews in {{ user_summary.days_until_renewal }} days
+                    {% endif %}
+                </div>
+            {% endif %}
+            
+            <div class="row justify-content-center">
+                <!-- Free Tier -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 border-secondary">
+                        <div class="card-header bg-secondary text-white text-center">
+                            <h4 class="mb-0">Free</h4>
+                            <h2 class="mb-0">$0</h2>
+                            <small>per day</small>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    6 Standard analyses per day
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    2 Maximum Brain analyses per day
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Access to cached results
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Social sharing
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="x" class="text-danger me-2"></i>
+                                    No account required
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100">
+                                Continue with Free
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Monthly Plan -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 border-primary shadow">
+                        <div class="card-header bg-primary text-white text-center">
+                            <h4 class="mb-0">Monthly</h4>
+                            <h2 class="mb-0">$5</h2>
+                            <small>per month</small>
+                            <div class="badge bg-warning text-dark mt-2">Most Popular</div>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    <strong>Unlimited</strong> analyses per day
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    30 subscription credits monthly
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Priority analysis speed
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Account history tracking
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Buy additional top-up credits
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="alert-triangle" class="text-warning me-2"></i>
+                                    <small>Credits expire monthly</small>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            {% if current_user.is_authenticated %}
+                                <button class="btn btn-primary w-100" disabled>
+                                    <i data-feather="credit-card" class="me-2"></i>
+                                    Coming Soon
+                                </button>
+                                <small class="text-muted d-block mt-2">Stripe integration in progress</small>
+                            {% else %}
+                                <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary w-100">
+                                    <i data-feather="log-in" class="me-2"></i>
+                                    Sign In to Subscribe
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Weekly Plan -->
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 border-success">
+                        <div class="card-header bg-success text-white text-center">
+                            <h4 class="mb-0">Weekly</h4>
+                            <h2 class="mb-0">$5</h2>
+                            <small>per week</small>
+                            <div class="badge bg-light text-dark mt-2">Premium</div>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    <strong>Unlimited</strong> analyses per day
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    15 subscription credits weekly
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    <strong>Priority</strong> analysis speed
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Account history tracking
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="check" class="text-success me-2"></i>
+                                    Buy additional top-up credits
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="zap" class="text-success me-2"></i>
+                                    <strong>Frequent renewal cycle</strong>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-footer text-center">
+                            {% if current_user.is_authenticated %}
+                                <button class="btn btn-success w-100" disabled>
+                                    <i data-feather="credit-card" class="me-2"></i>
+                                    Coming Soon
+                                </button>
+                                <small class="text-muted d-block mt-2">Stripe integration in progress</small>
+                            {% else %}
+                                <a href="{{ url_for('replit_auth.login') }}" class="btn btn-success w-100">
+                                    <i data-feather="log-in" class="me-2"></i>
+                                    Sign In to Subscribe
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dual Credit System Explanation -->
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-8">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5 class="card-title text-center mb-4">
+                                <i data-feather="info" class="me-2"></i>
+                                How Our Credit System Works
+                            </h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-success">
+                                        <i data-feather="refresh-cw" class="me-2"></i>
+                                        Subscription Credits
+                                    </h6>
+                                    <ul class="small">
+                                        <li>Included with your monthly/weekly plan</li>
+                                        <li><strong>Expire at the end of each billing cycle</strong></li>
+                                        <li>No rollover - use them or lose them</li>
+                                        <li>Reset automatically with each renewal</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-warning">
+                                        <i data-feather="star" class="me-2"></i>
+                                        Top-up Credits
+                                    </h6>
+                                    <ul class="small">
+                                        <li>Purchase additional credits as needed</li>
+                                        <li><strong>Never expire - keep them forever</strong></li>
+                                        <li>Unlimited rollover between billing cycles</li>
+                                        <li>Only available to active subscribers</li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <small class="text-muted">
+                                    <i data-feather="target" class="me-1"></i>
+                                    Analysis costs: Standard (1 credit) • Maximum Brain (2 credits)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Initialize Feather Icons -->
+    <script>feather.replace()</script>
+</body>
+</html>

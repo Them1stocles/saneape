@@ -1,34 +1,65 @@
 from flask import render_template, request, jsonify, flash, redirect, url_for, abort, session
+from flask_login import current_user, login_required
 from app import app, db
 import logging
 from stock_analyzer import StockAnalyzer
 from rate_limiter import RateLimiter
-from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache
+from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache, User, CreditBalance, Subscription, CreditTransaction
 from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
+from credit_manager import credit_manager
+from feature_flags import is_user_auth_enabled, is_credit_system_enabled
+import replit_auth  # Import to register authentication routes
 from datetime import date, datetime, timedelta
 import json
 import re
 
 @app.route('/')
 def index():
-    """Main application page with rate limit information"""
+    """Enhanced main page with user account integration"""
     try:
-        # Get client IP
-        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        if client_ip:
-            client_ip = client_ip.split(',')[0].strip()
+        # Initialize context for template
+        context = {
+            'remaining_requests': None,
+            'user_credits': None,
+            'show_auth': is_user_auth_enabled(),
+            'show_credits': is_credit_system_enabled()
+        }
         
-        # Get remaining requests for this IP
-        rate_limiter = RateLimiter()
-        remaining_info = rate_limiter.get_remaining_requests(client_ip)
+        # Handle authenticated users
+        if is_user_auth_enabled() and current_user.is_authenticated:
+            try:
+                # Get user credit information
+                credit_summary = credit_manager.get_user_credit_summary(current_user.id)
+                context['user_credits'] = credit_summary
+                context['user'] = current_user
+                
+                logging.info(f"Authenticated user {current_user.id} accessed index")
+                
+            except Exception as e:
+                logging.error(f"Error getting credit info for user {current_user.id}: {e}")
         
-        return render_template('index.html', remaining_requests=remaining_info)
+        # Handle IP-based rate limiting (fallback or for anonymous users)
+        if not context['user_credits']:
+            # Get client IP
+            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+            if client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+            
+            # Get remaining requests for this IP
+            rate_limiter = RateLimiter()
+            remaining_info = rate_limiter.get_remaining_requests(client_ip)
+            context['remaining_requests'] = remaining_info
+        
+        return render_template('index.html', **context)
         
     except Exception as e:
         logging.error(f"Error in index route: {str(e)}")
-        return render_template('index.html', remaining_requests=None)
+        return render_template('index.html', 
+                             remaining_requests=None,
+                             show_auth=is_user_auth_enabled(),
+                             show_credits=is_credit_system_enabled())
 
 @app.route('/analyze', methods=['POST'])
 def analyze_stock():
@@ -179,7 +210,7 @@ def admin_logout():
 
 @app.route('/admin/api/dashboard')
 def admin_api_dashboard():
-    """API endpoint for dashboard data"""
+    """Enhanced API endpoint for dashboard data with user account metrics"""
     # Check admin authentication
     if not session.get('admin_authenticated'):
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
@@ -187,6 +218,47 @@ def admin_api_dashboard():
     try:
         rate_limiter = RateLimiter()
         system_status = rate_limiter.get_system_status()
+        
+        # Add user account metrics if enabled
+        if is_user_auth_enabled():
+            try:
+                # Get user statistics
+                total_users = db.session.query(User).count()
+                active_subscriptions = db.session.query(Subscription).filter_by(status='active').count()
+                total_credits_issued = db.session.query(CreditBalance).with_entities(
+                    db.func.sum(CreditBalance.subscription_credits + CreditBalance.topup_credits)
+                ).scalar() or 0
+                
+                # Get recent user activity
+                recent_users = db.session.query(User).order_by(User.created_at.desc()).limit(5).all()
+                recent_transactions = db.session.query(CreditTransaction)\
+                    .order_by(CreditTransaction.created_at.desc()).limit(10).all()
+                
+                system_status.update({
+                    'user_metrics': {
+                        'total_users': total_users,
+                        'active_subscriptions': active_subscriptions,
+                        'total_credits_issued': total_credits_issued,
+                        'recent_users': [{
+                            'id': user.id,
+                            'display_name': user.display_name,
+                            'email': user.email,
+                            'created_at': user.created_at.isoformat() if user.created_at else None
+                        } for user in recent_users],
+                        'recent_transactions': [{
+                            'user_id': trans.user_id,
+                            'type': trans.transaction_type,
+                            'credit_type': trans.credit_type,
+                            'amount': trans.credits_amount,
+                            'description': trans.description,
+                            'created_at': trans.created_at.isoformat()
+                        } for trans in recent_transactions]
+                    }
+                })
+                
+            except Exception as e:
+                logging.error(f"Error getting user metrics: {e}")
+                system_status['user_metrics'] = {'error': 'Failed to load user metrics'}
         
         return jsonify({
             'success': True,
@@ -266,6 +338,53 @@ def admin_update_limit():
             'success': False,
             'error': 'System error during limit update'
         }), 500
+
+# User Account Management Routes
+@app.route('/user/account')
+@login_required
+def user_account():
+    """User account management page"""
+    try:
+        if not is_user_auth_enabled():
+            flash('User accounts are not currently available.', 'info')
+            return redirect(url_for('index'))
+            
+        credit_summary = credit_manager.get_user_credit_summary(current_user.id)
+        credit_history = credit_manager.get_credit_history(current_user.id, limit=20)
+        
+        return render_template('user_account.html', 
+                             user=current_user,
+                             credit_summary=credit_summary,
+                             credit_history=credit_history)
+    except Exception as e:
+        logging.error(f"Error in user account page: {e}")
+        flash('Unable to load account information. Please try again.', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/subscription/plans')
+def subscription_plans():
+    """Subscription plans page"""
+    try:
+        if not is_user_auth_enabled():
+            flash('Subscription plans are not currently available.', 'info')
+            return redirect(url_for('index'))
+            
+        # If user is authenticated, get their current status
+        user_summary = None
+        if current_user.is_authenticated:
+            user_summary = credit_manager.get_user_credit_summary(current_user.id)
+            
+        return render_template('subscription_plans.html', user_summary=user_summary)
+        
+    except Exception as e:
+        logging.error(f"Error in subscription plans page: {e}")
+        flash('Unable to load subscription plans. Please try again.', 'error')
+        return redirect(url_for('index'))
+
+@app.route('/subscription/required')
+def subscription_required():
+    """Page shown when subscription is required for a feature"""
+    return render_template('subscription_required.html')
 
 @app.route('/admin/api/reset-ip', methods=['POST'])
 def admin_reset_ip():
