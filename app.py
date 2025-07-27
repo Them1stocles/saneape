@@ -37,3 +37,11 @@ with app.app_context():
 
 # Import routes after app initialization
 from routes import *
+
+# Register payment blueprint
+try:
+    from payment_routes import payment_bp
+    app.register_blueprint(payment_bp)
+    logging.info("Payment blueprint registered successfully")
+except Exception as e:
+    logging.error(f"Failed to register payment blueprint: {e}")

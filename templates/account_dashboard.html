@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Dashboard - SaneApe.com</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-3M1MP9NSGT');
+    </script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+                <i data-feather="activity" class="me-2"></i>SaneApe.com
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('subscription_plans') }}">Subscription</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('account_dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">Sign Out</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow-1">
+        <div class="container my-5">
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="row">
+                        <div class="col-12">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="h2 mb-1">Welcome back, {{ current_user.display_name }}!</h1>
+                            <p class="text-muted mb-0">Manage your subscription and track your analysis credits</p>
+                        </div>
+                        <div class="text-end">
+                            <img src="{{ current_user.profile_image_url or url_for('static', filename='images/default-avatar.png') }}" 
+                                 alt="Profile" class="rounded-circle" width="64" height="64" style="object-fit: cover;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Credit Balance Cards -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card border-primary h-100">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <span><i data-feather="calendar" class="me-2"></i>Subscription Credits</span>
+                            <i data-feather="clock" title="Expire monthly"></i>
+                        </div>
+                        <div class="card-body text-center">
+                            <h2 class="display-6 fw-bold text-primary mb-2" id="subscription-credits">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </h2>
+                            <p class="text-muted mb-3">Available this period</p>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar bg-primary" id="subscription-progress" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="subscription-expiry">Loading...</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-warning h-100">
+                        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                            <span><i data-feather="infinity" class="me-2"></i>Top-Up Credits</span>
+                            <i data-feather="trending-up" title="Never expire"></i>
+                        </div>
+                        <div class="card-body text-center">
+                            <h2 class="display-6 fw-bold text-warning mb-2" id="topup-credits">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </h2>
+                            <p class="text-muted mb-3">Rollover credits</p>
+                            <div class="d-grid">
+                                {% if current_user.has_active_subscription() %}
+                                    <a href="{{ url_for('payment.create_subscription', plan_type='topup') }}" 
+                                       class="btn btn-warning btn-sm">
+                                        <i data-feather="plus" class="me-1"></i>Buy More
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-outline-secondary btn-sm" disabled>
+                                        Subscription Required
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card border-success h-100">
+                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                            <span><i data-feather="zap" class="me-2"></i>Total Available</span>
+                            <i data-feather="battery" title="Ready to use"></i>
+                        </div>
+                        <div class="card-body text-center">
+                            <h2 class="display-6 fw-bold text-success mb-2" id="total-credits">
+                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                            </h2>
+                            <p class="text-muted mb-3">Analysis credits</p>
+                            <div class="d-grid">
+                                <a href="{{ url_for('index') }}" class="btn btn-success btn-sm">
+                                    <i data-feather="search" class="me-1"></i>Analyze Stocks
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subscription Status -->
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i data-feather="credit-card" class="me-2"></i>Subscription Status</h5>
+                            {% if current_user.has_active_subscription() %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-secondary">No Subscription</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if current_user.has_active_subscription() %}
+                                {% set subscription = current_user.get_active_subscription() %}
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6 class="mb-2">{{ subscription.plan_type.title() }} Plan</h6>
+                                        <p class="text-muted mb-2">
+                                            {{ subscription.credits_per_cycle }} credits per {{ subscription.plan_type }}
+                                        </p>
+                                        {% if subscription.current_period_end %}
+                                            <small class="text-muted">
+                                                Next billing: {{ subscription.current_period_end.strftime('%B %d, %Y') }}
+                                                ({{ subscription.days_until_renewal() }} days)
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 text-md-end">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('payment.billing_portal') }}" 
+                                               class="btn btn-outline-primary btn-sm">
+                                                <i data-feather="settings" class="me-1"></i>Manage
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                    data-bs-toggle="modal" data-bs-target="#cancelModal">
+                                                <i data-feather="x-circle" class="me-1"></i>Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-4">
+                                    <h6 class="text-muted mb-3">No active subscription</h6>
+                                    <p class="text-muted mb-4">
+                                        Subscribe to get unlimited analysis credits and advanced features
+                                    </p>
+                                    <a href="{{ url_for('subscription_plans') }}" class="btn btn-primary">
+                                        <i data-feather="star" class="me-2"></i>View Subscription Plans
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i data-feather="activity" class="me-2"></i>Recent Credit Activity</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="credit-transactions">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Credits</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="text-center text-muted">
+                                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                                Loading transactions...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i data-feather="info" class="me-2"></i>Quick Tips</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled small">
+                                <li class="mb-2">
+                                    <i data-feather="clock" class="text-primary me-2"></i>
+                                    <strong>Subscription credits</strong> expire each billing period with zero rollover
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="infinity" class="text-warning me-2"></i>
+                                    <strong>Top-up credits</strong> never expire and rollover indefinitely
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="trending-up" class="text-success me-2"></i>
+                                    Credits are used in order: subscription first, then top-up
+                                </li>
+                                <li class="mb-2">
+                                    <i data-feather="share-2" class="text-info me-2"></i>
+                                    Share analysis results on social media at no cost
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Cancel Subscription Modal -->
+    <div class="modal fade" id="cancelModal" tabindex="-1" aria-labelledby="cancelModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cancelModalLabel">Cancel Subscription</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to cancel your subscription?</p>
+                    <div class="alert alert-warning">
+                        <small>
+                            <strong>Note:</strong> Your subscription will remain active until the end of your current billing period. 
+                            You can continue using your credits until then.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Keep Subscription</button>
+                    <form action="{{ url_for('payment.cancel_subscription') }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-danger">Yes, Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-light py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>SaneApe.com</h6>
+                    <p class="small text-muted">Ape on data, not vibes - a sanity check for late night traders & hopium addicts</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small text-muted mb-0">© 2025 SaneApe.com. All rights reserved.</p>
+                    <p class="small text-muted">AI-powered stock analysis for informed decisions</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js"></script>
+    <script>
+        feather.replace();
+        
+        // Load credit balance and transaction data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCreditBalance();
+            loadTransactionHistory();
+        });
+        
+        async function loadCreditBalance() {
+            try {
+                const response = await fetch('/payment/credit-balance');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update credit displays
+                    document.getElementById('subscription-credits').textContent = data.subscription_credits;
+                    document.getElementById('topup-credits').textContent = data.topup_credits;
+                    document.getElementById('total-credits').textContent = data.total_credits;
+                    
+                    // Update progress bar (assuming 100 credits per period max)
+                    const progressPercent = Math.min((data.subscription_credits / 100) * 100, 100);
+                    document.getElementById('subscription-progress').style.width = progressPercent + '%';
+                    
+                    // Update expiry display
+                    if (data.subscription_expires) {
+                        const expiryDate = new Date(data.subscription_expires);
+                        document.getElementById('subscription-expiry').textContent = 
+                            'Expires ' + expiryDate.toLocaleDateString();
+                    } else {
+                        document.getElementById('subscription-expiry').textContent = 'No expiry';
+                    }
+                } else {
+                    console.error('Failed to load credit balance:', data.error);
+                    document.getElementById('subscription-credits').textContent = 'Error';
+                    document.getElementById('topup-credits').textContent = 'Error';
+                    document.getElementById('total-credits').textContent = 'Error';
+                }
+            } catch (error) {
+                console.error('Error loading credit balance:', error);
+                document.getElementById('subscription-credits').textContent = 'Error';
+                document.getElementById('topup-credits').textContent = 'Error';
+                document.getElementById('total-credits').textContent = 'Error';
+            }
+        }
+        
+        async function loadTransactionHistory() {
+            try {
+                // This would be implemented later with a proper endpoint
+                // For now, show placeholder
+                const tbody = document.querySelector('#credit-transactions tbody');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            <small>Transaction history will be available soon</small>
+                        </td>
+                    </tr>
+                `;
+            } catch (error) {
+                console.error('Error loading transaction history:', error);
+            }
+        }
+        
+        // Track dashboard interactions
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('[href*="create_subscription"]')) {
+                gtag('event', 'dashboard_subscribe_click', {
+                    event_category: 'dashboard',
+                    event_label: 'topup_purchase'
+                });
+            }
+            
+            if (e.target.closest('[href*="billing_portal"]')) {
+                gtag('event', 'billing_portal_click', {
+                    event_category: 'dashboard',
+                    event_label: 'manage_subscription'
+                });
+            }
+        });
+    </script>
+</body>
+</html>

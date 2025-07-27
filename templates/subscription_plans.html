@@ -4,263 +4,350 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subscription Plans - SaneApe.com</title>
-    
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons"></script>
-    
-    <!-- Custom CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="SaneApe.com - AI Stock Analysis Subscription Plans">
+    <meta property="og:description" content="Choose your AI-powered stock analysis plan. Get unlimited technical analysis and income-focused insights.">
+    <meta property="og:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@saneape">
+    <meta name="twitter:title" content="SaneApe.com - AI Stock Analysis Subscription Plans">
+    <meta name="twitter:description" content="Choose your AI-powered stock analysis plan. Get unlimited technical analysis and income-focused insights.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-3M1MP9NSGT');
+    </script>
 </head>
-<body>
-    <div class="container-fluid">
-        <!-- Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-            <div class="container">
-                <a class="navbar-brand" href="{{ url_for('index') }}">
-                    <i data-feather="trending-up" class="me-2"></i>
-                    SaneApe.com
-                </a>
-                <div class="navbar-nav ms-auto">
-                    <a class="nav-link" href="{{ url_for('index') }}">
-                        <i data-feather="home" class="me-1"></i> Home
-                    </a>
-                    {% if current_user.is_authenticated %}
-                        <a class="nav-link" href="{{ url_for('user_account') }}">
-                            <i data-feather="user" class="me-1"></i> Account
-                        </a>
-                        <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">
-                            <i data-feather="log-out" class="me-1"></i> Logout
-                        </a>
-                    {% else %}
-                        <a class="nav-link" href="{{ url_for('replit_auth.login') }}">
-                            <i data-feather="log-in" class="me-1"></i> Sign In
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </nav>
-        
+<body class="d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
         <div class="container">
-            <div class="text-center mb-5">
-                <h1 class="display-4 mb-3">Choose Your Plan</h1>
-                <p class="lead text-muted">Get unlimited stock analyses with our subscription plans</p>
-            </div>
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+                <i data-feather="activity" class="me-2"></i>SaneApe.com
+            </a>
             
-            {% if user_summary and user_summary.has_active_subscription %}
-                <div class="alert alert-success text-center mb-4">
-                    <i data-feather="star" class="me-2"></i>
-                    <strong>You currently have an active {{ user_summary.subscription_plan|title }} subscription</strong>
-                    {% if user_summary.days_until_renewal %}
-                        - renews in {{ user_summary.days_until_renewal }} days
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Home</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('subscription_plans') }}">Subscription</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('account_dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">Sign Out</a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('replit_auth.login') }}">Sign In / Register</a>
+                        </li>
                     {% endif %}
-                </div>
-            {% endif %}
-            
-            <div class="row justify-content-center">
-                <!-- Free Tier -->
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 border-secondary">
-                        <div class="card-header bg-secondary text-white text-center">
-                            <h4 class="mb-0">Free</h4>
-                            <h2 class="mb-0">$0</h2>
-                            <small>per day</small>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    6 Standard analyses per day
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    2 Maximum Brain analyses per day
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Access to cached results
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Social sharing
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="x" class="text-danger me-2"></i>
-                                    No account required
-                                </li>
-                            </ul>
-                        </div>
-                        <div class="card-footer text-center">
-                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100">
-                                Continue with Free
-                            </a>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow-1">
+        <div class="container my-5">
+            <!-- Flash messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="row">
+                        <div class="col-12">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
                         </div>
                     </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Page Header -->
+            <div class="row mb-5">
+                <div class="col-12 text-center">
+                    <h1 class="display-4 fw-bold mb-3">Choose Your Plan</h1>
+                    <p class="lead text-muted">
+                        Unlock unlimited AI-powered stock analysis with advanced technical indicators and income-focused insights
+                    </p>
                 </div>
-                
-                <!-- Monthly Plan -->
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 border-primary shadow">
+            </div>
+
+            <!-- Subscription Plans -->
+            <div class="row g-4 mb-5">
+                <!-- Weekly Plan -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 border-2 shadow-sm">
                         <div class="card-header bg-primary text-white text-center">
-                            <h4 class="mb-0">Monthly</h4>
-                            <h2 class="mb-0">$5</h2>
-                            <small>per month</small>
-                            <div class="badge bg-warning text-dark mt-2">Most Popular</div>
+                            <h4 class="mb-0">Weekly</h4>
+                            <p class="mb-0 small">Perfect for active traders</p>
                         </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    <strong>Unlimited</strong> analyses per day
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    30 subscription credits monthly
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Priority analysis speed
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Account history tracking
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Buy additional top-up credits
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="alert-triangle" class="text-warning me-2"></i>
-                                    <small>Credits expire monthly</small>
-                                </li>
+                        <div class="card-body text-center">
+                            <div class="mb-4">
+                                <h2 class="fw-bold text-primary">$5<small class="text-muted fs-6">/week</small></h2>
+                                <p class="text-muted">100 analysis credits per week</p>
+                            </div>
+                            
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>100 stock analyses per week</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Full technical analysis (35+ indicators)</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Income-focused ETF analysis</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Maximum Brain Analysis</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Social sharing capabilities</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>No rollover (credits expire weekly)</li>
                             </ul>
-                        </div>
-                        <div class="card-footer text-center">
+                            
                             {% if current_user.is_authenticated %}
-                                <button class="btn btn-primary w-100" disabled>
-                                    <i data-feather="credit-card" class="me-2"></i>
-                                    Coming Soon
-                                </button>
-                                <small class="text-muted d-block mt-2">Stripe integration in progress</small>
+                                <a href="{{ url_for('payment.create_subscription', plan_type='weekly') }}" 
+                                   class="btn btn-primary btn-lg w-100">
+                                    Subscribe Weekly
+                                </a>
                             {% else %}
-                                <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary w-100">
-                                    <i data-feather="log-in" class="me-2"></i>
+                                <a href="{{ url_for('replit_auth.login') }}" 
+                                   class="btn btn-outline-primary btn-lg w-100">
                                     Sign In to Subscribe
                                 </a>
                             {% endif %}
                         </div>
                     </div>
                 </div>
-                
-                <!-- Weekly Plan -->
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 border-success">
-                        <div class="card-header bg-success text-white text-center">
-                            <h4 class="mb-0">Weekly</h4>
-                            <h2 class="mb-0">$5</h2>
-                            <small>per week</small>
-                            <div class="badge bg-light text-dark mt-2">Premium</div>
+
+                <!-- Monthly Plan -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="card h-100 border-2 border-success shadow">
+                        <div class="card-header bg-success text-white text-center position-relative">
+                            <span class="badge bg-warning text-dark position-absolute top-0 start-50 translate-middle px-3 py-1" style="font-size: 0.7rem;">POPULAR</span>
+                            <h4 class="mb-0 mt-2">Monthly</h4>
+                            <p class="mb-0 small">Best value for regular users</p>
                         </div>
-                        <div class="card-body">
-                            <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    <strong>Unlimited</strong> analyses per day
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    15 subscription credits weekly
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    <strong>Priority</strong> analysis speed
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Account history tracking
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="check" class="text-success me-2"></i>
-                                    Buy additional top-up credits
-                                </li>
-                                <li class="mb-2">
-                                    <i data-feather="zap" class="text-success me-2"></i>
-                                    <strong>Frequent renewal cycle</strong>
-                                </li>
+                        <div class="card-body text-center">
+                            <div class="mb-4">
+                                <h2 class="fw-bold text-success">$5<small class="text-muted fs-6">/month</small></h2>
+                                <p class="text-muted">100 analysis credits per month</p>
+                            </div>
+                            
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>100 stock analyses per month</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Full technical analysis (35+ indicators)</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Income-focused ETF analysis</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Maximum Brain Analysis</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Social sharing capabilities</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Credit top-ups available</li>
+                                <li class="mb-2"><i data-feather="star" class="text-warning me-2"></i><strong>No rollover (credits expire monthly)</strong></li>
                             </ul>
-                        </div>
-                        <div class="card-footer text-center">
+                            
                             {% if current_user.is_authenticated %}
-                                <button class="btn btn-success w-100" disabled>
-                                    <i data-feather="credit-card" class="me-2"></i>
-                                    Coming Soon
-                                </button>
-                                <small class="text-muted d-block mt-2">Stripe integration in progress</small>
+                                <a href="{{ url_for('payment.create_subscription', plan_type='monthly') }}" 
+                                   class="btn btn-success btn-lg w-100">
+                                    Subscribe Monthly
+                                </a>
                             {% else %}
-                                <a href="{{ url_for('replit_auth.login') }}" class="btn btn-success w-100">
-                                    <i data-feather="log-in" class="me-2"></i>
+                                <a href="{{ url_for('replit_auth.login') }}" 
+                                   class="btn btn-outline-success btn-lg w-100">
                                     Sign In to Subscribe
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Credit Top-Up -->
+                <div class="col-lg-4 col-md-6 mx-auto">
+                    <div class="card h-100 border-2 shadow-sm">
+                        <div class="card-header bg-warning text-dark text-center">
+                            <h4 class="mb-0">Credit Top-Up</h4>
+                            <p class="mb-0 small">For subscribers only</p>
+                        </div>
+                        <div class="card-body text-center">
+                            <div class="mb-4">
+                                <h2 class="fw-bold text-warning">$5<small class="text-muted fs-6">/pack</small></h2>
+                                <p class="text-muted">100 additional credits</p>
+                            </div>
+                            
+                            <ul class="list-unstyled mb-4">
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>100 extra analysis credits</li>
+                                <li class="mb-2"><i data-feather="check" class="text-success me-2"></i>Works with any subscription</li>
+                                <li class="mb-2"><i data-feather="infinity" class="text-primary me-2"></i><strong>Never expire</strong></li>
+                                <li class="mb-2"><i data-feather="trending-up" class="text-success me-2"></i><strong>Unlimited rollover</strong></li>
+                                <li class="mb-2"><i data-feather="zap" class="text-warning me-2"></i>Instant activation</li>
+                                <li class="mb-3 text-muted small">Requires active subscription</li>
+                            </ul>
+                            
+                            {% if current_user.is_authenticated %}
+                                {% if current_user.has_active_subscription() %}
+                                    <a href="{{ url_for('payment.create_subscription', plan_type='topup') }}" 
+                                       class="btn btn-warning btn-lg w-100">
+                                        Buy Credits
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-outline-secondary btn-lg w-100" disabled>
+                                        Subscription Required
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <a href="{{ url_for('replit_auth.login') }}" 
+                                   class="btn btn-outline-warning btn-lg w-100">
+                                    Sign In to Purchase
                                 </a>
                             {% endif %}
                         </div>
                     </div>
                 </div>
             </div>
-            
+
             <!-- Dual Credit System Explanation -->
-            <div class="row justify-content-center mt-5">
-                <div class="col-md-8">
-                    <div class="card bg-light">
+            <div class="row mb-5">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i data-feather="info" class="me-2"></i>Understanding Our Dual Credit System</h5>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title text-center mb-4">
-                                <i data-feather="info" class="me-2"></i>
-                                How Our Credit System Works
-                            </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <h6 class="text-success">
-                                        <i data-feather="refresh-cw" class="me-2"></i>
-                                        Subscription Credits
-                                    </h6>
+                                    <h6 class="text-primary"><i data-feather="calendar" class="me-2"></i>Subscription Credits</h6>
                                     <ul class="small">
-                                        <li>Included with your monthly/weekly plan</li>
-                                        <li><strong>Expire at the end of each billing cycle</strong></li>
-                                        <li>No rollover - use them or lose them</li>
-                                        <li>Reset automatically with each renewal</li>
+                                        <li>Renewed each billing period</li>
+                                        <li><strong>Zero rollover</strong> - unused credits expire</li>
+                                        <li>Use them or lose them</li>
+                                        <li>Encourages active analysis</li>
                                     </ul>
                                 </div>
                                 <div class="col-md-6">
-                                    <h6 class="text-warning">
-                                        <i data-feather="star" class="me-2"></i>
-                                        Top-up Credits
-                                    </h6>
+                                    <h6 class="text-warning"><i data-feather="infinity" class="me-2"></i>Top-Up Credits</h6>
                                     <ul class="small">
-                                        <li>Purchase additional credits as needed</li>
-                                        <li><strong>Never expire - keep them forever</strong></li>
-                                        <li>Unlimited rollover between billing cycles</li>
-                                        <li>Only available to active subscribers</li>
+                                        <li><strong>Never expire</strong></li>
+                                        <li><strong>Unlimited rollover</strong></li>
+                                        <li>Perfect for extra analyses</li>
+                                        <li>Subscribers only</li>
                                     </ul>
                                 </div>
                             </div>
-                            <div class="text-center mt-3">
-                                <small class="text-muted">
-                                    <i data-feather="target" class="me-1"></i>
-                                    Analysis costs: Standard (1 credit) • Maximum Brain (2 credits)
-                                </small>
-                            </div>
+                            <hr>
+                            <p class="small text-muted mb-0">
+                                <strong>Credit Usage Priority:</strong> Subscription credits are used first (they expire), 
+                                then top-up credits are used for additional analyses.
+                            </p>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Comparison -->
+            <div class="row">
+                <div class="col-12">
+                    <h3 class="text-center mb-4">What You Get</h3>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Feature</th>
+                                    <th class="text-center">Free Users</th>
+                                    <th class="text-center">Subscribers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Daily Analysis Limit</strong></td>
+                                    <td class="text-center">6 standard + 2 Maximum Brain</td>
+                                    <td class="text-center"><span class="badge bg-success">Unlimited*</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Technical Indicators</strong></td>
+                                    <td class="text-center">Basic set</td>
+                                    <td class="text-center"><span class="badge bg-success">35+ Advanced</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Income Analysis</strong></td>
+                                    <td class="text-center">Limited</td>
+                                    <td class="text-center"><span class="badge bg-success">Full Analysis</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Maximum Brain Analysis</strong></td>
+                                    <td class="text-center">2 per day</td>
+                                    <td class="text-center"><span class="badge bg-success">Unlimited*</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Social Sharing</strong></td>
+                                    <td class="text-center"><i data-feather="check" class="text-success"></i></td>
+                                    <td class="text-center"><i data-feather="check" class="text-success"></i></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Top-Up Credits</strong></td>
+                                    <td class="text-center"><i data-feather="x" class="text-danger"></i></td>
+                                    <td class="text-center"><span class="badge bg-success">Available</span></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Priority Support</strong></td>
+                                    <td class="text-center"><i data-feather="x" class="text-danger"></i></td>
+                                    <td class="text-center"><span class="badge bg-success">Included</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p class="small text-muted">*Limited by your credit balance</p>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Bootstrap JS -->
+    </main>
+
+    <footer class="bg-dark text-light py-4 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>SaneApe.com</h6>
+                    <p class="small text-muted">Ape on data, not vibes - a sanity check for late night traders & hopium addicts</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="small text-muted mb-0">© 2025 SaneApe.com. All rights reserved.</p>
+                    <p class="small text-muted">AI-powered stock analysis for informed decisions</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Initialize Feather Icons -->
-    <script>feather.replace()</script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js"></script>
+    <script>
+        feather.replace();
+        
+        // Track subscription plan clicks
+        document.addEventListener('DOMContentLoaded', function() {
+            const subscriptionButtons = document.querySelectorAll('a[href*="create_subscription"]');
+            subscriptionButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const planType = this.href.split('/').pop();
+                    gtag('event', 'subscription_click', {
+                        event_category: 'payment',
+                        event_label: planType,
+                        plan_type: planType
+                    });
+                });
+            });
+        });
+    </script>
 </body>
 </html>

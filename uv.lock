@@ -1067,6 +1067,7 @@ dependencies = [
     { name = "scipy" },
     { name = "sqlalchemy" },
     { name = "stockstats" },
+    { name = "stripe" },
     { name = "werkzeug" },
     { name = "yfinance" },
 ]
@@ -1092,6 +1093,7 @@ requires-dist = [
     { name = "scipy", specifier = ">=1.16.1" },
     { name = "sqlalchemy", specifier = ">=2.0.41" },
     { name = "stockstats", specifier = ">=0.6.5" },
+    { name = "stripe", specifier = ">=12.3.0" },
     { name = "werkzeug", specifier = ">=3.1.3" },
     { name = "yfinance", specifier = ">=0.2.65" },
 ]
@@ -1264,6 +1266,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/28/2a/371a47cf6c34de1254da28536f5b242bb1e2651f4e406899b3f3fe6976c3/stockstats-0.6.5.tar.gz", hash = "sha256:2bc81bff187ab9ab5a4c17cec0bbec46a5b108d21878d2fbc8921eb3afc48606", size = 55788 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/09/15a60adddee87fb0c9d1a2ed2ba0362a80451b107a77cfc87fbe72b9aac7/stockstats-0.6.5-py2.py3-none-any.whl", hash = "sha256:89a42808a8b0f94f7fa537cee8a097ae61790b3773051a889586d51a1e8c9392", size = 31727 },
+]
+
+[[package]]
+name = "stripe"
+version = "12.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5b/d1/294e4b3081cf6deff32c230511f07546fc2bf256ebdf7a90dc2d70a6154b/stripe-12.3.0.tar.gz", hash = "sha256:ad8afdab8acdbd75fc098b0fefdfee698f68334a3f6e787633e8d290da89932b", size = 1407878 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5c/d5/aa5147e38a75d999a16ef20ba8a55e80935372780650026b83cbdc816afe/stripe-12.3.0-py2.py3-none-any.whl", hash = "sha256:f53daf37253cef0323613aa298b66d2d2081d37d0f2e4d9f8639824bf67185b9", size = 1647774 },
 ]
 
 [[package]]

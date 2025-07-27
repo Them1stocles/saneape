@@ -117,6 +117,33 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.id}: {self.email}>'
     
+    def has_active_subscription(self):
+        """Check if user has an active subscription"""
+        try:
+            from datetime import datetime
+            active_sub = Subscription.query.filter_by(
+                user_id=self.id,
+                status='active'
+            ).filter(
+                Subscription.current_period_end > datetime.utcnow()
+            ).first()
+            return active_sub is not None
+        except Exception:
+            return False
+    
+    def get_active_subscription(self):
+        """Get user's active subscription"""
+        try:
+            from datetime import datetime
+            return Subscription.query.filter_by(
+                user_id=self.id,
+                status='active'
+            ).filter(
+                Subscription.current_period_end > datetime.utcnow()
+            ).first()
+        except Exception:
+            return None
+    
     @property
     def display_name(self):
         """Get user's display name"""

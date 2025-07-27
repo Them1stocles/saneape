@@ -219,6 +219,10 @@ def admin_api_dashboard():
         rate_limiter = RateLimiter()
         system_status = rate_limiter.get_system_status()
         
+        # Ensure system_status is a dictionary
+        if not isinstance(system_status, dict):
+            system_status = {}
+        
         # Add user account metrics if enabled
         if is_user_auth_enabled():
             try:
@@ -258,7 +262,8 @@ def admin_api_dashboard():
                 
             except Exception as e:
                 logging.error(f"Error getting user metrics: {e}")
-                system_status['user_metrics'] = {'error': 'Failed to load user metrics'}
+                if isinstance(system_status, dict):
+                    system_status['user_metrics'] = {'error': 'Failed to load user metrics'}
         
         return jsonify({
             'success': True,
@@ -271,6 +276,25 @@ def admin_api_dashboard():
             'success': False,
             'error': 'Failed to retrieve dashboard data'
         }), 500
+
+@app.route('/account-dashboard')
+@login_required  
+def account_dashboard():
+    """User account dashboard (requires authentication)"""
+    try:
+        if not is_user_auth_enabled():
+            flash('User accounts are not currently available.', 'info')
+            return redirect(url_for('index'))
+            
+        # Get user's credit information
+        credit_summary = credit_manager.get_user_credit_summary(current_user.id)
+        
+        return render_template('account_dashboard.html', 
+                             user_credits=credit_summary)
+    except Exception as e:
+        logging.error(f"Error loading account dashboard for user {current_user.id}: {e}")
+        flash('Error loading dashboard. Please try again.', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/admin/api/emergency-stop', methods=['POST'])
 def admin_emergency_stop():
@@ -361,7 +385,8 @@ def user_account():
         flash('Unable to load account information. Please try again.', 'error')
         return redirect(url_for('index'))
 
-@app.route('/subscription/plans')
+@app.route('/subscription-plans')
+@app.route('/subscription/plans')  # Legacy route support
 def subscription_plans():
     """Subscription plans page"""
     try:
@@ -431,9 +456,11 @@ def get_recent_analyses():
         # Get cached analyses from the past 6 hours
         six_hours_ago = datetime.utcnow() - timedelta(hours=6)
         
+        current_time = datetime.utcnow()
         recent_analyses = AnalysisCache.query.filter(
-            AnalysisCache.created_at >= six_hours_ago,
-            AnalysisCache.cache_expiry > datetime.utcnow()  # Only non-expired
+            AnalysisCache.created_at >= six_hours_ago
+        ).filter(
+            AnalysisCache.cache_expiry > current_time  # Only non-expired
         ).order_by(AnalysisCache.created_at.desc()).limit(10).all()
         
         # Format the results
