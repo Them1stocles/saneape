@@ -420,11 +420,12 @@ class SaneApeApp {
                 const incomeHtml = `
                     <div class="alert alert-info mb-3">
                         <h6 class="alert-heading">Payment Schedule</h6>
-                        <p class="mb-0">
+                        <p class="mb-1">
                             <strong>Frequency:</strong> ${metrics.payment_frequency || 'Unknown'} 
                             (${metrics.payments_per_year || 'N/A'} payments/year)
                             ${metrics.dividend_count_last_year ? `• ${metrics.dividend_count_last_year} payments in last 12 months` : ''}
                         </p>
+                        ${metrics.frequency_note ? `<small class="text-muted"><i data-feather="info" style="width: 12px; height: 12px;"></i> ${metrics.frequency_note}</small>` : ''}
                     </div>
                     
                     <div class="row g-3 mb-4">

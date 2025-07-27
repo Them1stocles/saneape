@@ -137,7 +137,8 @@ class IncomeAnalyzer:
                 'payments_per_year': self.get_payments_per_year(payment_frequency),
                 'analysis_date': datetime.now().strftime('%Y-%m-%d'),
                 'data_period_days': len(price_data),
-                'dividend_count_last_year': len(recent_dividends)
+                'dividend_count_last_year': len(recent_dividends),
+                'frequency_note': self.generate_frequency_note(payment_frequency, len(recent_dividends))
             }
             
         except Exception as e:
@@ -145,7 +146,7 @@ class IncomeAnalyzer:
             return None
     
     def detect_payment_frequency(self, dividend_data, ticker):
-        """Detect payment frequency from dividend payment intervals"""
+        """Detect payment frequency from actual dividend payment intervals"""
         if len(dividend_data) < 2:
             # Use known patterns for specific tickers
             if ticker.upper() == 'ULTY':
@@ -155,7 +156,7 @@ class IncomeAnalyzer:
             else:
                 return 'quarterly'
         
-        # Calculate intervals between payments
+        # Calculate actual intervals between consecutive payments
         intervals = []
         for i in range(1, len(dividend_data)):
             days_diff = (dividend_data.index[i] - dividend_data.index[i-1]).days
@@ -164,25 +165,52 @@ class IncomeAnalyzer:
         if not intervals:
             return 'unknown'
             
+        # Use median interval instead of average to handle outliers
+        intervals.sort()
+        median_interval = intervals[len(intervals) // 2]
         avg_interval = sum(intervals) / len(intervals)
         
-        # Classify based on average interval and payment count
-        # Also consider total payment count for better detection
-        payments_per_year = len(dividend_data) if len(dividend_data) > 0 else 0
+        # Use the more reliable metric (median for consistency)
+        primary_interval = median_interval
         
-        # Classify based on average interval with payment count validation
-        if avg_interval <= 10 or payments_per_year >= 40:  # ~7 days or 40+ payments
-            return 'weekly'
-        elif avg_interval <= 20 or payments_per_year >= 20:  # ~14 days or 20+ payments  
-            return 'bi-weekly'
-        elif avg_interval <= 35 or payments_per_year >= 10:  # ~30 days or 10+ payments
-            return 'monthly'
-        elif avg_interval <= 100:  # ~90 days
-            return 'quarterly'
-        elif avg_interval <= 200:  # ~180 days
-            return 'semi-annual'
+        self.logger.info(f"{ticker}: Payment intervals: {intervals} days, median: {median_interval}, avg: {avg_interval:.1f}")
+        
+        # Classify based on actual payment intervals (not payment count)
+        # Focus on ACTUAL frequency regardless of recent count changes
+        if primary_interval <= 10:  # ~7 days = weekly
+            detected_freq = 'weekly'
+        elif primary_interval <= 20:  # ~14 days = bi-weekly
+            detected_freq = 'bi-weekly'
+        elif primary_interval <= 35:  # ~30 days = monthly
+            detected_freq = 'monthly'
+        elif primary_interval <= 100:  # ~90 days = quarterly
+            detected_freq = 'quarterly'
+        elif primary_interval <= 200:  # ~180 days = semi-annual
+            detected_freq = 'semi-annual'
         else:
-            return 'annual'
+            detected_freq = 'annual'
+        
+        # Check for frequency changes: if recent payment count doesn't match expected annual frequency
+        expected_annual = self.get_payments_per_year(detected_freq)
+        actual_recent = len(dividend_data)
+        
+        if actual_recent < expected_annual * 0.5:  # Less than 50% of expected
+            self.logger.warning(f"{ticker}: Possible frequency change detected. "
+                              f"Interval suggests {detected_freq} ({expected_annual}/year) "
+                              f"but only {actual_recent} payments in last 12 months")
+        
+        return detected_freq
+    
+    def generate_frequency_note(self, frequency, actual_payments):
+        """Generate explanatory note for frequency vs actual payments discrepancy"""
+        expected_payments = self.get_payments_per_year(frequency)
+        
+        if actual_payments < expected_payments * 0.5:
+            return f"Recently changed to {frequency} payments (only {actual_payments} in last 12 months vs {expected_payments} expected annually)"
+        elif actual_payments < expected_payments * 0.8:
+            return f"Possible recent frequency change to {frequency} payments"
+        else:
+            return f"Consistent {frequency} payment schedule"
     
     def get_payments_per_year(self, frequency):
         """Get number of payments per year based on frequency"""

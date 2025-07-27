@@ -202,3 +202,13 @@ Two main models:
 - **Rate Limit Enhancement**: Updated limits from 2 standard/1 Maximum Brain to 6 standard/2 Maximum Brain requests per day
 - **UI Enhancement**: Added glowing yellow pulse animation to Maximum Brain Analysis option for better visibility and engagement
 - **Testing Verified**: Successfully tested with TSLA - complete analysis generation, proper caching, and cost tracking working perfectly
+
+### July 27, 2025 - CRITICAL FIX: Payment Frequency Detection Logic Complete ✅
+- **Timezone Bug Fixed**: Resolved "Invalid comparison between datetime64[ns, America/New_York] and datetime" error in dividend data analysis
+- **Timestamp-Based Detection**: Enhanced logic to analyze actual payment intervals from dividend timestamps instead of relying on payment count extrapolation
+- **Median Interval Logic**: Implemented robust frequency detection using median intervals to handle outliers and ensure accuracy
+- **Frequency Change Detection**: Added intelligent detection of ETFs that have recently changed payment frequency (e.g., MSII: weekly intervals but only 6 payments in 12 months)
+- **Clear User Communication**: Added frequency_note field with explanatory text like "Recently changed to weekly payments (only 6 in last 12 months vs 52 expected annually)"
+- **Production Validation**: MSII analysis now correctly shows weekly frequency with clear explanation of recent frequency change
+- **Frontend Integration**: Updated Payment Schedule UI to display frequency notes with info icons for user clarity
+- **Accurate Analysis**: Maintains exact match with TotalRealReturns.com data while providing superior explanation of frequency discrepancies
