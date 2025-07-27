@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional, Tuple
 from sqlalchemy.exc import IntegrityError
 from app import db
 from models import User, CreditBalance, CreditTransaction, Subscription, PaymentFailure
-from monitoring import monitoring, record_payment_success, record_payment_failure
+from monitoring import monitoring, record_payment_success, record_payment_failure, AlertSeverity
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class CreditManager:
             
             # Alert monitoring system
             monitoring.create_alert(
-                'info',
+                AlertSeverity.INFO,
                 'Subscription Credits Expired',
                 f'User {user_id} lost {expired_credits} subscription credits due to expiration'
             )
@@ -185,7 +185,7 @@ class CreditManager:
             db.session.commit()
             
             # Record successful payment if this was a purchase
-            if not is_bonus and payment_amount:
+            if not is_bonus and payment_amount is not None:
                 record_payment_success(user_id, payment_amount)
             
             logger.info(f"Added {credits} top-up credits to user {user_id} (total: {credit_balance.topup_credits})")
@@ -196,7 +196,7 @@ class CreditManager:
             db.session.rollback()
             
             # Record payment failure if this was a purchase
-            if not is_bonus and payment_amount:
+            if not is_bonus and payment_amount is not None:
                 record_payment_failure(user_id, payment_amount, str(e))
             
             return False
