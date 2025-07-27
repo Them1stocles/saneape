@@ -86,11 +86,11 @@ body {
     }
     
     .hero-title {
-        font-size: 2.5rem;
+        font-size: 2rem;
     }
     
     .hero-tagline {
-        font-size: 1rem;
+        font-size: 0.85rem;
     }
 }
 
@@ -111,11 +111,11 @@ body {
     }
     
     .hero-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
     
     .hero-tagline {
-        font-size: 0.9rem;
+        font-size: 0.75rem;
     }
 }
 
