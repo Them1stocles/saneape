@@ -569,18 +569,24 @@ body {
 }
 
 /* Mobile Navigation Styling */
-.navbar-brand {
-    font-size: 1.5rem;
-    color: white !important;
+.navbar {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
 }
 
 .navbar-toggler {
     border: none !important;
-    padding: 0.25rem 0.5rem;
+    padding: 0.4rem 0.6rem;
+    margin-top: -10px !important;
 }
 
 .navbar-toggler:focus {
     box-shadow: none;
+}
+
+.navbar-toggler-icon {
+    width: 1.2em;
+    height: 1.2em;
 }
 
 .navbar-nav .nav-link {
