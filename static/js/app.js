@@ -42,6 +42,137 @@ class SaneApeApp {
         setInterval(() => this.loadRecentAnalyses(), 120000);
     }
     
+    /**
+     * PRODUCTION-GRADE UNICODE TEXT NORMALIZATION UTILITY
+     * Handles all apostrophe variants that OpenAI might return
+     * Prevents display bugs caused by Unicode character mismatches
+     */
+    normalizeRecommendationText(text) {
+        if (!text || typeof text !== 'string') return '';
+        
+        return text
+            // Smart quotes and apostrophes: ' ' ‚ ‛
+            .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+            // Modifier apostrophes and stress marks
+            .replace(/[\u02BC\u02C8]/g, "'")
+            // Grave and acute accents used as apostrophes  
+            .replace(/[\u0060\u00B4]/g, "'")
+            // Additional Unicode apostrophe variants
+            .replace(/[\u055A\u07F4\u07F5]/g, "'")
+            // Normalize whitespace
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+    
+    /**
+     * PRODUCTION-GRADE RECOMMENDATION PARSER
+     * Robust pattern matching for all possible OpenAI recommendation formats
+     * Fixes critical Unicode apostrophe bug that caused "No, don't buy!" to display as green "Buy"
+     */
+    parseRecommendation(rawRecommendation, incomeAnalysis = null, isIncomeMode = false) {
+        const normalized = this.normalizeRecommendationText(rawRecommendation);
+        
+        // Income analysis override takes priority
+        if (incomeAnalysis && incomeAnalysis.recommendation && isIncomeMode) {
+            const incomeNormalized = this.normalizeRecommendationText(incomeAnalysis.recommendation);
+            if (incomeNormalized.includes('buy for income') || 
+                (incomeNormalized.includes('buy') && incomeNormalized.includes('income'))) {
+                return {
+                    displayText: "Buy for Income",
+                    badgeClass: 'bg-success',
+                    confidence: 'income-focused'
+                };
+            }
+        }
+        
+        // Comprehensive "No Buy" patterns - FIXES UNICODE APOSTROPHE BUG
+        const noBuyPatterns = [
+            "don't buy",           // Now handles ALL apostrophe variants
+            "do not buy", 
+            "no, don't buy",
+            "no, do not buy",
+            "not recommended",
+            "avoid buying",
+            "avoid",
+            "sell",
+            "short"
+        ];
+        
+        const noBuyRegexPatterns = [
+            /\bno\b.*\bbuy\b/,           // "no ... buy"
+            /\bavoid\b.*\bbuying\b/,     // "avoid ... buying"
+            /\bnot\b.*\brecommend/,      // "not ... recommend"
+            /\bdon't\b.*\bbuy\b/         // "don't ... buy" (normalized apostrophe)
+        ];
+        
+        // Check explicit no-buy patterns
+        for (const pattern of noBuyPatterns) {
+            if (normalized.includes(pattern)) {
+                return {
+                    displayText: "No Buy",
+                    badgeClass: 'bg-danger',
+                    confidence: 'negative'
+                };
+            }
+        }
+        
+        // Check regex patterns for no-buy
+        for (const regex of noBuyRegexPatterns) {
+            if (regex.test(normalized)) {
+                return {
+                    displayText: "No Buy", 
+                    badgeClass: 'bg-danger',
+                    confidence: 'negative'
+                };
+            }
+        }
+        
+        // Comprehensive "Buy" patterns 
+        const buyPatterns = [
+            "yes, buy",
+            "yes buy",
+            "recommend buying",
+            "strong buy",
+            "buy signal",
+            "bullish",
+            "buy recommendation"
+        ];
+        
+        // Check explicit buy patterns
+        for (const pattern of buyPatterns) {
+            if (normalized.includes(pattern)) {
+                return {
+                    displayText: "Buy",
+                    badgeClass: 'bg-success', 
+                    confidence: 'positive'
+                };
+            }
+        }
+        
+        // Final check: contains "buy" but not negative indicators
+        if (normalized.includes('buy') && 
+            !normalized.includes("don't") && 
+            !normalized.includes("not") &&
+            !normalized.includes("avoid") &&
+            !normalized.includes("no,")) {
+            return {
+                displayText: "Buy",
+                badgeClass: 'bg-success',
+                confidence: 'positive'
+            };
+        }
+        
+        // Fallback for unknown patterns
+        console.warn('Unknown recommendation pattern detected:', rawRecommendation);
+        console.warn('Normalized text:', normalized);
+        return {
+            displayText: rawRecommendation || "Unknown",
+            badgeClass: 'bg-warning',
+            confidence: 'unknown'
+        };
+    }
+    
     setupEventListeners() {
         // Form submission
         this.form.addEventListener('submit', (e) => this.handleFormSubmit(e));
@@ -302,7 +433,8 @@ class SaneApeApp {
         
         // Update recommendation badge
         const recBadge = document.getElementById('recommendationBadge');
-        const recommendation = data.recommendation.toLowerCase();
+        
+
         
         // Standardize the text for consistency
         let displayText;
@@ -311,21 +443,21 @@ class SaneApeApp {
         // Check for income-focused override
         const hasIncomeOverride = data.income_analysis && 
                                  data.income_analysis.recommendation && 
-                                 data.income_analysis.recommendation.toLowerCase().includes('buy for income') &&
+                                 normalizeApostrophes(data.income_analysis.recommendation).includes('buy for income') &&
                                  (data.income_focus || data.is_yield_etf);
         
         if (hasIncomeOverride) {
             displayText = "Buy for Income";
             badgeClass = 'bg-success';
-        } else if (recommendation.includes("don't buy") || recommendation.includes("no,") || recommendation.includes("no buy")) {
-            displayText = "No Buy";
-            badgeClass = 'bg-danger';
-        } else if (recommendation.includes("yes,") || (recommendation.includes('buy') && !recommendation.includes("don't"))) {
-            displayText = "Buy";
-            badgeClass = 'bg-success';
         } else {
-            displayText = data.recommendation;
-            badgeClass = 'bg-secondary';
+            // PRODUCTION-GRADE RECOMMENDATION PARSING
+            const result = this.parseRecommendation(
+                data.recommendation, 
+                data.income_analysis,
+                data.income_focus || data.is_yield_etf
+            );
+            displayText = result.displayText;
+            badgeClass = result.badgeClass;
         }
         
         recBadge.textContent = displayText;

@@ -281,3 +281,15 @@ Two main models:
 - **Root Cause Discovery**: Issue is not yfinance corruption but Flask-yfinance integration discrepancy
 - **Comprehensive Documentation**: Created agent_handoff_comprehensive.md with full analysis for next agent
 - **Next Action Required**: Debug why yfinance works standalone but fails in Flask application context
+
+### July 28, 2025 - CRITICAL DATA INTEGRITY FIX: Unicode Apostrophe Bug ✅ PRODUCTION RESOLVED
+- **Critical Bug Identified**: Unicode apostrophe mismatch causing "No, don't buy!" to display as green "Buy" recommendation
+- **Root Cause**: OpenAI returns smart apostrophe (U+2019 ') but JavaScript checked for straight apostrophe (U+0027 ')
+- **Impact**: Users saw green "Buy" for stocks that backend/logs/cache correctly identified as "No, don't buy!"
+- **Production-Grade Fix**: Implemented comprehensive Unicode normalization for all apostrophe variants
+- **Comprehensive Coverage**: Handles smart quotes, modifier apostrophes, grave/acute accents, and all Unicode variants
+- **Robust Pattern Matching**: Added regex patterns and multiple detection methods for recommendation parsing
+- **Error Prevention**: Added fallback handling and warning logging for unknown recommendation patterns
+- **Testing Verified**: RKLB example now correctly displays red "No Buy" badge instead of incorrect green "Buy"
+- **Future-Proof**: System now handles any Unicode apostrophe variant OpenAI might return
+- **Zero Data Loss**: All backend analysis, caching, and sharing functionality was correct - only frontend display was affected
