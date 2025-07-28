@@ -470,6 +470,189 @@ def admin_add_credits():
             'error': f'Error adding credits: {str(e)}'
         }), 500
 
+@app.route('/admin/stripe-test')
+def admin_stripe_test():
+    """Stripe integration testing page"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return redirect(url_for('admin_login'))
+    
+    return render_template('admin_stripe_test.html')
+
+@app.route('/admin/api/test-webhook', methods=['POST'])
+def admin_test_webhook():
+    """Test webhook functionality"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+    
+    try:
+        data = request.get_json()
+        event_type = data.get('event_type')
+        
+        if not event_type:
+            return jsonify({
+                'success': False,
+                'error': 'Event type is required'
+            }), 400
+        
+        logging.info(f"ADMIN TEST: Testing webhook event {event_type}")
+        
+        # Import stripe manager and create test event
+        stripe_mgr = StripeManager()
+        
+        # Create mock event data based on event type
+        mock_events = {
+            'checkout.session.completed': {
+                'id': 'evt_test_checkout_completed',
+                'object': 'event',
+                'type': 'checkout.session.completed',
+                'data': {
+                    'object': {
+                        'id': 'cs_test_checkout_session',
+                        'customer': 'cus_test_customer',
+                        'subscription': 'sub_test_subscription',
+                        'metadata': {
+                            'plan_type': 'weekly',
+                            'credits_per_period': '20'
+                        }
+                    }
+                }
+            },
+            'customer.subscription.created': {
+                'id': 'evt_test_subscription_created',
+                'object': 'event',
+                'type': 'customer.subscription.created',
+                'data': {
+                    'object': {
+                        'id': 'sub_test_subscription',
+                        'customer': 'cus_test_customer',
+                        'status': 'active',
+                        'metadata': {
+                            'plan_type': 'weekly',
+                            'credits_per_period': '20'
+                        },
+                        'current_period_start': 1753658310,
+                        'current_period_end': 1754263110
+                    }
+                }
+            },
+            'customer.subscription.deleted': {
+                'id': 'evt_test_subscription_deleted',
+                'object': 'event',
+                'type': 'customer.subscription.deleted',
+                'data': {
+                    'object': {
+                        'id': 'sub_test_subscription',
+                        'customer': 'cus_test_customer',
+                        'status': 'canceled'
+                    }
+                }
+            },
+            'invoice.payment_succeeded': {
+                'id': 'evt_test_payment_succeeded',
+                'object': 'event',
+                'type': 'invoice.payment_succeeded',
+                'data': {
+                    'object': {
+                        'id': 'in_test_invoice',
+                        'subscription': 'sub_test_subscription',
+                        'customer': 'cus_test_customer',
+                        'status': 'paid',
+                        'amount_paid': 500
+                    }
+                }
+            },
+            'invoice.payment_failed': {
+                'id': 'evt_test_payment_failed',
+                'object': 'event',
+                'type': 'invoice.payment_failed',
+                'data': {
+                    'object': {
+                        'id': 'in_test_invoice_failed',
+                        'subscription': 'sub_test_subscription',
+                        'customer': 'cus_test_customer',
+                        'status': 'open',
+                        'amount_due': 500
+                    }
+                }
+            },
+            'payment_intent.succeeded': {
+                'id': 'evt_test_payment_intent_succeeded',
+                'object': 'event',
+                'type': 'payment_intent.succeeded',
+                'data': {
+                    'object': {
+                        'id': 'pi_test_payment_intent',
+                        'customer': 'cus_test_customer',
+                        'status': 'succeeded',
+                        'amount': 500,
+                        'currency': 'usd'
+                    }
+                }
+            },
+            'payment_intent.payment_failed': {
+                'id': 'evt_test_payment_intent_failed',
+                'object': 'event',
+                'type': 'payment_intent.payment_failed',
+                'data': {
+                    'object': {
+                        'id': 'pi_test_payment_intent_failed',
+                        'customer': 'cus_test_customer',
+                        'status': 'failed',
+                        'amount': 500,
+                        'currency': 'usd'
+                    }
+                }
+            }
+        }
+        
+        if event_type not in mock_events:
+            return jsonify({
+                'success': False,
+                'error': f'Unsupported event type: {event_type}'
+            }), 400
+        
+        # Get mock event data
+        mock_event = mock_events[event_type]
+        
+        # Test the webhook processing logic
+        try:
+            result = stripe_mgr.process_webhook_event(mock_event)
+            
+            logging.info(f"ADMIN TEST: Webhook {event_type} processing result: {result}")
+            
+            return jsonify({
+                'success': True,
+                'message': f'Webhook {event_type} processed successfully',
+                'data': {
+                    'event_id': mock_event['id'],
+                    'event_type': event_type,
+                    'processing_result': result,
+                    'test_mode': True
+                }
+            })
+            
+        except Exception as webhook_error:
+            logging.error(f"ADMIN TEST: Webhook {event_type} processing failed: {str(webhook_error)}")
+            
+            return jsonify({
+                'success': False,
+                'error': f'Webhook processing failed: {str(webhook_error)}',
+                'details': {
+                    'event_type': event_type,
+                    'event_id': mock_event['id'],
+                    'test_mode': True
+                }
+            })
+            
+    except Exception as e:
+        logging.error(f"ADMIN TEST: Error testing webhook: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Test setup failed: {str(e)}'
+        }), 500
+
 @app.route('/admin/api/update-limit', methods=['POST'])
 def admin_update_limit():
     """Update daily spending limit"""

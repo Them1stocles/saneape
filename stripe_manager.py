@@ -622,6 +622,84 @@ class StripeManager:
             return User.query.get(subscription.user_id)
         return None
     
+    def process_webhook_event(self, event_data: Dict) -> Dict:
+        """Process webhook event for testing"""
+        try:
+            event_type = event_data.get('type')
+            event_id = event_data.get('id')
+            
+            logger.info(f"Processing test webhook event {event_type} (ID: {event_id})")
+            
+            # Route event to appropriate handler
+            if event_type == 'checkout.session.completed':
+                result = self._handle_checkout_session_completed(event_data['data']['object'])
+            elif event_type == 'customer.subscription.created':
+                result = self._handle_subscription_created(event_data['data']['object'])
+            elif event_type == 'customer.subscription.deleted':
+                result = self._handle_subscription_deleted(event_data['data']['object'])
+            elif event_type == 'invoice.payment_succeeded':
+                result = self._handle_payment_succeeded(event_data['data']['object'])
+            elif event_type == 'invoice.payment_failed':
+                result = self._handle_payment_failed(event_data['data']['object'])
+            elif event_type == 'payment_intent.succeeded':
+                result = self._handle_payment_intent_succeeded(event_data['data']['object'])
+            elif event_type == 'payment_intent.payment_failed':
+                result = self._handle_payment_intent_failed(event_data['data']['object'])
+            else:
+                return {
+                    'success': False,
+                    'error': f'Unsupported event type: {event_type}',
+                    'event_id': event_id
+                }
+            
+            return {
+                'success': True,
+                'event_type': event_type,
+                'event_id': event_id,
+                'processing_result': result,
+                'message': f'Event {event_type} processed successfully'
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing webhook event: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'event_type': event_data.get('type', 'unknown'),
+                'event_id': event_data.get('id', 'unknown')
+            }
+    
+    def _handle_payment_intent_succeeded(self, payment_intent_data: Dict) -> bool:
+        """Handle successful payment intent"""
+        try:
+            payment_intent_id = payment_intent_data['id']
+            customer_id = payment_intent_data.get('customer')
+            amount = payment_intent_data.get('amount', 0)
+            
+            logger.info(f"Payment intent succeeded: {payment_intent_id}, Amount: ${amount/100:.2f}")
+            
+            # For test purposes, just log the success
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error handling payment intent success: {e}")
+            return False
+    
+    def _handle_payment_intent_failed(self, payment_intent_data: Dict) -> bool:
+        """Handle failed payment intent"""
+        try:
+            payment_intent_id = payment_intent_data['id']
+            customer_id = payment_intent_data.get('customer')
+            
+            logger.warning(f"Payment intent failed: {payment_intent_id}")
+            
+            # For test purposes, just log the failure
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error handling payment intent failure: {e}")
+            return False
+    
     def _classify_failure_type(self, failure_reason: str) -> str:
         """Classify payment failure type for retry strategy"""
         soft_declines = ['network_error', 'issuer_not_available', 'processing_error']
