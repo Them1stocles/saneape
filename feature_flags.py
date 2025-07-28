@@ -41,12 +41,24 @@ class FeatureFlagManager:
     
     def _detect_environment(self) -> FeatureFlagEnvironment:
         """Detect current environment from environment variables"""
-        env = os.environ.get('REPLIT_DEPLOYMENT', 'development').lower()
+        # Check multiple environment variable sources
+        replit_env = os.environ.get('REPLIT_ENVIRONMENT', '').lower()
+        replit_deployment = os.environ.get('REPLIT_DEPLOYMENT', '').lower()
+        environment = os.environ.get('ENVIRONMENT', '').lower()
         
-        if env == 'production' or os.environ.get('ENVIRONMENT') == 'production':
+        # Production detection
+        if (replit_env == 'production' or 
+            replit_deployment == 'production' or 
+            environment == 'production'):
             return FeatureFlagEnvironment.PRODUCTION
-        elif env == 'staging' or os.environ.get('ENVIRONMENT') == 'staging':
+        
+        # Staging detection
+        elif (replit_env == 'staging' or 
+              replit_deployment == 'staging' or 
+              environment == 'staging'):
             return FeatureFlagEnvironment.STAGING
+        
+        # Default to development
         else:
             return FeatureFlagEnvironment.DEVELOPMENT
     
