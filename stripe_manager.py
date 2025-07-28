@@ -343,6 +343,8 @@ class StripeManager:
             subscription_id = subscription_data['id']
             metadata = subscription_data.get('metadata', {})
             
+            logger.info(f"Processing subscription.created event - Customer: {customer_id}, Sub: {subscription_id}")
+            
             # Validate customer_id and find user
             if not customer_id:
                 logger.error("Missing customer_id in subscription data")

@@ -118,9 +118,20 @@ def stripe_webhook():
         payload = request.get_data()
         signature = request.headers.get('Stripe-Signature', '')
         
+        # Log incoming webhook for debugging
+        logger.info(f"Webhook received - Signature present: {bool(signature)}, Payload size: {len(payload)}")
+        
         if not payload:
             logger.error("Empty webhook payload received")
             return jsonify({'error': 'Empty payload'}), 400
+        
+        # Log webhook type for debugging
+        try:
+            import json
+            event_data = json.loads(payload)
+            logger.info(f"Webhook event type: {event_data.get('type', 'unknown')}")
+        except:
+            pass
         
         # Process webhook with Stripe manager
         success, message = stripe_manager.handle_webhook(payload, signature)

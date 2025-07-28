@@ -107,7 +107,7 @@ class CreditManager:
             db.session.rollback()
             raise
     
-    def grant_subscription_credits(self, user_id: str, credits: int, expiry_date: date) -> bool:
+    def allocate_subscription_credits(self, user_id: str, credits: int, expiry_date: date = None) -> bool:
         """
         Grant subscription credits with expiry date.
         Replaces existing subscription credits (no rollover).

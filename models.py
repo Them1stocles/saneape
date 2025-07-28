@@ -311,8 +311,8 @@ class CreditTransaction(db.Model):
     user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
     
     # Transaction details
-    transaction_type = db.Column(db.String(20), nullable=False, index=True)  
-    # Types: 'subscription_grant', 'topup_purchase', 'usage', 'expiry', 'refund', 'bonus'
+    transaction_type = db.Column(db.String(30), nullable=False, index=True)  
+    # Types: 'subscription_allocation', 'topup_purchase', 'usage', 'expiry', 'refund', 'bonus'
     credit_type = db.Column(db.String(15), nullable=False)  # 'subscription', 'topup'
     credits_amount = db.Column(db.Integer, nullable=False)  # Can be negative for usage
     
