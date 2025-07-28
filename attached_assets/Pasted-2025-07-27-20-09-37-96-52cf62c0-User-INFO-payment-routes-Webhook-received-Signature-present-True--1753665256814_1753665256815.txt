@@ -1,0 +1,84 @@
+2025-07-27 20:09:37.96
+52cf62c0
+User
+INFO:payment_routes:Webhook received - Signature present: True, Payload size: 3513
+2025-07-27 20:09:37.96
+52cf62c0
+User
+INFO:payment_routes:Webhook event type: checkout.session.completed
+2025-07-27 20:09:38.30
+52cf62c0
+User
+ERROR:stripe_manager:User not found for customer cus_Sl93xI2qKFc9NZ
+2025-07-27 20:09:38.30
+52cf62c0
+User
+ERROR:payment_routes:Webhook processing failed: Failed to process event checkout.session.completed
+2025-07-27 20:09:38.30
+52cf62c0
+User
+ERROR:monitoring:ALERT [ERROR] payment: Webhook processing failed: Failed to process event checkout.session.completed
+2025-07-27 20:09:45.74
+52cf62c0
+User
+INFO:payment_routes:Webhook received - Signature present: True, Payload size: 8540
+2025-07-27 20:09:45.74
+52cf62c0
+User
+INFO:payment_routes:Webhook event type: invoice.payment_succeeded
+2025-07-27 20:09:45.84
+52cf62c0
+User
+ERROR:stripe_manager:Subscription not found: sub_1RpclSDwyTs4lL4VNjzZauoy
+2025-07-27 20:09:45.84
+52cf62c0
+User
+ERROR:payment_routes:Webhook processing failed: Failed to process event invoice.payment_succeeded
+2025-07-27 20:09:45.84
+52cf62c0
+User
+ERROR:monitoring:ALERT [ERROR] payment: Webhook processing failed: Failed to process event invoice.payment_succeeded
+2025-07-27 20:10:01.23
+52cf62c0
+User
+INFO:payment_routes:Webhook received - Signature present: True, Payload size: 6230
+2025-07-27 20:10:01.23
+52cf62c0
+User
+INFO:payment_routes:Webhook event type: customer.subscription.deleted
+2025-07-27 20:10:01.33
+52cf62c0
+User
+ERROR:stripe_manager:Subscription not found: sub_1RpclSDwyTs4lL4VNjzZauoy
+2025-07-27 20:10:01.33
+52cf62c0
+User
+ERROR:payment_routes:Webhook processing failed: Failed to process event customer.subscription.deleted
+2025-07-27 20:10:01.33
+52cf62c0
+User
+ERROR:monitoring:ALERT [ERROR] payment: Webhook processing failed: Failed to process event customer.subscription.deleted
+2025-07-27 20:12:28.55
+52cf62c0
+User
+INFO:payment_routes:Webhook received - Signature present: True, Payload size: 6180
+2025-07-27 20:12:28.55
+52cf62c0
+User
+INFO:payment_routes:Webhook event type: customer.subscription.created
+2025-07-27 20:12:28.56
+52cf62c0
+User
+INFO:stripe_manager:Processing subscription.created event - Customer: cus_Sl93xI2qKFc9NZ, Sub: sub_1RpclSDwyTs4lL4VNjzZauoy
+2025-07-27 20:12:28.67
+52cf62c0
+User
+ERROR:stripe_manager:User not found for customer cus_Sl93xI2qKFc9NZ
+2025-07-27 20:12:28.67
+52cf62c0
+User
+ERROR:payment_routes:Webhook processing failed: Failed to process event customer.subscription.created
+2025-07-27 20:12:28.67
+52cf62c0
+User
+ERROR:monitoring:ALERT [ERROR] payment: Webhook processing failed: Failed to process event customer.subscription.created
