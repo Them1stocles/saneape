@@ -343,16 +343,79 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/feather-icons@4.28.0/dist/feather.min.js"></script>
     <script>
-        feather.replace();
+        // Comprehensive error handling to catch Script errors
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('DASHBOARD SCRIPT ERROR:', {
+                message: message,
+                source: source,
+                lineno: lineno,
+                colno: colno,
+                error: error
+            });
+            
+            // Show user-friendly error message
+            const errorContainer = document.getElementById('dashboard-error-container');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i data-feather="alert-circle" class="me-2"></i>
+                        <strong>JavaScript Error:</strong> ${message} (Line: ${lineno})
+                    </div>
+                `;
+            }
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('UNHANDLED PROMISE REJECTION:', event.reason);
+            const errorContainer = document.getElementById('dashboard-error-container');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="alert alert-warning" role="alert">
+                        <i data-feather="alert-triangle" class="me-2"></i>
+                        <strong>Promise Error:</strong> ${event.reason}
+                    </div>
+                `;
+            }
+        });
+
+        // Feather icons initialization with comprehensive error handling
+        function initializeFeatherIcons() {
+            try {
+                if (typeof feather !== 'undefined' && feather.replace) {
+                    feather.replace();
+                    console.log('✅ Feather icons initialized successfully');
+                } else {
+                    console.warn('⚠️ Feather icons library not available, using fallback');
+                }
+            } catch (error) {
+                console.warn('⚠️ Feather icons failed to initialize, continuing without icons:', error);
+                // Dashboard should work without icons
+            }
+        }
+
+        // Initialize icons when DOM is ready  
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeFeatherIcons);
+        } else {
+            initializeFeatherIcons();
+        }
         
-        // Load credit balance and transaction data
+        // Load credit balance and transaction data with comprehensive error handling
         document.addEventListener('DOMContentLoaded', function() {
-            loadCreditBalance();
-            loadTransactionHistory();
+            console.log('DOM loaded, initializing dashboard...');
+            try {
+                loadCreditBalance();
+                loadTransactionHistory();
+            } catch (error) {
+                console.error('Error during dashboard initialization:', error);
+            }
         });
         
         async function loadCreditBalance() {
+            console.log('🔄 Starting loadCreditBalance...');
             try {
+                console.log('📡 Making API request to /api/account/credits');
                 const response = await fetch('/api/account/credits', {
                     credentials: 'same-origin',
                     headers: {
@@ -361,44 +424,77 @@
                     }
                 });
                 
+                console.log('📡 API response status:', response.status);
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
+                console.log('🔄 Parsing JSON response...');
                 const result = await response.json();
+                console.log('✅ API response:', result);
                 
                 if (!result.success) {
                     throw new Error(result.error || 'Failed to load credit data');
                 }
                 
                 const data = result.credits;
+                console.log('💳 Credit data:', data);
+                
+                console.log('🖼️ Updating DOM elements...');
                 
                 // Update navigation credits
                 const navCredits = document.getElementById('nav-credits');
                 if (navCredits) {
                     navCredits.textContent = `${data.total_credits} credits`;
+                    console.log('✅ Updated nav credits');
+                } else {
+                    console.warn('⚠️ nav-credits element not found');
                 }
                 
                 // Update credit displays
-                document.getElementById('subscription-credits').textContent = data.subscription_credits;
-                document.getElementById('topup-credits').textContent = data.topup_credits;
-                document.getElementById('total-credits').textContent = data.total_credits;
+                try {
+                    const subCreditsEl = document.getElementById('subscription-credits');
+                    const topupCreditsEl = document.getElementById('topup-credits');
+                    const totalCreditsEl = document.getElementById('total-credits');
+                    
+                    if (subCreditsEl) subCreditsEl.textContent = data.subscription_credits;
+                    if (topupCreditsEl) topupCreditsEl.textContent = data.topup_credits;
+                    if (totalCreditsEl) totalCreditsEl.textContent = data.total_credits;
+                    
+                    console.log('✅ Updated credit displays');
+                } catch (domError) {
+                    console.error('❌ Error updating credit displays:', domError);
+                }
                 
                 // Update progress bar (assuming 100 credits per period max)
-                const progressPercent = Math.min((data.subscription_credits / 100) * 100, 100);
-                const progressBar = document.getElementById('subscription-progress');
-                if (progressBar) {
-                    progressBar.style.width = progressPercent + '%';
+                try {
+                    const progressPercent = Math.min((data.subscription_credits / 100) * 100, 100);
+                    const progressBar = document.getElementById('subscription-progress');
+                    if (progressBar) {
+                        progressBar.style.width = progressPercent + '%';
+                        console.log('✅ Updated progress bar');
+                    }
+                } catch (progressError) {
+                    console.error('❌ Error updating progress bar:', progressError);
                 }
                 
                 // Update expiry display
-                const expiryElement = document.getElementById('subscription-expiry');
-                if (expiryElement && data.subscription_expires) {
-                    const expiryDate = new Date(data.subscription_expires);
-                    expiryElement.textContent = 'Expires ' + expiryDate.toLocaleDateString();
-                } else if (expiryElement) {
-                    expiryElement.textContent = 'No expiry';
+                try {
+                    const expiryElement = document.getElementById('subscription-expiry');
+                    if (expiryElement && data.subscription_expires) {
+                        const expiryDate = new Date(data.subscription_expires);
+                        expiryElement.textContent = 'Expires ' + expiryDate.toLocaleDateString();
+                        console.log('✅ Updated expiry display');
+                    } else if (expiryElement) {
+                        expiryElement.textContent = 'No expiry';
+                        console.log('✅ Set no expiry');
+                    }
+                } catch (expiryError) {
+                    console.error('❌ Error updating expiry:', expiryError);
                 }
+                
+                console.log('✅ loadCreditBalance completed successfully');
             } catch (error) {
                 console.error('Error loading credit balance:', error);
                 
@@ -433,7 +529,9 @@
         }
         
         async function loadTransactionHistory() {
+            console.log('🔄 Starting loadTransactionHistory...');
             try {
+                console.log('📡 Making API request to /api/account/transactions');
                 const response = await fetch('/api/account/transactions', {
                     credentials: 'same-origin',
                     headers: {
@@ -442,35 +540,50 @@
                     }
                 });
                 
+                console.log('📡 Transaction API response status:', response.status);
+                
                 const tbody = document.querySelector('#credit-transactions tbody');
+                console.log('🔍 Transaction tbody element:', tbody ? 'Found' : 'NOT FOUND');
                 
                 if (!response.ok) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center text-muted">
-                                <small>Unable to load transaction history</small>
-                            </td>
-                        </tr>
-                    `;
+                    console.error('❌ Transaction API failed with status:', response.status);
+                    if (tbody) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <small>Unable to load transaction history (Error ${response.status})</small>
+                                </td>
+                            </tr>
+                        `;
+                    }
                     return;
                 }
                 
+                console.log('🔄 Parsing transaction JSON response...');
                 const result = await response.json();
+                console.log('✅ Transaction API response:', result);
                 
                 if (!result.success || !result.transactions.length) {
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="4" class="text-center text-muted">
-                                <small>No transactions found</small>
-                            </td>
-                        </tr>
-                    `;
+                    console.log('ℹ️ No transactions found or API failed');
+                    if (tbody) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <small>No transactions found</small>
+                                </td>
+                            </tr>
+                        `;
+                    }
                     return;
                 }
+                
+                console.log(`📊 Processing ${result.transactions.length} transactions`);
                 
                 // Display transactions
                 tbody.innerHTML = '';
-                result.transactions.forEach(tx => {
+                result.transactions.forEach((tx, index) => {
+                    console.log(`📝 Processing transaction ${index + 1}:`, tx);
+                    
                     const row = document.createElement('tr');
                     const date = new Date(tx.created_at).toLocaleDateString();
                     const type = tx.transaction_type.replace('_', ' ').toUpperCase();
@@ -485,6 +598,8 @@
                     `;
                     tbody.appendChild(row);
                 });
+                
+                console.log('✅ loadTransactionHistory completed successfully');
                 
             } catch (error) {
                 console.error('Error loading transaction history:', error);

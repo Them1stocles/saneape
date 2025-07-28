@@ -965,7 +965,10 @@ def account_dashboard():
 def api_account_credits():
     """Real-time credit balance API for dashboard updates with rate limiting and Stripe resilience"""
     try:
+        logging.info(f"API /api/account/credits called by user {current_user.id}")
+        
         if not is_user_auth_enabled():
+            logging.warning("User accounts not enabled")
             return jsonify({'error': 'User accounts not available'}), 404
         
         # Rate limiting for API endpoints
@@ -976,7 +979,9 @@ def api_account_credits():
         
         # Get credit information (Stripe-independent)
         credit_mgr = CreditManager()
+        logging.info(f"Getting credit info for user {current_user.id}")
         credit_info = credit_mgr.get_user_credit_info(current_user.id)
+        logging.info(f"Credit info retrieved: {credit_info}")
         
         # Get subscription information with robust Stripe failure handling
         subscription_expires = None
@@ -986,13 +991,16 @@ def api_account_credits():
             # Deferred import to avoid circular dependency
             from stripe_manager import StripeManager
             stripe_mgr = StripeManager()
+            logging.info(f"Getting Stripe subscription info for user {current_user.id}")
             subscription_info = stripe_mgr.get_user_subscription_info(current_user.id)
+            logging.info(f"Stripe subscription info: {subscription_info}")
             
             if subscription_info and subscription_info.get('has_subscription'):
                 subscription_active = True
                 subscription_data = subscription_info.get('subscription', {})
                 if subscription_data.get('current_period_end'):
                     subscription_expires = subscription_data['current_period_end']
+                    logging.info(f"Subscription expires: {subscription_expires}")
                     
         except Exception as e:
             # Log Stripe failure but continue with credit data
@@ -1040,7 +1048,10 @@ def api_account_credits():
 def api_account_transactions():
     """Transaction history API with pagination, filtering and security validation"""
     try:
+        logging.info(f"API /api/account/transactions called by user {current_user.id}")
+        
         if not is_user_auth_enabled():
+            logging.warning("User accounts not enabled for transactions API")
             return jsonify({'error': 'User accounts not available'}), 404
         
         # Rate limiting for API endpoints
@@ -1061,12 +1072,14 @@ def api_account_transactions():
                 return jsonify({'error': 'Invalid transaction type'}), 400
         
         credit_mgr = CreditManager()
+        logging.info(f"Getting transaction history for user {current_user.id}, page={page}, per_page={per_page}, type={transaction_type}")
         transactions = credit_mgr.get_credit_history(
             current_user.id, 
             page=page, 
             per_page=per_page,
             transaction_type=transaction_type
         )
+        logging.info(f"Retrieved {len(transactions.get('items', []))} transactions")
         
         return jsonify({
             'success': True,
