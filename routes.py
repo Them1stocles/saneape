@@ -1078,6 +1078,144 @@ def validate_ticker(ticker):
         return False
     return True
 
+def normalize_recommendation_text(text):
+    """
+    PRODUCTION-GRADE UNICODE TEXT NORMALIZATION
+    Handles all apostrophe variants that OpenAI might return
+    Prevents display bugs caused by Unicode character mismatches
+    """
+    if not text or not isinstance(text, str):
+        return ''
+    
+    return (text.replace('\u2018', "'")      # Smart quotes ' '
+            .replace('\u2019', "'")
+            .replace('\u201A', "'")          # Additional quotes ‚ ‛
+            .replace('\u201B', "'")
+            .replace('\u02BC', "'")          # Modifier apostrophes
+            .replace('\u02C8', "'")
+            .replace('\u0060', "'")          # Grave/acute accents
+            .replace('\u00B4', "'")
+            .replace('\u055A', "'")          # Additional variants
+            .replace('\u07F4', "'")
+            .replace('\u07F5', "'")
+            .strip().lower())
+
+def parse_recommendation_backend(recommendation, income_analysis=None, is_income_mode=False):
+    """
+    PRODUCTION-GRADE BACKEND RECOMMENDATION PARSER
+    Fixes critical Unicode apostrophe bug affecting share pages
+    """
+    normalized = normalize_recommendation_text(recommendation)
+    
+    # Income analysis override takes priority if it's genuinely positive
+    if income_analysis and income_analysis.get('recommendation') and is_income_mode:
+        income_normalized = normalize_recommendation_text(income_analysis.get('recommendation', ''))
+        
+        # Check for positive income recommendations
+        income_positive_patterns = ['buy for income', 'income buy', 'dividend buy']
+        for pattern in income_positive_patterns:
+            if pattern in income_normalized:
+                return {
+                    'recommendation': income_analysis.get('recommendation'),
+                    'confidence': income_analysis.get('confidence', 'medium'),
+                    'is_positive': True,
+                    'type': 'income'
+                }
+        
+        # Check if income has negative patterns
+        income_negative_patterns = ["don't buy", "do not buy", "no,", "avoid", "not recommended"]
+        for pattern in income_negative_patterns:
+            if pattern in income_normalized:
+                return {
+                    'recommendation': income_analysis.get('recommendation'),
+                    'confidence': income_analysis.get('confidence', 'medium'),
+                    'is_positive': False,
+                    'type': 'income'
+                }
+    
+    # Comprehensive negative patterns - FIXES UNICODE APOSTROPHE BUG
+    negative_patterns = [
+        "don't buy",           # Now handles ALL apostrophe variants
+        "do not buy", 
+        "no, don't buy",
+        "no, do not buy",
+        "not recommended",
+        "avoid buying",
+        "avoid",
+        "sell",
+        "short"
+    ]
+    
+    # Check for negative patterns first (highest priority)
+    for pattern in negative_patterns:
+        if pattern in normalized:
+            return {
+                'recommendation': recommendation,
+                'confidence': 'negative',
+                'is_positive': False,
+                'type': 'technical'
+            }
+    
+    # Check for regex negative patterns  
+    import re
+    negative_regex_patterns = [
+        r'\bno\b.*\bbuy\b',           # "no ... buy"
+        r'\bavoid\b.*\bbuying\b',     # "avoid ... buying"
+        r'\bnot\b.*\brecommend',      # "not ... recommend"
+        r'\bdon\'t\b.*\bbuy\b'        # "don't ... buy" (normalized apostrophe)
+    ]
+    
+    for regex_pattern in negative_regex_patterns:
+        if re.search(regex_pattern, normalized):
+            return {
+                'recommendation': recommendation,
+                'confidence': 'negative',
+                'is_positive': False,
+                'type': 'technical'
+            }
+    
+    # Positive patterns (only if no negative indicators)
+    positive_patterns = [
+        "yes, buy",
+        "yes buy", 
+        "recommend buying",
+        "strong buy",
+        "buy signal",
+        "bullish",
+        "buy recommendation"
+    ]
+    
+    for pattern in positive_patterns:
+        if pattern in normalized:
+            return {
+                'recommendation': recommendation,
+                'confidence': 'positive',
+                'is_positive': True,
+                'type': 'technical'
+            }
+    
+    # Final check: contains "buy" but not negative indicators
+    if ('buy' in normalized and 
+        "don't" not in normalized and 
+        "not" not in normalized and
+        "avoid" not in normalized and
+        "no," not in normalized):
+        return {
+            'recommendation': recommendation,
+            'confidence': 'positive',
+            'is_positive': True,
+            'type': 'technical'
+        }
+    
+    # Fallback for unknown patterns
+    logging.warning(f'Unknown recommendation pattern in backend: {recommendation}')
+    return {
+        'recommendation': recommendation,
+        'confidence': 'unknown',
+        'is_positive': False,
+        'type': 'unknown'
+    }
+
 @app.route('/share/<ticker>')
 @app.route('/share/<ticker>/')
 def share_analysis(ticker):
@@ -1126,21 +1264,27 @@ def share_analysis(ticker):
             logging.warning(f"Could not fetch current price for {ticker}: {str(e)}")
             cached_result['current_price'] = "Price unavailable"
         
-        # Prepare social meta data - prioritize income analysis if available
+        # PRODUCTION-GRADE RECOMMENDATION PARSING - FIXES UNICODE APOSTROPHE BUG
         income_analysis = cached_result.get('income_analysis', {})
-        income_recommendation = income_analysis.get('recommendation', '')
         company_name = cached_result.get('company_name', ticker)
         base_analysis_type = "Maximum Brain" if maximum_brain else "Standard"
         
-        # Use income analysis recommendation if it's a positive "Buy" recommendation
-        if income_recommendation and 'buy' in income_recommendation.lower():
-            recommendation = income_recommendation
-            confidence = income_analysis.get('confidence', 'medium')
+        # Use Unicode-safe recommendation parsing
+        is_income_mode = bool(income_analysis and income_analysis.get('recommendation'))
+        parsed_result = parse_recommendation_backend(
+            cached_result.get('recommendation', 'Unknown'),
+            income_analysis,
+            is_income_mode
+        )
+        
+        recommendation = parsed_result['recommendation']
+        confidence = parsed_result['confidence']
+        is_positive_recommendation = parsed_result['is_positive']
+        
+        # Set analysis type based on what recommendation we're using
+        if parsed_result['type'] == 'income':
             analysis_type = f"Income-Focused {base_analysis_type}"
         else:
-            # Fall back to technical analysis
-            recommendation = cached_result.get('recommendation', 'Unknown')
-            confidence = cached_result.get('confidence', 'Unknown')
             analysis_type = base_analysis_type
         
         # Create dynamic social sharing content
@@ -1152,7 +1296,9 @@ def share_analysis(ticker):
                              ticker=ticker,
                              maximum_brain=maximum_brain,
                              social_title=social_title,
-                             social_description=social_description)
+                             social_description=social_description,
+                             parsed_recommendation=parsed_result,
+                             analysis_type=analysis_type)
         
     except Exception as e:
         logging.error(f"Error in share route for {ticker}: {str(e)}")

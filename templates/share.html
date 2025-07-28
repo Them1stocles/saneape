@@ -165,27 +165,27 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center mb-3">
-                                        {% if analysis.income_analysis and analysis.income_analysis.recommendation and 'buy' in analysis.income_analysis.recommendation.lower() %}
-                                            <!-- Prioritize income analysis recommendation if it's a buy recommendation -->
-                                            {% set display_rec = analysis.income_analysis.recommendation %}
-                                            {% set display_confidence = analysis.income_analysis.confidence %}
-                                        {% else %}
-                                            <!-- Fall back to technical analysis -->
-                                            {% set display_rec = analysis.recommendation %}
-                                            {% set display_confidence = analysis.confidence %}
-                                        {% endif %}
+                                        <!-- PRODUCTION-GRADE UNICODE-SAFE RECOMMENDATION DISPLAY -->
+                                        {% set display_rec = parsed_recommendation.recommendation %}
+                                        {% set display_confidence = parsed_recommendation.confidence %}
+                                        {% set is_positive = parsed_recommendation.is_positive %}
                                         
-                                        {% set rec_lower = display_rec.lower() %}
                                         <div class="recommendation-badge 
-                                            {% if 'yes' in rec_lower and 'buy' in rec_lower %}
-                                                bg-success
-                                            {% elif 'buy' in rec_lower and 'no buy' not in rec_lower %}
+                                            {% if is_positive %}
                                                 bg-success
                                             {% else %}
                                                 bg-danger
                                             {% endif %} 
                                             text-white px-3 py-2 rounded me-3">
-                                            <strong>{{ display_rec }}</strong>
+                                            <strong>
+                                                {% if parsed_recommendation.type == 'income' and is_positive %}
+                                                    Buy for Income
+                                                {% elif is_positive %}
+                                                    Buy
+                                                {% else %}
+                                                    No Buy
+                                                {% endif %}
+                                            </strong>
                                         </div>
                                         <div>
                                             <div class="confidence-badge bg-secondary text-white px-2 py-1 rounded-pill small">
