@@ -963,7 +963,7 @@ def account_dashboard():
 @app.route('/api/account/credits')
 @login_required  
 def api_account_credits():
-    """Real-time credit balance API for dashboard updates with rate limiting"""
+    """Real-time credit balance API for dashboard updates with rate limiting and Stripe resilience"""
     try:
         if not is_user_auth_enabled():
             return jsonify({'error': 'User accounts not available'}), 404
@@ -974,13 +974,59 @@ def api_account_credits():
         if not rate_limiter.check_api_rate_limit(client_ip, 'account_api'):
             return jsonify({'error': 'Rate limit exceeded'}), 429
         
+        # Get credit information (Stripe-independent)
         credit_mgr = CreditManager()
         credit_info = credit_mgr.get_user_credit_info(current_user.id)
         
-        return jsonify({
+        # Get subscription information with robust Stripe failure handling
+        subscription_expires = None
+        subscription_active = False
+        
+        try:
+            # Deferred import to avoid circular dependency
+            from stripe_manager import StripeManager
+            stripe_mgr = StripeManager()
+            subscription_info = stripe_mgr.get_user_subscription_info(current_user.id)
+            
+            if subscription_info and subscription_info.get('has_subscription'):
+                subscription_active = True
+                subscription_data = subscription_info.get('subscription', {})
+                if subscription_data.get('current_period_end'):
+                    subscription_expires = subscription_data['current_period_end']
+                    
+        except Exception as e:
+            # Log Stripe failure but continue with credit data
+            logging.warning(f"Stripe subscription lookup failed for user {current_user.id}: {e}")
+            
+            # Fallback: check local subscription data from credit manager
+            try:
+                from models import Subscription
+                local_subscription = Subscription.query.filter_by(
+                    user_id=current_user.id, 
+                    status='active'
+                ).filter(
+                    Subscription.current_period_end > datetime.utcnow()
+                ).first()
+                
+                if local_subscription:
+                    subscription_active = True
+                    if local_subscription.current_period_end:
+                        subscription_expires = local_subscription.current_period_end.isoformat()
+                        
+            except Exception as fallback_error:
+                logging.error(f"Fallback subscription lookup failed: {fallback_error}")
+        
+        # Enhanced response with subscription context
+        response_data = {
             'success': True,
-            'credits': credit_info
-        })
+            'credits': {
+                **credit_info,
+                'subscription_expires': subscription_expires,
+                'has_active_subscription': subscription_active
+            }
+        }
+        
+        return jsonify(response_data)
         
     except Exception as e:
         logging.error(f"Error getting credit info for user {current_user.id}: {e}")

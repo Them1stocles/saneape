@@ -401,13 +401,33 @@
                 }
             } catch (error) {
                 console.error('Error loading credit balance:', error);
-                // Show error state
-                document.getElementById('subscription-credits').textContent = 'Error';
-                document.getElementById('topup-credits').textContent = 'Error';
-                document.getElementById('total-credits').textContent = 'Error';
+                
+                // Show user-friendly error state with retry option
+                const errorMessage = error.message.includes('404') ? 'Service unavailable' : 'Unable to load';
+                
+                document.getElementById('subscription-credits').textContent = '—';
+                document.getElementById('topup-credits').textContent = '—';
+                document.getElementById('total-credits').textContent = '—';
+                
                 const navCredits = document.getElementById('nav-credits');
                 if (navCredits) {
-                    navCredits.textContent = 'Error loading';
+                    navCredits.innerHTML = `<span class="text-warning">${errorMessage}</span>`;
+                }
+                
+                // Show error container with retry option
+                const errorContainer = document.getElementById('dashboard-error-container');
+                if (errorContainer) {
+                    errorContainer.innerHTML = `
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i data-feather="alert-triangle" class="me-2"></i>
+                            <strong>Credit data unavailable:</strong> ${errorMessage}. 
+                            <button type="button" class="btn btn-sm btn-outline-warning ms-2" onclick="loadCreditBalance()">
+                                <i data-feather="refresh-cw" class="me-1"></i>Retry
+                            </button>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                    feather.replace();
                 }
             }
         }

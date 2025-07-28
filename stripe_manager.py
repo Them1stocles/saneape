@@ -379,28 +379,30 @@ class StripeManager:
             
             # Get billing period from latest invoice or calculate default
             try:
-                # Retrieve subscription with expanded latest invoice
+                # Retrieve subscription with expanded latest invoice and lines
                 stripe_subscription = stripe.Subscription.retrieve(
                     subscription_id, 
-                    expand=['latest_invoice']
+                    expand=['latest_invoice', 'latest_invoice.lines']
                 )
                 
-                if (stripe_subscription.latest_invoice and 
-                    hasattr(stripe_subscription.latest_invoice, 'lines') and 
-                    stripe_subscription.latest_invoice.lines.data):
+                # Extract period from invoice with proper type checking
+                period_extracted = False
+                latest_invoice = stripe_subscription.latest_invoice
+                
+                if (latest_invoice and 
+                    hasattr(latest_invoice, 'lines') and 
+                    hasattr(latest_invoice.lines, 'data') and 
+                    latest_invoice.lines.data):
                     
-                    # Get period from invoice line item
-                    line_item = stripe_subscription.latest_invoice.lines.data[0]
-                    if hasattr(line_item, 'period'):
+                    # Get period from first invoice line item
+                    line_item = latest_invoice.lines.data[0]
+                    if hasattr(line_item, 'period') and line_item.period:
                         subscription.current_period_start = datetime.fromtimestamp(line_item.period.start)
                         subscription.current_period_end = datetime.fromtimestamp(line_item.period.end)
-                    else:
-                        # Fallback to calculating from start date
-                        subscription.current_period_end = self._calculate_period_end(
-                            subscription.current_period_start, plan_type
-                        )
-                else:
-                    # Fallback to calculating from start date
+                        period_extracted = True
+                
+                # Fallback to calculating from start date if period not extracted
+                if not period_extracted:
                     subscription.current_period_end = self._calculate_period_end(
                         subscription.current_period_start, plan_type
                     )
@@ -824,16 +826,42 @@ class StripeManager:
             stripe_details = None
             if subscription.stripe_subscription_id:
                 try:
-                    stripe_sub = stripe.Subscription.retrieve(subscription.stripe_subscription_id)
+                    # Retrieve subscription with expanded latest invoice for period information
+                    stripe_sub = stripe.Subscription.retrieve(
+                        subscription.stripe_subscription_id,
+                        expand=['latest_invoice', 'latest_invoice.lines']
+                    )
+                    
+                    # Extract period information from latest invoice (modern API approach)
+                    current_period_start = None
+                    current_period_end = None
+                    
+                    if stripe_sub.latest_invoice and hasattr(stripe_sub.latest_invoice, 'lines') and stripe_sub.latest_invoice.lines.data:
+                        line_item = stripe_sub.latest_invoice.lines.data[0]
+                        if hasattr(line_item, 'period'):
+                            current_period_start = datetime.fromtimestamp(line_item.period.start).isoformat()
+                            current_period_end = datetime.fromtimestamp(line_item.period.end).isoformat()
+                    
                     stripe_details = {
                         'status': stripe_sub.status,
                         'cancel_at_period_end': stripe_sub.cancel_at_period_end,
                         'canceled_at': stripe_sub.canceled_at,
-                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start).isoformat() if stripe_sub.current_period_start else None,
-                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end).isoformat() if stripe_sub.current_period_end else None
+                        'current_period_start': current_period_start,
+                        'current_period_end': current_period_end
                     }
+                    
+                    logger.debug(f"Successfully retrieved Stripe subscription details for {subscription.stripe_subscription_id}")
+                    
                 except Exception as e:
                     logger.warning(f"Could not retrieve Stripe subscription details: {e}")
+                    # Provide fallback stripe_details to prevent None issues
+                    stripe_details = {
+                        'status': 'unknown',
+                        'cancel_at_period_end': False,
+                        'canceled_at': None,
+                        'current_period_start': None,
+                        'current_period_end': None
+                    }
             
             return {
                 'has_subscription': True,
