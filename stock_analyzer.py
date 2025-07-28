@@ -20,6 +20,27 @@ class StockAnalyzer:
     def fetch_stock_data(self, ticker):
         """Fetch historical stock data using yfinance"""
         try:
+            # Set a temporary cache directory to avoid I/O errors
+            import tempfile
+            temp_cache_dir = tempfile.mkdtemp(prefix="yfinance_cache_")
+            os.environ['YFINANCE_CACHE_DIR'] = temp_cache_dir
+            
+            # Clear any existing cache files that might be corrupted
+            cache_locations = [
+                os.path.expanduser("~/.cache/py-yfinance"),
+                os.path.join(os.getcwd(), ".cache/py-yfinance"),
+                "/home/runner/workspace/.cache/py-yfinance"
+            ]
+            
+            for cache_dir in cache_locations:
+                if os.path.exists(cache_dir):
+                    try:
+                        import shutil
+                        shutil.rmtree(cache_dir)
+                        logging.info(f"Cleared cache at: {cache_dir}")
+                    except Exception as e:
+                        logging.warning(f"Could not clear cache at {cache_dir}: {e}")
+            
             stock = yf.Ticker(ticker)
             
             # Get 2 years of historical data
@@ -34,6 +55,13 @@ class StockAnalyzer:
             # Get additional info
             info = stock.info
             
+            # Clean up temp cache
+            try:
+                import shutil
+                shutil.rmtree(temp_cache_dir)
+            except:
+                pass
+            
             return {
                 'history': hist,
                 'info': info,
@@ -42,6 +70,9 @@ class StockAnalyzer:
             
         except Exception as e:
             logging.error(f"Error fetching data for {ticker}: {str(e)}")
+            # More detailed error logging
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
             return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
     
     def calculate_technical_indicators(self, df, maximum_brain=False):
