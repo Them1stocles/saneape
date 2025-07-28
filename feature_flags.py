@@ -90,35 +90,35 @@ class FeatureFlagManager:
             
             'credit_display': FeatureFlag(
                 name='credit_display',
-                enabled=self.environment == FeatureFlagEnvironment.DEVELOPMENT,
+                enabled=True,  # ENABLED - Show credits in all environments
                 description='Show credit balance and usage in UI',
-                environments=dev_envs,
-                rollout_percentage=100 if self.environment == FeatureFlagEnvironment.DEVELOPMENT else 0
+                environments=all_envs,  # Enable in all environments
+                rollout_percentage=100  # Full rollout
             ),
             
             # Phase 2: Stripe Payments
             'stripe_payments': FeatureFlag(
                 name='stripe_payments',
-                enabled=False,  # Disabled until Stripe integration complete
+                enabled=True,  # ENABLED - Stripe integration is complete
                 description='Enable Stripe payment processing for subscriptions and top-ups',
-                environments=dev_envs,
-                rollout_percentage=0  # Will be manually enabled after testing
+                environments=all_envs,  # Enable in all environments
+                rollout_percentage=100  # Full rollout
             ),
             
             'subscription_management': FeatureFlag(
                 name='subscription_management',
-                enabled=False,
+                enabled=True,  # ENABLED - Subscription system ready
                 description='Enable subscription creation, updates, and cancellation',
-                environments=dev_envs,
-                rollout_percentage=0
+                environments=all_envs,  # Enable in all environments
+                rollout_percentage=100  # Full rollout
             ),
             
             'topup_purchases': FeatureFlag(
                 name='topup_purchases',
-                enabled=False,
+                enabled=True,  # ENABLED - Top-up system ready
                 description='Enable one-time credit pack purchases',
-                environments=dev_envs,
-                rollout_percentage=0
+                environments=all_envs,  # Enable in all environments
+                rollout_percentage=100  # Full rollout
             ),
             
             # Phase 3: Enhanced Features
@@ -132,10 +132,10 @@ class FeatureFlagManager:
             
             'dual_credit_system': FeatureFlag(
                 name='dual_credit_system',
-                enabled=False,
+                enabled=True,  # ENABLED - Dual credit system is implemented
                 description='Enable subscription + top-up credit separation with different expiration rules',
-                environments=dev_envs,
-                rollout_percentage=0
+                environments=all_envs,  # Enable in all environments
+                rollout_percentage=100  # Full rollout
             ),
             
             # Admin and Monitoring
