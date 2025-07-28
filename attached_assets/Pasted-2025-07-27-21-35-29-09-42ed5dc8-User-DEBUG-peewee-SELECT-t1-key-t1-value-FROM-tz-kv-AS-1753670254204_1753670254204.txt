@@ -1,0 +1,144 @@
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['PLTY', 1, 0])
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:Entering history()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:PLTY: Yahoo GET parameters: {'period1': '1926-08-21 22:35:34-04:00', 'period2': '2025-07-27 22:35:29-04:00', 'interval': '1d', 'includePrePost': True, 'events': 'div,splits,capitalGains'}
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering get()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering _make_request()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/PLTY
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:params={'period1': -1368393866, 'period2': 1753670129, 'interval': '1d', 'includePrePost': True, 'events': 'div,splits,capitalGains'}
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering _get_cookie_and_crumb()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:cookie_mode = 'basic'
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering _get_cookie_and_crumb_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering _get_cookie_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:reusing cookie
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Exiting _get_cookie_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Entering _get_crumb_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance:reusing crumb
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Exiting _get_crumb_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Exiting _get_cookie_and_crumb_basic()
+2025-07-27 21:35:29.09
+42ed5dc8
+User
+DEBUG:yfinance: Exiting _get_cookie_and_crumb()
+2025-07-27 21:35:29.22
+42ed5dc8
+User
+DEBUG:yfinance:response code=200
+2025-07-27 21:35:29.22
+42ed5dc8
+User
+DEBUG:yfinance: Exiting _make_request()
+2025-07-27 21:35:29.22
+42ed5dc8
+User
+DEBUG:yfinance: Exiting get()
+2025-07-27 21:35:29.22
+42ed5dc8
+User
+DEBUG:yfinance:PLTY: yfinance received OHLC data: 2024-10-08 13:30:00 -> 2025-07-25 13:30:00
+2025-07-27 21:35:29.22
+42ed5dc8
+User
+DEBUG:yfinance:PLTY: OHLC after cleaning: 2024-10-08 09:30:00-04:00 -> 2025-07-25 09:30:00-04:00
+2025-07-27 21:35:29.24
+42ed5dc8
+User
+DEBUG:yfinance:PLTY: OHLC after combining events: 2024-10-08 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+2025-07-27 21:35:29.25
+42ed5dc8
+User
+DEBUG:yfinance:PLTY: yfinance returning OHLC: 2024-10-08 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+2025-07-27 21:35:29.25
+42ed5dc8
+User
+DEBUG:yfinance:Exiting history()
+2025-07-27 21:35:29.25
+42ed5dc8
+User
+INFO:income_analyzer:PLTY: Payment intervals: [27, 27, 27, 28, 28, 28, 28, 29, 29] days, median: 28, avg: 27.9
+2025-07-27 21:35:29.25
+42ed5dc8
+User
+INFO:income_analyzer:PLTY: Calculated yield 59.37% from 10 payments (frequency: monthly)
+2025-07-27 21:35:29.25
+42ed5dc8
+User
+INFO:root:Income metrics calculated for PLTY: True
+2025-07-27 21:35:29.26
+42ed5dc8
+User
+DEBUG:openai._base_client:Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-9321dd08-b344-40f7-994e-974a5d10583a', 'json_data': {'messages': [{'role': 'system', 'content': 'You are an expert technical analyst. Always respond with valid JSON format.'}, {'role': 'user', 'content': 'You are an expert stock technical analyst performing MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities. Given the following pre-computed technical indicator values for stock ticker PLTY (Tidal Trust II - YieldMax PLTR Option Income Strategy ETF):\n\nCurrent Price: $68.90\n30-day Price Change: 12.93%\n30-day Average Volume: 623,573\n30-day Volatility (StdDev): 2.60\n\nPRE-COMPUTED TECHNICAL INDICATOR VALUES:\n{\n "RSI": 67.478,\n "ADX": 7.6291,\n "MACD": 1.9773,\n "MACD_Signal": 1.7749,\n "MACD_Histogram": 0.2024,\n "SMA_20": 64.416,\n "SMA_50": 61.7398,\n "SMA_200": 46.6426,\n "EMA_12": 66.4309,\n "EMA_26": 64.4536,\n "Bollinger_Upper": 70.3875,\n "Bollinger_Middle": 64.416,\n "Bollinger_Lower": 58.4445,\n "Stochastic_K": 94.3604,\n "Stochastic_D": 95.876,\n "CCI": 122.1444,\n "Williams_R": -5.6396,\n "MFI": 75.1581,\n "OBV": 5706000.0,\n "ATR": 1.5258,\n "Ultimate_Oscillator": 65.202,\n "TRIX": 40.3082,\n "Momentum": 5.1918,\n "ROC": 8.0677,\n "Donchian_Upper": 69.33,\n "Donchian_Lower": 58.5083,\n "Keltner_Upper": 68.8494,\n "Keltner_Lower": 61.6529,\n "Aroon_Up": 0.0,\n "Aroon_Down": 100.0,\n "Parabolic_SAR": 64.065,\n "VWAP": 55.0661,\n "AD_Line": 6009388.7578,\n "Tenkan_Sen": 66.6975,\n "Kijun_Sen": 63.9192,\n "Pivot_Point": 68.8133,\n "Resistance_R1": 69.4167,\n "Support_S1": 68.2967,\n "Fibonacci_23.6": 65.9659,\n "Fibonacci_38.2": 63.8846,\n "Fibonacci_61.8": 60.5205,\n "Resistance_Level": 48.8968,\n "Support_Level": 58.5083,\n "RMI": 47.7111,\n "Supertrend": 0,\n "Trend_Strength": 7.6291,\n "Volume_Trend": 0.0,\n "Price_Momentum": 1.0,\n "Volatility": 2.9858,\n "RSI_Divergence_Flag": 0.0,\n "MACD_Crossover_Flag": 1.0\n}\n\nAnalyze this stock using ALL of these technical analysis methods and indicators: Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns.\n\nUse the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.\n\nFor each method/indicator:\n- Briefly explain the method and how it applies to this data\n- State whether it suggests a \'Buy\' signal (positive outlook) or \'No Buy\' signal (negative or neutral outlook)\n\nThen, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly \'Yes, buy!\' if the consensus is positive, or \'No, don\'t buy!\' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.\n\nDo not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the pre-computed indicator values provided.\n\nRespond in JSON format with this structure:\n{\n "recommendation": "Yes, buy!" or "No, don\'t buy!",\n "confidence": "high" or "medium" or "low",\n "overall_explanation": "Brief explanation of the overall decision",\n "technical_analysis": [\n {\n "method": "Method name",\n "explanation": "How this method applies to the data",\n "signal": "Buy" or "No Buy",\n "strength": "Strong" or "Moderate" or "Weak"\n }\n ]\n}'}], 'model': 'gpt-4o', 'response_format': {'type': 'json_object'}, 'temperature': 0.3}}
+2025-07-27 21:35:29.26
+42ed5dc8
+User
+DEBUG:openai._base_client:Sending HTTP Request: POST https://api.openai.com/v1/chat/completions
+2025-07-27 21:35:29.26
+42ed5dc8
+User
+DEBUG:httpcore.connection:connect_tcp.started host='api.openai.com' port=443 local_address=None timeout=5.0 socket_options=None
+2025-07-27 21:35:29.28
+42ed5dc8
+User
+DEBUG:httpcore.connection:connect_tcp.complete return_value=
+2025-07-27 21:35:29.28
+42ed5dc8
+User
+DEBUG:httpcore.connection:start_tls.started ssl_context= server_hostname='api.openai.com' timeout=5.0
+2025-07-27 21:35:29.29
+42ed5dc8
+User
+DEBUG:httpcore.connection:start_tls.complete return_value=
+2025-07-27 21:35:29.29
+42ed5dc8
+User
+DEBUG:httpcore.http11:send_request_headers.started request=
