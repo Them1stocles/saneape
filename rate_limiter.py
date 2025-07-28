@@ -76,14 +76,19 @@ class RateLimiter:
                 return False, cost_error, None
             
             # Hybrid rate limiting: Credit-based for authenticated users, IP-based for anonymous
-            if (current_user.is_authenticated and 
-                is_credit_system_enabled() and 
-                is_user_auth_enabled()):
-                
+            auth_status = current_user.is_authenticated
+            credit_enabled = is_credit_system_enabled()
+            user_auth_enabled = is_user_auth_enabled()
+            
+            self.logger.info(f"Rate limit check: auth={auth_status}, credit_system={credit_enabled}, user_auth={user_auth_enabled}")
+            
+            if (auth_status and credit_enabled and user_auth_enabled):
                 # CREDIT-BASED RATE LIMITING (Authenticated Users)
+                self.logger.info(f"Using credit-based rate limiting for user {current_user.id}")
                 return self._check_credit_limits(current_user.id, maximum_brain, ticker, ip_address)
             else:
                 # IP-BASED RATE LIMITING (Anonymous Users)
+                self.logger.info(f"Using IP-based rate limiting for {ip_address}")
                 allowed, error_message = self._check_ip_limits(ip_address, maximum_brain)
                 return allowed, error_message, None
                 

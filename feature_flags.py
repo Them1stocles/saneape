@@ -133,13 +133,13 @@ class FeatureFlagManager:
                 rollout_percentage=100  # Full rollout
             ),
             
-            # Phase 3: Enhanced Features
+            # Phase 3: Enhanced Features  
             'enhanced_rate_limiting': FeatureFlag(
                 name='enhanced_rate_limiting',
-                enabled=self.environment == FeatureFlagEnvironment.DEVELOPMENT,
+                enabled=True,  # PRODUCTION FIX: Enable in all environments for credit-based limiting
                 description='Use hybrid user/IP rate limiting with credit deduction',
-                environments=dev_envs,
-                rollout_percentage=100 if self.environment == FeatureFlagEnvironment.DEVELOPMENT else 0
+                environments=all_envs,  # Enable in all environments including production
+                rollout_percentage=100  # Full rollout in all environments
             ),
             
             'dual_credit_system': FeatureFlag(

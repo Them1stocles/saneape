@@ -110,6 +110,14 @@ Two main models:
 
 ## Recent Changes: Latest modifications with dates
 
+### July 28, 2025 - CRITICAL: Production Rate Limiting Feature Flag Fixed ✅
+- **Root Cause Identified**: The `enhanced_rate_limiting` feature flag was disabled in production environment, causing authenticated users to fall back to IP-based rate limiting instead of using their credit balance
+- **Production Fix Applied**: Enabled `enhanced_rate_limiting` flag in all environments (development, staging, production) with 100% rollout
+- **Feature Flag Update**: Changed from development-only to full production deployment for credit-based rate limiting system
+- **Debug Logging Added**: Enhanced rate limiter with detailed logging to verify authentication status and feature flag states
+- **User Impact**: Authenticated users with credits can now properly perform analyses without hitting "Daily Limit Reached" errors
+- **System Verification**: Server reloaded successfully with updated feature flags in production environment
+
 ### July 28, 2025 - CRITICAL: Authentication & Logout System Fixed ✅
 - **Issue Identified**: Users experiencing broken authentication state where backend correctly identified users as not authenticated but frontend displayed cached credit information
 - **Logout Bug Fixed**: Updated logout route to redirect directly to home with cache-busting headers (`Cache-Control: no-cache, no-store, must-revalidate`) instead of going through Replit's logout endpoint  
