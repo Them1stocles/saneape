@@ -41,7 +41,10 @@ from routes import *
 # Register payment blueprint
 try:
     from payment_routes import payment_bp
-    app.register_blueprint(payment_bp)
-    logging.info("Payment blueprint registered successfully")
+    if hasattr(app, 'register_blueprint'):
+        app.register_blueprint(payment_bp)
+        logging.info("Payment blueprint registered successfully")
+    else:
+        logging.error("Flask app does not have register_blueprint method")
 except Exception as e:
     logging.error(f"Failed to register payment blueprint: {e}")

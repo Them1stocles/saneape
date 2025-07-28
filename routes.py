@@ -340,16 +340,16 @@ def admin_api_subscriptions():
         
     try:
         # Get all subscriptions with user details
-        subscriptions = db.session.query(Subscription).join(User).all()
+        subscriptions = db.session.query(Subscription, User).join(User, Subscription.user_id == User.id).all()
         
         subscription_data = []
-        for sub in subscriptions:
+        for sub, user in subscriptions:
             subscription_data.append({
                 'id': sub.id,
                 'user_id': sub.user_id,
-                'user_display_name': sub.user.display_name,
-                'user_email': sub.user.email,
-                'user_profile_image': sub.user.profile_image_url,
+                'user_display_name': user.display_name,
+                'user_email': user.email,
+                'user_profile_image': user.profile_image_url,
                 'stripe_subscription_id': sub.stripe_subscription_id,
                 'plan_type': sub.plan_type,
                 'status': sub.status,
@@ -591,19 +591,17 @@ def create_missing_subscription(stripe_sub, stripe_mgr):
             current_period_end = datetime.fromtimestamp(stripe_sub.current_period_end)
         
         # STEP 4: Create new local subscription record
-        new_subscription = Subscription(
-            user_id=local_user.id,
-            stripe_subscription_id=stripe_sub.id,
-            stripe_customer_id=stripe_sub.customer.id if hasattr(stripe_sub.customer, 'id') else stripe_sub.customer,
-            plan_type=plan_type,
-            status=stripe_sub.status,
-            credits_per_cycle=credits_per_cycle,
-            current_period_start=current_period_start,
-            current_period_end=current_period_end,
-            cancel_at_period_end=getattr(stripe_sub, 'cancel_at_period_end', False),
-            created_at=datetime.fromtimestamp(stripe_sub.created),
-            updated_at=datetime.utcnow()
-        )
+        new_subscription = Subscription()
+        new_subscription.user_id = local_user.id
+        new_subscription.stripe_subscription_id = stripe_sub.id
+        new_subscription.stripe_customer_id = stripe_sub.customer.id if hasattr(stripe_sub.customer, 'id') else stripe_sub.customer
+        new_subscription.plan_type = plan_type
+        new_subscription.status = stripe_sub.status
+        new_subscription.current_period_start = current_period_start
+        new_subscription.current_period_end = current_period_end
+        new_subscription.cancel_at_period_end = getattr(stripe_sub, 'cancel_at_period_end', False)
+        new_subscription.created_at = datetime.fromtimestamp(stripe_sub.created)
+        new_subscription.updated_at = datetime.utcnow()
         
         db.session.add(new_subscription)
         
@@ -613,10 +611,12 @@ def create_missing_subscription(stripe_sub, stripe_mgr):
             credit_mgr = CreditManager()
             
             # Allocate subscription credits for the current period
+            # Convert datetime to date if needed
+            expiry_date = current_period_end.date() if current_period_end else None
             success = credit_mgr.allocate_subscription_credits(
                 user_id=local_user.id,
                 credits=credits_per_cycle,
-                expiry_date=current_period_end
+                expiry_date=expiry_date
             )
             
             if not success:
@@ -659,18 +659,26 @@ def admin_add_credits():
         
         # Add credits using credit manager
         credit_mgr = CreditManager()
-        result = credit_mgr.add_topup_credits(user_id, credits, f"Admin manual credit addition")
+        result = credit_mgr.add_topup_credits(
+            user_id=user_id, 
+            credits=credits, 
+            payment_amount=None,
+            stripe_payment_id=f"admin_manual_{user_id}_{credits}",
+            is_bonus=True
+        )
         
-        if result['success']:
+        if result:
+            # Get updated balance
+            credit_info = credit_mgr.get_user_credit_info(user_id)
             return jsonify({
                 'success': True,
                 'message': f"Successfully added {credits} credits to user {user_id}",
-                'new_balance': result.get('new_balance', 'Unknown')
+                'new_balance': credit_info.get('total_credits', 'Unknown')
             })
         else:
             return jsonify({
                 'success': False,
-                'error': result.get('error', 'Failed to add credits')
+                'error': 'Failed to add credits'
             }), 500
             
     except Exception as e:
@@ -1011,7 +1019,7 @@ def api_account_transactions():
             current_user.id, 
             page=page, 
             per_page=per_page,
-            transaction_type=transaction_type or 'all' if transaction_type else None
+            transaction_type=transaction_type
         )
         
         return jsonify({
@@ -1145,8 +1153,7 @@ def get_recent_analyses():
         
         current_time = datetime.utcnow()
         recent_analyses = AnalysisCache.query.filter(
-            AnalysisCache.created_at >= six_hours_ago
-        ).filter(
+            AnalysisCache.created_at >= six_hours_ago,
             AnalysisCache.cache_expiry > current_time  # Only non-expired
         ).order_by(AnalysisCache.created_at.desc()).limit(10).all()
         

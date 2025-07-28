@@ -31,14 +31,13 @@ class CreditManager:
             
             if not credit_balance:
                 logger.info(f"Creating new credit balance for user {user_id}")
-                credit_balance = CreditBalance(
-                    user_id=user_id,
-                    subscription_credits=0,
-                    topup_credits=0,
-                    credits_used_today=0,
-                    credits_used_this_cycle=0,
-                    last_reset_date=datetime.utcnow().date()
-                )
+                credit_balance = CreditBalance()
+                credit_balance.user_id = user_id
+                credit_balance.subscription_credits = 0
+                credit_balance.topup_credits = 0
+                credit_balance.credits_used_today = 0
+                credit_balance.credits_used_this_cycle = 0
+                credit_balance.last_reset_date = datetime.utcnow().date()
                 db.session.add(credit_balance)
                 db.session.commit()
                 
@@ -107,7 +106,7 @@ class CreditManager:
             db.session.rollback()
             raise
     
-    def allocate_subscription_credits(self, user_id: str, credits: int, expiry_date: date = None) -> bool:
+    def allocate_subscription_credits(self, user_id: str, credits: int, expiry_date: Optional[date] = None) -> bool:
         """
         Grant subscription credits with expiry date.
         Replaces existing subscription credits (no rollover).
@@ -152,8 +151,8 @@ class CreditManager:
             db.session.rollback()
             return False
     
-    def add_topup_credits(self, user_id: str, credits: int, payment_amount: float = None, 
-                         stripe_payment_id: str = None, is_bonus: bool = False) -> bool:
+    def add_topup_credits(self, user_id: str, credits: int, payment_amount: Optional[float] = None, 
+                         stripe_payment_id: Optional[str] = None, is_bonus: bool = False) -> bool:
         """
         Add top-up credits (never expire, unlimited rollover).
         """
@@ -470,7 +469,7 @@ class CreditManager:
                 'error': 'Could not retrieve usage analytics'
             }
 
-    def get_credit_history(self, user_id: str, limit: int = 50, page: int = 1, per_page: int = 20, transaction_type: str = None) -> Dict[str, Any]:
+    def get_credit_history(self, user_id: str, limit: int = 50, page: int = 1, per_page: int = 20, transaction_type: Optional[str] = None) -> Dict[str, Any]:
         """Get paginated credit transaction history for user"""
         try:
             query = CreditTransaction.query.filter_by(user_id=user_id)
@@ -515,7 +514,7 @@ class CreditManager:
             else:
                 # Legacy format for backward compatibility
                 transactions = query.limit(limit).all()
-                return [{
+                transaction_list = [{
                     'id': t.id,
                     'type': t.transaction_type,
                     'credit_type': t.credit_type,
@@ -526,6 +525,11 @@ class CreditManager:
                     'amount_paid': t.amount_paid,
                     'created_at': t.created_at.isoformat()
                 } for t in transactions]
+                return {
+                    'items': transaction_list,
+                    'total': len(transaction_list),
+                    'legacy_mode': True
+                }
             
         except Exception as e:
             logger.error(f"Error getting credit history for user {user_id}: {e}")
@@ -540,7 +544,12 @@ class CreditManager:
                     'has_prev': False,
                     'error': str(e)
                 }
-            return []
+            return {
+                'items': [],
+                'total': 0,
+                'error': str(e),
+                'legacy_mode': True
+            }
     
     def _format_transaction_description(self, transaction):
         """Format a human-readable description for transactions"""
@@ -622,7 +631,7 @@ class CreditManager:
                 expiry_date = datetime.utcnow().date() + timedelta(days=30)
             
             # Grant new subscription credits (this will expire old ones)
-            success = self.grant_subscription_credits(
+            success = self.allocate_subscription_credits(
                 user_id, 
                 subscription.credits_per_cycle, 
                 expiry_date
