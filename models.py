@@ -159,17 +159,8 @@ class User(UserMixin, db.Model):
 
 class OAuth(OAuthConsumerMixin, db.Model):
     """OAuth token storage for Replit authentication"""
-    __tablename__ = 'oauth_tokens'
-    
     user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
     browser_session_key = db.Column(db.String(255), nullable=False)
-    
-    # Unique constraint for user + session + provider
-    __table_args__ = (
-        UniqueConstraint('user_id', 'browser_session_key', 'provider', 
-                        name='uq_oauth_user_browser_session_provider'),
-        Index('idx_oauth_user_provider', 'user_id', 'provider'),
-    )
 
 
 # =====================================

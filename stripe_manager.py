@@ -16,6 +16,7 @@ from flask import request, current_app
 from app import db
 from models import User, Subscription, CreditBalance, CreditTransaction, PaymentFailure
 from monitoring import monitoring, AlertSeverity
+from credit_manager import credit_manager
 
 logger = logging.getLogger(__name__)
 
@@ -298,6 +299,10 @@ class StripeManager:
                 return self._handle_payment_succeeded(event_data)
             elif event_type == 'invoice.payment_failed':
                 return self._handle_payment_failed(event_data)
+            elif event_type == 'payment_intent.succeeded':
+                return self._handle_payment_intent_succeeded(event_data)
+            elif event_type == 'payment_intent.payment_failed':
+                return self._handle_payment_intent_failed(event_data)
             else:
                 logger.info(f"Unhandled webhook event type: {event_type}")
                 return True  # Don't fail for unhandled events
@@ -393,10 +398,17 @@ class StripeManager:
             
             db.session.add(subscription)
             
-            # Grant initial subscription credits with null safety
-            if subscription_id:
-                source_id = subscription_id if subscription_id else "unknown"
-                self._grant_subscription_credits(user.id, credits_per_period, source_id)
+            # Grant initial subscription credits using CreditManager
+            if subscription.plan_type == 'weekly':
+                expiry_date = datetime.utcnow().date() + timedelta(days=7)
+            else:  # monthly
+                expiry_date = datetime.utcnow().date() + timedelta(days=30)
+                
+            credit_manager.grant_subscription_credits(
+                user.id, 
+                credits_per_period,
+                expiry_date
+            )
             
             db.session.commit()
             
@@ -423,12 +435,16 @@ class StripeManager:
                 logger.error(f"Subscription not found: {subscription_id}")
                 return False
             
-            # Grant subscription credits for new billing period
-            safe_subscription_id = subscription_id if subscription_id else "unknown_payment"
-            self._grant_subscription_credits(
+            # Grant subscription credits for new billing period using CreditManager
+            if subscription.plan_type == 'weekly':
+                expiry_date = datetime.utcnow().date() + timedelta(days=7)
+            else:  # monthly
+                expiry_date = datetime.utcnow().date() + timedelta(days=30)
+                
+            credit_manager.grant_subscription_credits(
                 subscription.user_id, 
                 subscription.credits_per_cycle,
-                safe_subscription_id
+                expiry_date
             )
             
             # Update subscription status
@@ -496,8 +512,8 @@ class StripeManager:
             subscription.status = 'canceled'
             subscription.canceled_at = datetime.utcnow()
             
-            # Expire subscription credits immediately
-            self._suspend_subscription_credits(subscription.user_id)
+            # Expire subscription credits immediately using CreditManager
+            credit_manager.suspend_subscription_credits(subscription.user_id)
             
             db.session.commit()
             
@@ -524,8 +540,8 @@ class StripeManager:
                 logger.error(f"Subscription not found: {subscription_id}")
                 return False
             
-            # Suspend subscription credits (keep top-up credits)
-            self._suspend_subscription_credits(subscription.user_id)
+            # Suspend subscription credits (keep top-up credits) using CreditManager
+            credit_manager.suspend_subscription_credits(subscription.user_id)
             
             # Record payment failure
             payment_failure = PaymentFailure()
@@ -697,30 +713,78 @@ class StripeManager:
             }
     
     def _handle_payment_intent_succeeded(self, payment_intent_data: Dict) -> bool:
-        """Handle successful payment intent"""
+        """Handle successful payment intent (topup purchases)"""
         try:
             payment_intent_id = payment_intent_data['id']
             customer_id = payment_intent_data.get('customer')
             amount = payment_intent_data.get('amount', 0)
+            metadata = payment_intent_data.get('metadata', {})
             
             logger.info(f"Payment intent succeeded: {payment_intent_id}, Amount: ${amount/100:.2f}")
             
-            # For test purposes, just log the success
-            return True
+            # Find user by customer ID with null check
+            if not customer_id:
+                logger.error("Missing customer_id in payment intent succeeded")
+                return False
+                
+            user = self._find_user_by_customer_id(customer_id)
+            if not user:
+                logger.error(f"User not found for customer {customer_id}")
+                return False
+            
+            # Calculate credits (100 credits for $5.00)
+            credits = int(amount / 5)  # 1 credit per $0.05
+            
+            # Add topup credits using CreditManager
+            success = credit_manager.add_topup_credits(
+                user_id=user.id,
+                credits=credits,
+                payment_amount=amount / 100,  # Convert to dollars
+                stripe_payment_id=payment_intent_id
+            )
+            
+            if success:
+                logger.info(f"Added {credits} topup credits to user {user.id}")
+                return True
+            else:
+                logger.error(f"Failed to add topup credits to user {user.id}")
+                return False
             
         except Exception as e:
             logger.error(f"Error handling payment intent success: {e}")
             return False
     
     def _handle_payment_intent_failed(self, payment_intent_data: Dict) -> bool:
-        """Handle failed payment intent"""
+        """Handle failed payment intent (topup purchase failures)"""
         try:
             payment_intent_id = payment_intent_data['id']
             customer_id = payment_intent_data.get('customer')
+            failure_reason = payment_intent_data.get('last_payment_error', {}).get('code', 'unknown')
             
-            logger.warning(f"Payment intent failed: {payment_intent_id}")
+            logger.warning(f"Payment intent failed: {payment_intent_id}, Reason: {failure_reason}")
             
-            # For test purposes, just log the failure
+            # Find user by customer ID with null check
+            if not customer_id:
+                logger.error("Missing customer_id in payment intent failed")
+                return False
+                
+            user = self._find_user_by_customer_id(customer_id)
+            if not user:
+                logger.error(f"User not found for customer {customer_id}")
+                return False
+            
+            # Record payment failure for analytics
+            payment_failure = PaymentFailure()
+            payment_failure.user_id = user.id
+            payment_failure.stripe_payment_intent_id = payment_intent_id
+            payment_failure.failure_reason = failure_reason
+            payment_failure.failure_type = self._classify_failure_type(failure_reason)
+            payment_failure.status = 'failed'  # One-time payments don't retry
+            
+            db.session.add(payment_failure)
+            db.session.commit()
+            
+            logger.info(f"Recorded payment intent failure for user {user.id}")
             return True
             
         except Exception as e:
