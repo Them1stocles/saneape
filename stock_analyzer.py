@@ -18,121 +18,172 @@ class StockAnalyzer:
         self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
-        """Fetch historical stock data using yfinance with robust error handling"""
+        """Production-grade stock data fetching with direct Yahoo Finance API"""
         try:
-            # CRITICAL: Disable all yfinance caching to prevent Errno 5 I/O errors
-            import tempfile
-            import shutil
+            # Production-grade approach: Direct Yahoo Finance API calls
+            # Completely bypass yfinance to avoid all I/O and database issues
+            import requests
+            import pandas as pd
+            from io import StringIO
+            import time
             
-            # Force yfinance to use /tmp for all operations
-            temp_dir = "/tmp"
-            os.environ['YFINANCE_CACHE_DIR'] = temp_dir
+            logging.info(f"Fetching data for {ticker} using direct Yahoo Finance API")
             
-            # Clear any existing problematic cache
-            problematic_paths = [
-                "/home/runner/.cache/py-yfinance",
-                "/home/runner/workspace/.cache/py-yfinance", 
-                os.path.expanduser("~/.cache/py-yfinance")
-            ]
+            # Calculate time periods (1 year of data)
+            end_time = int(time.time())
+            start_time = int((datetime.now() - timedelta(days=365)).timestamp())
             
-            for path in problematic_paths:
-                if os.path.exists(path):
-                    try:
-                        shutil.rmtree(path)
-                        logging.info(f"Removed problematic cache: {path}")
-                    except Exception as e:
-                        logging.warning(f"Could not remove {path}: {e}")
-            
-            # Set yfinance to not use database caching
-            import yfinance as yf
-            
-            # Monkey patch to disable database operations that cause Errno 5
-            original_create_all = None
+            # Method 1: Try download API first (most reliable)
             try:
-                from peewee import Database
-                original_create_all = Database.create_tables
-                Database.create_tables = lambda self, *args, **kwargs: None
-            except:
-                pass
-            
-            # Create ticker with minimal caching
-            stock = yf.Ticker(ticker)
-            
-            # Get historical data with shorter timeframe to reduce I/O
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=365)  # Reduced from 2 years to 1 year
-            
-            logging.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
-            hist = stock.history(start=start_date, end=end_date, prepost=False, auto_adjust=True, back_adjust=False)
-            
-            if hist.empty:
-                logging.warning(f"No historical data found for {ticker}")
-                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
-            
-            # Get info with error handling
-            try:
-                info = stock.info
-            except Exception as info_error:
-                logging.warning(f"Could not fetch info for {ticker}: {info_error}")
-                info = {'longName': ticker, 'symbol': ticker}
-            
-            # Restore original function if patched
-            if original_create_all:
-                try:
-                    Database.create_tables = original_create_all
-                except:
-                    pass
-            
-            logging.info(f"Successfully fetched {len(hist)} days of data for {ticker}")
-            return {
-                'history': hist,
-                'info': info,
-                'ticker': ticker
-            }, None
-            
-        except OSError as e:
-            if e.errno == 5:  # Errno 5: Input/output error
-                logging.error(f"I/O Error (Errno 5) for {ticker}: File system issue. Retrying with minimal operations.")
-                # Ultra-minimal fallback - no caching at all
-                try:
-                    import requests
-                    import pandas as pd
+                download_url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}"
+                download_params = {
+                    'period1': start_time,
+                    'period2': end_time,
+                    'interval': '1d',
+                    'events': 'history',
+                    'includeAdjustedClose': 'true'
+                }
+                
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+                
+                response = requests.get(download_url, params=download_params, headers=headers, timeout=15)
+                
+                if response.status_code == 200 and 'Date' in response.text:
+                    # Parse CSV data
+                    df = pd.read_csv(StringIO(response.text))
+                    df['Date'] = pd.to_datetime(df['Date'])
+                    df.set_index('Date', inplace=True)
                     
-                    # Direct API call without yfinance caching
-                    url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}"
-                    params = {
-                        'period1': int((datetime.now() - timedelta(days=90)).timestamp()),
-                        'period2': int(datetime.now().timestamp()),
-                        'interval': '1d',
-                        'events': 'history'
+                    # Rename columns to match yfinance format
+                    df.columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+                    
+                    logging.info(f"Successfully fetched {len(df)} days of data via download API")
+                    
+                    # Get company info via quote API
+                    company_info = self._fetch_company_info(ticker)
+                    
+                    return {
+                        'history': df,
+                        'info': company_info,
+                        'ticker': ticker
+                    }, None
+                    
+            except Exception as download_error:
+                logging.warning(f"Download API failed for {ticker}: {download_error}")
+            
+            # Method 2: Chart API fallback
+            try:
+                chart_url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
+                chart_params = {
+                    'period1': start_time,
+                    'period2': end_time,
+                    'interval': '1d',
+                    'includePrePost': 'false',
+                    'events': 'div,splits'
+                }
+                
+                response = requests.get(chart_url, params=chart_params, headers=headers, timeout=15)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    result = data['chart']['result'][0]
+                    
+                    # Extract timestamps and OHLCV data
+                    timestamps = result['timestamp']
+                    indicators = result['indicators']['quote'][0]
+                    
+                    # Create DataFrame
+                    df_data = {
+                        'Open': indicators['open'],
+                        'High': indicators['high'], 
+                        'Low': indicators['low'],
+                        'Close': indicators['close'],
+                        'Volume': indicators['volume']
                     }
                     
-                    response = requests.get(url, params=params, timeout=10)
-                    if response.status_code == 200:
-                        from io import StringIO
-                        df = pd.read_csv(StringIO(response.text))
-                        df['Date'] = pd.to_datetime(df['Date'])
-                        df.set_index('Date', inplace=True)
-                        
-                        return {
-                            'history': df,
-                            'info': {'longName': ticker, 'symbol': ticker},
-                            'ticker': ticker
-                        }, None
+                    # Handle adjusted close if available
+                    if 'adjclose' in result['indicators']:
+                        df_data['Adj Close'] = result['indicators']['adjclose'][0]['adjclose']
                     else:
-                        raise Exception(f"API call failed: {response.status_code}")
-                        
-                except Exception as fallback_error:
-                    logging.error(f"Fallback also failed for {ticker}: {fallback_error}")
-                    return None, f"System I/O error preventing data fetch for {ticker}. Please try again."
-            else:
-                raise
-                
+                        df_data['Adj Close'] = indicators['close']
+                    
+                    # Convert to DataFrame with datetime index
+                    dates = [datetime.fromtimestamp(ts) for ts in timestamps]
+                    df = pd.DataFrame(df_data, index=dates)
+                    
+                    # Remove any None values
+                    df = df.dropna()
+                    
+                    logging.info(f"Successfully fetched {len(df)} days of data via chart API")
+                    
+                    # Get company info
+                    company_info = self._fetch_company_info(ticker)
+                    
+                    return {
+                        'history': df,
+                        'info': company_info,
+                        'ticker': ticker
+                    }, None
+                    
+            except Exception as chart_error:
+                logging.warning(f"Chart API failed for {ticker}: {chart_error}")
+            
+            # If both methods fail
+            logging.error(f"All API methods failed for {ticker}")
+            return None, f"Unable to fetch data for {ticker}. Please verify the ticker symbol."
+            
         except Exception as e:
-            logging.error(f"Error fetching data for {ticker}: {str(e)}")
+            logging.error(f"Critical error fetching data for {ticker}: {str(e)}")
             import traceback
             logging.error(f"Full traceback: {traceback.format_exc()}")
             return None, f"Error fetching data for {ticker}: {str(e)}"
+    
+    def _fetch_company_info(self, ticker):
+        """Fetch company information using Yahoo Finance API"""
+        try:
+            import requests
+            
+            # Get basic quote info
+            quote_url = f"https://query1.finance.yahoo.com/v7/finance/quote"
+            params = {'symbols': ticker, 'formatted': 'false'}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(quote_url, params=params, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if 'quoteResponse' in data and data['quoteResponse']['result']:
+                    quote_data = data['quoteResponse']['result'][0]
+                    
+                    return {
+                        'symbol': ticker,
+                        'longName': quote_data.get('longName', ticker),
+                        'shortName': quote_data.get('shortName', ticker),
+                        'regularMarketPrice': quote_data.get('regularMarketPrice'),
+                        'currency': quote_data.get('currency', 'USD'),
+                        'exchange': quote_data.get('fullExchangeName', 'Unknown')
+                    }
+            
+            # Fallback info
+            return {
+                'symbol': ticker,
+                'longName': ticker,
+                'shortName': ticker,
+                'currency': 'USD'
+            }
+            
+        except Exception as e:
+            logging.warning(f"Could not fetch company info for {ticker}: {e}")
+            return {
+                'symbol': ticker,
+                'longName': ticker,
+                'shortName': ticker,
+                'currency': 'USD'
+            }
     
     def calculate_technical_indicators(self, df, maximum_brain=False):
         """Calculate technical indicators - standard or comprehensive based on mode"""
