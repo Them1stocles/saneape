@@ -35,11 +35,362 @@ class SaneApeApp {
         this.loadUserStatus();
         this.loadRecentAnalyses();
         
+        // Initialize dashboard-specific functionality
+        if (this.isDashboardPage()) {
+            this.initializeDashboard();
+        }
+        
         // Auto-refresh user status every 30 seconds
         setInterval(() => this.loadUserStatus(), 30000);
         
         // Auto-refresh recent analyses every 2 minutes
         setInterval(() => this.loadRecentAnalyses(), 120000);
+        
+        // Auto-refresh dashboard data every 60 seconds if on dashboard
+        if (this.isDashboardPage()) {
+            setInterval(() => this.refreshDashboardData(), 60000);
+        }
+    }
+    
+    /**
+     * Check if current page is the dashboard
+     */
+    isDashboardPage() {
+        return window.location.pathname.includes('/account') || 
+               window.location.pathname.includes('/dashboard') ||
+               window.location.pathname.includes('/user-account');
+    }
+    
+    /**
+     * PRODUCTION-GRADE DASHBOARD INITIALIZATION
+     * Loads all dashboard data with comprehensive error handling
+     */
+    async initializeDashboard() {
+        try {
+            // Load dashboard data in parallel for better performance
+            await Promise.allSettled([
+                this.loadCreditInfo(),
+                this.loadSubscriptionInfo(), 
+                this.loadTransactionHistory()
+            ]);
+            
+            console.log('Dashboard initialization completed');
+        } catch (error) {
+            console.error('Dashboard initialization failed:', error);
+            this.showDashboardError('Unable to load dashboard data. Please refresh the page.');
+        }
+    }
+    
+    /**
+     * PRODUCTION-GRADE CREDIT INFO LOADER
+     * Calls /api/account/credits and updates all credit displays
+     */
+    async loadCreditInfo() {
+        try {
+            const response = await fetch('/api/account/credits', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.credits) {
+                this.updateCreditDisplays(data.credits);
+            } else {
+                throw new Error(data.error || 'Invalid credit data received');
+            }
+            
+        } catch (error) {
+            console.error('Error loading credit info:', error);
+            this.handleCreditLoadError(error);
+        }
+    }
+    
+    /**
+     * PRODUCTION-GRADE CREDIT DISPLAY UPDATER
+     * Updates all credit-related UI elements with proper error handling
+     */
+    updateCreditDisplays(creditData) {
+        try {
+            // Update main credit displays
+            const subscriptionCredits = document.getElementById('subscription-credits');
+            const topupCredits = document.getElementById('topup-credits');
+            const totalCredits = document.getElementById('total-credits');
+            
+            if (subscriptionCredits) {
+                subscriptionCredits.textContent = creditData.subscription_credits || 0;
+            }
+            
+            if (topupCredits) {
+                topupCredits.textContent = creditData.topup_credits || 0;
+            }
+            
+            if (totalCredits) {
+                totalCredits.textContent = creditData.total_credits || 0;
+            }
+            
+            // Update navigation credits
+            const navCredits = document.getElementById('nav-credits');
+            if (navCredits) {
+                const total = creditData.total_credits || 0;
+                navCredits.textContent = `${total} credit${total !== 1 ? 's' : ''}`;
+            }
+            
+            // Update progress bars and additional displays
+            this.updateCreditProgressBars(creditData);
+            this.updateSubscriptionExpiry(creditData);
+            
+            // Update subscription required states
+            this.updateSubscriptionRequiredStates(creditData);
+            
+        } catch (error) {
+            console.error('Error updating credit displays:', error);
+        }
+    }
+    
+    /**
+     * UPDATE PROGRESS BARS AND VISUAL INDICATORS
+     */
+    updateCreditProgressBars(creditData) {
+        try {
+            // Update subscription progress bar (assuming 100 credits per period max)
+            const progressBar = document.getElementById('subscription-progress');
+            if (progressBar && creditData.subscription_credits !== undefined) {
+                const maxCredits = 100; // This could be dynamic based on plan
+                const progressPercent = Math.min((creditData.subscription_credits / maxCredits) * 100, 100);
+                progressBar.style.width = progressPercent + '%';
+            }
+        } catch (error) {
+            console.error('Error updating progress bars:', error);
+        }
+    }
+    
+    /**
+     * UPDATE SUBSCRIPTION EXPIRY DISPLAYS
+     */
+    updateSubscriptionExpiry(creditData) {
+        try {
+            const expiryElement = document.getElementById('subscription-expiry');
+            if (expiryElement) {
+                if (creditData.subscription_expiry) {
+                    const expiryDate = new Date(creditData.subscription_expiry);
+                    expiryElement.textContent = 'Expires ' + expiryDate.toLocaleDateString();
+                } else if (creditData.subscription_credits > 0) {
+                    expiryElement.textContent = 'Active subscription';
+                } else {
+                    expiryElement.textContent = 'No active subscription credits';
+                }
+            }
+        } catch (error) {
+            console.error('Error updating subscription expiry:', error);
+        }
+    }
+    
+    /**
+     * UPDATE SUBSCRIPTION REQUIRED STATES
+     * Fixes the "Subscription Required" display when user has credits
+     */
+    updateSubscriptionRequiredStates(creditData) {
+        try {
+            const subscriptionRequiredElements = document.querySelectorAll('[data-subscription-required]');
+            const hasCredits = (creditData.total_credits || 0) > 0;
+            
+            subscriptionRequiredElements.forEach(element => {
+                if (hasCredits) {
+                    element.style.display = 'none';
+                } else {
+                    element.style.display = 'block';
+                }
+            });
+            
+            // Update "Subscription Required" text specifically
+            const subRequiredText = document.querySelector('.text-muted:contains("Subscription Required")');
+            if (subRequiredText && hasCredits) {
+                subRequiredText.textContent = 'Rollover credits';
+            }
+            
+        } catch (error) {
+            console.error('Error updating subscription required states:', error);
+        }
+    }
+    
+    /**
+     * LOAD TRANSACTION HISTORY
+     * Calls /api/account/transactions and updates transaction displays
+     */
+    async loadTransactionHistory() {
+        try {
+            const response = await fetch('/api/account/transactions?per_page=10', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success && data.transactions) {
+                this.updateTransactionDisplay(data.transactions);
+            } else {
+                throw new Error(data.error || 'Invalid transaction data received');
+            }
+            
+        } catch (error) {
+            console.error('Error loading transaction history:', error);
+            this.handleTransactionLoadError(error);
+        }
+    }
+    
+    /**
+     * UPDATE TRANSACTION DISPLAY TABLE
+     */
+    updateTransactionDisplay(transactions) {
+        try {
+            const transactionContainer = document.querySelector('#transaction-history tbody');
+            if (!transactionContainer) return;
+            
+            if (transactions.length === 0) {
+                transactionContainer.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No transactions found</td></tr>';
+                return;
+            }
+            
+            const transactionHtml = transactions.map(tx => {
+                const date = new Date(tx.created_at).toLocaleDateString();
+                const type = this.formatTransactionType(tx.transaction_type);
+                const credits = tx.credits_amount;
+                const description = tx.description || '';
+                
+                return `
+                    <tr>
+                        <td>${date}</td>
+                        <td>${type}</td>
+                        <td class="${credits > 0 ? 'text-success' : 'text-danger'}">${credits > 0 ? '+' : ''}${credits}</td>
+                        <td>${description}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            transactionContainer.innerHTML = transactionHtml;
+            
+            // Remove loading state
+            const loadingElement = document.querySelector('#transaction-loading');
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
+        } catch (error) {
+            console.error('Error updating transaction display:', error);
+        }
+    }
+    
+    /**
+     * FORMAT TRANSACTION TYPE FOR DISPLAY
+     */
+    formatTransactionType(type) {
+        const typeMap = {
+            'subscription': 'Subscription',
+            'topup': 'Top-up Purchase',
+            'usage': 'Analysis',
+            'refund': 'Refund',
+            'welcome_bonus': 'Welcome Bonus'
+        };
+        return typeMap[type] || type;
+    }
+    
+    /**
+     * LOAD SUBSCRIPTION INFO (placeholder for future enhancement)
+     */
+    async loadSubscriptionInfo() {
+        try {
+            // This would call a subscription-specific API endpoint
+            // For now, subscription info is handled server-side in the template
+            console.log('Subscription info loaded via server-side rendering');
+        } catch (error) {
+            console.error('Error loading subscription info:', error);
+        }
+    }
+    
+    /**
+     * REFRESH ALL DASHBOARD DATA
+     */
+    async refreshDashboardData() {
+        if (!this.isDashboardPage()) return;
+        
+        try {
+            await Promise.allSettled([
+                this.loadCreditInfo(),
+                this.loadTransactionHistory()
+            ]);
+        } catch (error) {
+            console.error('Error refreshing dashboard data:', error);
+        }
+    }
+    
+    /**
+     * HANDLE CREDIT LOADING ERRORS
+     */
+    handleCreditLoadError(error) {
+        // Show fallback values instead of "Loading..."
+        const subscriptionCredits = document.getElementById('subscription-credits');
+        const topupCredits = document.getElementById('topup-credits');
+        const totalCredits = document.getElementById('total-credits');
+        
+        if (subscriptionCredits) subscriptionCredits.textContent = '0';
+        if (topupCredits) topupCredits.textContent = '0';
+        if (totalCredits) totalCredits.textContent = '0';
+        
+        // Update nav credits
+        const navCredits = document.getElementById('nav-credits');
+        if (navCredits) navCredits.textContent = 'Credits unavailable';
+        
+        // Show error message
+        console.error('Credit loading failed:', error);
+    }
+    
+    /**
+     * HANDLE TRANSACTION LOADING ERRORS  
+     */
+    handleTransactionLoadError(error) {
+        const transactionContainer = document.querySelector('#transaction-history tbody');
+        if (transactionContainer) {
+            transactionContainer.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Unable to load transactions</td></tr>';
+        }
+        
+        const loadingElement = document.querySelector('#transaction-loading');
+        if (loadingElement) {
+            loadingElement.style.display = 'none';
+        }
+    }
+    
+    /**
+     * SHOW DASHBOARD ERROR MESSAGE
+     */
+    showDashboardError(message) {
+        const errorContainer = document.getElementById('dashboard-error-container');
+        if (errorContainer) {
+            errorContainer.innerHTML = `
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <i data-feather="alert-triangle" class="me-2"></i>
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            feather.replace();
+        }
     }
     
     /**

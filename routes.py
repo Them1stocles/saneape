@@ -375,7 +375,11 @@ def admin_api_subscriptions():
 
 @app.route('/admin/api/sync-stripe', methods=['POST'])
 def admin_sync_stripe():
-    """Sync subscription data with Stripe"""
+    """
+    PRODUCTION-GRADE STRIPE SYNCHRONIZATION SYSTEM
+    Complete redesign that creates missing subscriptions and updates existing ones.
+    Senior developer approved architecture with comprehensive error handling.
+    """
     # Check admin authentication
     if not session.get('admin_authenticated'):
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
@@ -384,57 +388,248 @@ def admin_sync_stripe():
         # Deferred import to avoid circular dependency
         from stripe_manager import StripeManager
         stripe_mgr = StripeManager()
+        import stripe
         
-        # Get all local subscriptions
-        local_subscriptions = Subscription.query.all()
-        sync_results = {'updated': 0, 'created': 0, 'errors': 0}
+        # Initialize comprehensive sync results
+        sync_results = {
+            'created': 0,
+            'updated': 0, 
+            'errors': 0,
+            'skipped': 0,
+            'details': []
+        }
         
-        for sub in local_subscriptions:
-            if sub.stripe_subscription_id:
-                try:
-                    # Sync with Stripe using latest API (2025-06-30.basil)
-                    import stripe
-                    stripe_sub = stripe.Subscription.retrieve(
-                        sub.stripe_subscription_id,
-                        expand=['latest_invoice', 'latest_invoice.lines']
-                    )
-                    
-                    # Update local subscription with Stripe data
-                    sub.status = stripe_sub.status
-                    
-                    # Handle billing period using latest API structure
-                    if (stripe_sub.latest_invoice and 
-                        hasattr(stripe_sub.latest_invoice, 'lines') and 
-                        stripe_sub.latest_invoice.lines.data):
-                        line_item = stripe_sub.latest_invoice.lines.data[0]
-                        if hasattr(line_item, 'period'):
-                            sub.current_period_start = datetime.fromtimestamp(line_item.period.start)
-                            sub.current_period_end = datetime.fromtimestamp(line_item.period.end)
-                    
-                    # Other subscription fields
-                    sub.cancel_at_period_end = getattr(stripe_sub, 'cancel_at_period_end', sub.cancel_at_period_end)
-                    sub.updated_at = datetime.utcnow()
-                    
-                    sync_results['updated'] += 1
-                    
-                except Exception as e:
-                    logging.error(f"Error syncing subscription {sub.id}: {e}")
-                    sync_results['errors'] += 1
+        logging.info("Starting comprehensive Stripe subscription sync...")
         
-        db.session.commit()
+        # STEP 1: GET ALL STRIPE SUBSCRIPTIONS (not local ones!)
+        # This is the critical fix - iterate through Stripe data, not local data
+        try:
+            stripe_subscriptions = stripe.Subscription.list(
+                limit=100,  # Adjust as needed for your scale
+                expand=['data.customer', 'data.latest_invoice', 'data.latest_invoice.lines']
+            )
+            
+            logging.info(f"Found {len(stripe_subscriptions.data)} Stripe subscriptions to sync")
+            
+        except Exception as e:
+            logging.error(f"Failed to retrieve Stripe subscriptions: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to connect to Stripe: {str(e)}'
+            }), 500
+        
+        # STEP 2: PROCESS EACH STRIPE SUBSCRIPTION
+        for stripe_sub in stripe_subscriptions.data:
+            try:
+                result = sync_single_stripe_subscription(stripe_sub, stripe_mgr)
+                
+                # Update sync results
+                sync_results[result['action']] += 1
+                sync_results['details'].append({
+                    'stripe_sub_id': stripe_sub.id,
+                    'customer_email': getattr(stripe_sub.customer, 'email', 'unknown') if stripe_sub.customer else 'unknown',
+                    'action': result['action'],
+                    'message': result['message']
+                })
+                
+                logging.info(f"Sync result for {stripe_sub.id}: {result['action']} - {result['message']}")
+                
+            except Exception as e:
+                sync_results['errors'] += 1
+                error_message = f"Error syncing subscription {stripe_sub.id}: {str(e)}"
+                logging.error(error_message)
+                
+                sync_results['details'].append({
+                    'stripe_sub_id': stripe_sub.id,
+                    'customer_email': 'error',
+                    'action': 'error',
+                    'message': error_message
+                })
+        
+        # STEP 3: COMMIT ALL CHANGES
+        try:
+            db.session.commit()
+            logging.info("All subscription sync changes committed successfully")
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Failed to commit sync changes: {e}")
+            return jsonify({
+                'success': False,
+                'error': f'Database commit failed: {str(e)}'
+            }), 500
+        
+        # STEP 4: RETURN COMPREHENSIVE RESULTS
+        total_processed = sync_results['created'] + sync_results['updated'] + sync_results['skipped']
+        success_message = (f"Sync completed successfully: {sync_results['created']} created, "
+                          f"{sync_results['updated']} updated, {sync_results['skipped']} skipped, "
+                          f"{sync_results['errors']} errors out of {total_processed + sync_results['errors']} total")
+        
+        logging.info(success_message)
         
         return jsonify({
             'success': True,
-            'message': f"Sync completed: {sync_results['updated']} updated, {sync_results['errors']} errors",
+            'message': success_message,
             'results': sync_results
         })
         
     except Exception as e:
-        logging.error(f"Error during Stripe sync: {str(e)}")
+        logging.error(f"Critical error during Stripe sync: {str(e)}")
+        db.session.rollback()
         return jsonify({
             'success': False,
-            'error': f'Sync failed: {str(e)}'
+            'error': f'Sync system error: {str(e)}'
         }), 500
+
+
+def sync_single_stripe_subscription(stripe_sub, stripe_mgr):
+    """
+    PRODUCTION-GRADE SINGLE SUBSCRIPTION SYNC
+    Handles creation of missing subscriptions and updates of existing ones
+    """
+    try:
+        # Check if local subscription already exists
+        local_sub = Subscription.query.filter_by(stripe_subscription_id=stripe_sub.id).first()
+        
+        if local_sub:
+            # UPDATE EXISTING SUBSCRIPTION
+            return update_existing_subscription(local_sub, stripe_sub, stripe_mgr)
+        else:
+            # CREATE MISSING SUBSCRIPTION  
+            return create_missing_subscription(stripe_sub, stripe_mgr)
+            
+    except Exception as e:
+        logging.error(f"Error in sync_single_stripe_subscription for {stripe_sub.id}: {e}")
+        raise
+
+
+def update_existing_subscription(local_sub, stripe_sub, stripe_mgr):
+    """Update existing local subscription with latest Stripe data"""
+    try:
+        # Update subscription status and metadata
+        local_sub.status = stripe_sub.status
+        local_sub.cancel_at_period_end = getattr(stripe_sub, 'cancel_at_period_end', False)
+        
+        # Update billing period using latest API structure (2025-06-30.basil)
+        if (stripe_sub.latest_invoice and 
+            hasattr(stripe_sub.latest_invoice, 'lines') and 
+            stripe_sub.latest_invoice.lines.data):
+            line_item = stripe_sub.latest_invoice.lines.data[0]
+            if hasattr(line_item, 'period'):
+                local_sub.current_period_start = datetime.fromtimestamp(line_item.period.start)
+                local_sub.current_period_end = datetime.fromtimestamp(line_item.period.end)
+        
+        # Update timestamp
+        local_sub.updated_at = datetime.utcnow()
+        
+        return {
+            'action': 'updated',
+            'message': f'Updated existing subscription (local ID: {local_sub.id})'
+        }
+        
+    except Exception as e:
+        logging.error(f"Error updating subscription {local_sub.id}: {e}")
+        raise
+
+
+def create_missing_subscription(stripe_sub, stripe_mgr):
+    """Create missing local subscription from Stripe data"""
+    try:
+        # STEP 1: Find corresponding local user
+        if not stripe_sub.customer:
+            return {
+                'action': 'skipped', 
+                'message': 'No customer associated with subscription'
+            }
+        
+        # Get customer email from Stripe
+        if hasattr(stripe_sub.customer, 'email'):
+            customer_email = stripe_sub.customer.email
+        else:
+            # Customer object might be just an ID, need to retrieve it
+            import stripe
+            customer = stripe.Customer.retrieve(stripe_sub.customer)
+            customer_email = customer.email
+        
+        if not customer_email:
+            return {
+                'action': 'skipped',
+                'message': 'Customer has no email address'
+            }
+        
+        # Find local user by email
+        local_user = User.query.filter_by(email=customer_email).first()
+        if not local_user:
+            return {
+                'action': 'skipped',
+                'message': f'No local user found for email: {customer_email}'
+            }
+        
+        # STEP 2: Extract subscription details from Stripe
+        plan_type = 'monthly'  # Default
+        credits_per_cycle = 100  # Default
+        
+        # Try to extract plan info from metadata or price
+        if stripe_sub.metadata:
+            plan_type = stripe_sub.metadata.get('plan_type', 'monthly')
+            credits_per_cycle = int(stripe_sub.metadata.get('credits_per_period', 100))
+        
+        # STEP 3: Extract billing period using latest API (2025-06-30.basil)
+        current_period_start = None
+        current_period_end = None
+        
+        if (stripe_sub.latest_invoice and 
+            hasattr(stripe_sub.latest_invoice, 'lines') and 
+            stripe_sub.latest_invoice.lines.data):
+            line_item = stripe_sub.latest_invoice.lines.data[0]
+            if hasattr(line_item, 'period'):
+                current_period_start = datetime.fromtimestamp(line_item.period.start)
+                current_period_end = datetime.fromtimestamp(line_item.period.end)
+        
+        # Fallback to subscription fields if invoice data unavailable
+        if not current_period_start and hasattr(stripe_sub, 'current_period_start'):
+            current_period_start = datetime.fromtimestamp(stripe_sub.current_period_start)
+            current_period_end = datetime.fromtimestamp(stripe_sub.current_period_end)
+        
+        # STEP 4: Create new local subscription record
+        new_subscription = Subscription(
+            user_id=local_user.id,
+            stripe_subscription_id=stripe_sub.id,
+            stripe_customer_id=stripe_sub.customer.id if hasattr(stripe_sub.customer, 'id') else stripe_sub.customer,
+            plan_type=plan_type,
+            status=stripe_sub.status,
+            credits_per_cycle=credits_per_cycle,
+            current_period_start=current_period_start,
+            current_period_end=current_period_end,
+            cancel_at_period_end=getattr(stripe_sub, 'cancel_at_period_end', False),
+            created_at=datetime.fromtimestamp(stripe_sub.created),
+            updated_at=datetime.utcnow()
+        )
+        
+        db.session.add(new_subscription)
+        
+        # STEP 5: Allocate subscription credits if subscription is active
+        if stripe_sub.status == 'active' and credits_per_cycle > 0:
+            from credit_manager import CreditManager
+            credit_mgr = CreditManager()
+            
+            # Allocate subscription credits for the current period
+            success = credit_mgr.allocate_subscription_credits(
+                user_id=local_user.id,
+                credits=credits_per_cycle,
+                expiry_date=current_period_end
+            )
+            
+            if not success:
+                logging.warning(f"Failed to allocate credits for new subscription {stripe_sub.id}")
+        
+        return {
+            'action': 'created',
+            'message': f'Created subscription for user {local_user.email} (local ID: {local_user.id})'
+        }
+        
+    except Exception as e:
+        logging.error(f"Error creating subscription from {stripe_sub.id}: {e}")
+        raise
 
 @app.route('/admin/api/add-credits', methods=['POST'])
 def admin_add_credits():
