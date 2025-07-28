@@ -507,7 +507,7 @@ class SaneApeApp {
         // Check for income-focused override
         const hasIncomeOverride = data.income_analysis && 
                                  data.income_analysis.recommendation && 
-                                 normalizeApostrophes(data.income_analysis.recommendation).includes('buy for income') &&
+                                 this.normalizeRecommendationText(data.income_analysis.recommendation).includes('buy for income') &&
                                  (data.income_focus || data.is_yield_etf);
         
         if (hasIncomeOverride) {
