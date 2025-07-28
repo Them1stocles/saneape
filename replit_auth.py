@@ -163,20 +163,37 @@ def make_replit_blueprint():
 
     @replit_bp.before_app_request
     def set_applocal_session():
-        """Initialize session and user context"""
+        """Initialize session and user context with proper logout state handling"""
         # Check if user authentication is enabled
         if not is_user_auth_enabled():
             return
+        
+        # CRITICAL FIX: Check if user is in logout state
+        # Don't restore OAuth session if user just logged out
+        if session.get('_logout_initiated'):
+            # Clear logout flag and don't restore OAuth session
+            session.pop('_logout_initiated', None)
+            session.modified = True
+            # Initialize minimal session without OAuth restoration
+            if '_browser_session_key' not in session:
+                session['_browser_session_key'] = uuid.uuid4().hex
+            g.browser_session_key = session['_browser_session_key']
+            # Don't set g.flask_dance_replit to prevent auto re-authentication
+            return
             
+        # Normal session initialization
         # Initialize browser session key
         if '_browser_session_key' not in session:
             session['_browser_session_key'] = uuid.uuid4().hex
         session.modified = True
         g.browser_session_key = session['_browser_session_key']
-        g.flask_dance_replit = replit_bp.session
         
-        # Update last activity for authenticated users
+        # SAFE: Only restore OAuth session for authenticated users
+        # This prevents automatic re-authentication after logout
         if current_user.is_authenticated:
+            g.flask_dance_replit = replit_bp.session
+            
+            # Update last activity for authenticated users
             try:
                 current_user.last_login = datetime.utcnow()
                 db.session.commit()
@@ -186,10 +203,15 @@ def make_replit_blueprint():
 
     @replit_bp.route("/logout")
     def logout():
-        """Enhanced logout with comprehensive cleanup and session destruction"""
+        """Production-grade logout with comprehensive cleanup and auto-reauth prevention"""
         user_id = current_user.get_id() if current_user.is_authenticated else None
         
         try:
+            # CRITICAL: Set logout flag BEFORE clearing anything
+            # This prevents set_applocal_session from restoring OAuth state
+            session['_logout_initiated'] = True
+            session.modified = True
+            
             # Clear OAuth tokens from database
             if user_id:
                 OAuth.query.filter_by(user_id=user_id).delete()
@@ -200,15 +222,22 @@ def make_replit_blueprint():
             if hasattr(replit_bp, 'token') and replit_bp.token:
                 del replit_bp.token
                 
-            # CRITICAL: Log out user from Flask-Login FIRST
+            # Clear OAuth session from blueprint storage
+            if hasattr(replit_bp, 'session') and replit_bp.session:
+                replit_bp.session.token = None
+                
+            # CRITICAL: Log out user from Flask-Login 
             logout_user()
             
-            # CRITICAL: Completely destroy the session
-            session.clear()
-            
-            # Record logout event
+            # Record logout event BEFORE session clear
             if user_id:
                 record_user_action('logout', user_id)
+                
+            # CRITICAL: Clear session but preserve logout flag temporarily
+            logout_flag = session.get('_logout_initiated')
+            session.clear()
+            session['_logout_initiated'] = logout_flag
+            session.modified = True
                 
             logger.info(f"User {user_id} logged out successfully")
             
@@ -217,6 +246,8 @@ def make_replit_blueprint():
             # Still continue with logout even if cleanup fails
             logout_user()
             session.clear()
+            session['_logout_initiated'] = True
+            session.modified = True
 
         # Create response with complete session destruction
         from flask import make_response
@@ -227,10 +258,11 @@ def make_replit_blueprint():
         response.set_cookie('session', '', expires=0, path='/')
         response.set_cookie('session', '', expires=0, path='/', domain=None)
         
-        # Add cache-busting headers to force page reload
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        # Add cache-busting headers to force page reload and prevent caching
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+        response.headers['Clear-Site-Data'] = '"cache", "cookies", "storage"'
         
         return response
 

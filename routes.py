@@ -1314,12 +1314,34 @@ def get_cached_analysis(ticker):
 
 @app.route('/api/user-status')
 def api_user_status():
-    """API endpoint to get user authentication and rate limit status"""
+    """Enhanced API endpoint to get user authentication and rate limit status with logout detection"""
     try:
+        # CRITICAL: Check for logout state first to prevent cached authentication display
+        if session.get('_logout_initiated'):
+            # User is in logout state - return not authenticated
+            session.pop('_logout_initiated', None)  # Clear the flag
+            return jsonify({
+                'success': False,
+                'authenticated': False,
+                'logged_out': True,
+                'message': 'User logged out, clearing cached state'
+            })
+        
         # Check if user authentication is enabled and user is authenticated
         if is_user_auth_enabled() and current_user.is_authenticated:
-            # User is authenticated - return credit-based status
+            # Verify user actually exists in database (prevent stale sessions)
             try:
+                user = db.session.get(User, current_user.id)
+                if not user:
+                    # User doesn't exist anymore, clear session
+                    logout_user()
+                    session.clear()
+                    return jsonify({
+                        'success': False,
+                        'authenticated': False,
+                        'message': 'User session invalid, please log in again'
+                    })
+                    
                 credit_summary = credit_manager.get_user_credit_summary(current_user.id)
                 return jsonify({
                     'success': True,

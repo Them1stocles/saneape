@@ -575,13 +575,18 @@ class SaneApeApp {
             const response = await fetch('/api/user-status');
             const data = await response.json();
             
-            if (data.success) {
+            if (data.success && data.authenticated) {
                 this.remainingRequests = data.data;
                 this.updateRateLimitDisplay();
                 this.updateButtonState();
             } else {
                 // User is not authenticated - clear any cached UI state
                 this.clearUserDisplay();
+                
+                // Check if this was a logout event
+                if (data.logged_out) {
+                    console.log('✅ Logout detected - cleared cached authentication state');
+                }
             }
         } catch (error) {
             console.error('Error loading user status:', error);
@@ -591,11 +596,11 @@ class SaneApeApp {
     }
     
     /**
-     * Clear user display when not authenticated
+     * ENHANCED CLEAR USER DISPLAY WITH COMPLETE LOGOUT STATE RESET
      * Prevents showing cached credit information after logout
      */
     clearUserDisplay() {
-        // Clear credit displays
+        // Clear all credit displays
         const subscriptionCredits = document.getElementById('subscription-credits');
         const topupCredits = document.getElementById('topup-credits'); 
         const totalCredits = document.getElementById('total-credits');
@@ -605,6 +610,13 @@ class SaneApeApp {
         if (topupCredits) topupCredits.textContent = '0';
         if (totalCredits) totalCredits.textContent = '0';
         if (navCredits) navCredits.textContent = 'Not logged in';
+        
+        // Clear additional credit displays
+        const progressBar = document.getElementById('subscription-progress');
+        if (progressBar) progressBar.style.width = '0%';
+        
+        const expiryElement = document.getElementById('subscription-expiry');
+        if (expiryElement) expiryElement.textContent = 'No active subscription';
         
         // Reset to IP-based rate limiting
         this.remainingRequests = {
