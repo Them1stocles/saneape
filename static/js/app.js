@@ -239,7 +239,7 @@ class SaneApeApp {
             };
             this.updateRateLimitDisplay();
             this.updateButtonState();
-            return Promise.resolve(); // Prevent unhandled promise rejection
+            // Don't throw - let this fail silently to prevent breaking other flows
         }
     }
     
@@ -381,8 +381,11 @@ class SaneApeApp {
                     });
                 }
                 
-                // Refresh user status to update remaining requests
-                await this.loadUserStatus();
+                // Refresh user status to update remaining requests (don't let this break the analysis flow)
+                this.loadUserStatus().catch(error => {
+                    console.warn('Failed to refresh user status after analysis:', error);
+                    // Don't let this error break the analysis success flow
+                });
             } else {
                 this.handleError(data.error, data.type);
                 
@@ -727,7 +730,9 @@ class SaneApeApp {
         
         // Refresh user status after rate limit errors
         if (type === 'rate_limit') {
-            this.loadUserStatus();
+            this.loadUserStatus().catch(error => {
+                console.warn('Failed to refresh user status after rate limit error:', error);
+            });
         }
     }
     
