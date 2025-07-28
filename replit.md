@@ -110,6 +110,12 @@ Two main models:
 
 ## Recent Changes: Latest modifications with dates
 
+### July 28, 2025 - CRITICAL: Credit Deduction and Cache System Optimized ✅
+- **Cache Duration Reduced**: Decreased analysis cache from 6 hours to 1 hour to make credit deductions more visible to users
+- **User Experience Improved**: Users will now see credit deductions more frequently as cached analyses expire faster
+- **Cache Behavior Clarified**: Cached analyses don't deduct credits (by design) to prevent double-charging for repeat analyses
+- **Verified Credit Deduction Working**: Confirmed through server logs that fresh analyses properly deduct credits (e.g., QQQ brain analysis deducted 2 credits correctly)
+
 ### July 28, 2025 - CRITICAL: Frontend Rate Limiting Logic Fixed for Authenticated Users ✅
 - **Root Cause Identified**: Frontend JavaScript was always using IP-based rate limiting logic (`standard_remaining`, `brain_remaining`) to determine analyze button state, even for authenticated users with credits
 - **Frontend Fix Applied**: Updated `updateButtonState()` function in `static/js/app.js` to properly check `rate_limit_type` and use credit-based logic for authenticated users
