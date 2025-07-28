@@ -18,172 +18,38 @@ class StockAnalyzer:
         self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
-        """Production-grade stock data fetching with direct Yahoo Finance API"""
+        """Fetch historical stock data using yfinance"""
         try:
-            # Production-grade approach: Direct Yahoo Finance API calls
-            # Completely bypass yfinance to avoid all I/O and database issues
-            import requests
-            import pandas as pd
-            from io import StringIO
-            import time
+            import yfinance as yf
             
-            logging.info(f"Fetching data for {ticker} using direct Yahoo Finance API")
+            stock = yf.Ticker(ticker)
             
-            # Calculate time periods (1 year of data)
-            end_time = int(time.time())
-            start_time = int((datetime.now() - timedelta(days=365)).timestamp())
+            # Get 2 years of historical data
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=730)  # 2 years
             
-            # Method 1: Try download API first (most reliable)
-            try:
-                download_url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}"
-                download_params = {
-                    'period1': start_time,
-                    'period2': end_time,
-                    'interval': '1d',
-                    'events': 'history',
-                    'includeAdjustedClose': 'true'
-                }
-                
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-                
-                response = requests.get(download_url, params=download_params, headers=headers, timeout=15)
-                
-                if response.status_code == 200 and 'Date' in response.text:
-                    # Parse CSV data
-                    df = pd.read_csv(StringIO(response.text))
-                    df['Date'] = pd.to_datetime(df['Date'])
-                    df.set_index('Date', inplace=True)
-                    
-                    # Rename columns to match yfinance format
-                    df.columns = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-                    
-                    logging.info(f"Successfully fetched {len(df)} days of data via download API")
-                    
-                    # Get company info via quote API
-                    company_info = self._fetch_company_info(ticker)
-                    
-                    return {
-                        'history': df,
-                        'info': company_info,
-                        'ticker': ticker
-                    }, None
-                    
-            except Exception as download_error:
-                logging.warning(f"Download API failed for {ticker}: {download_error}")
+            hist = stock.history(start=start_date, end=end_date)
             
-            # Method 2: Chart API fallback
-            try:
-                chart_url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}"
-                chart_params = {
-                    'period1': start_time,
-                    'period2': end_time,
-                    'interval': '1d',
-                    'includePrePost': 'false',
-                    'events': 'div,splits'
-                }
-                
-                response = requests.get(chart_url, params=chart_params, headers=headers, timeout=15)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    result = data['chart']['result'][0]
-                    
-                    # Extract timestamps and OHLCV data
-                    timestamps = result['timestamp']
-                    indicators = result['indicators']['quote'][0]
-                    
-                    # Create DataFrame
-                    df_data = {
-                        'Open': indicators['open'],
-                        'High': indicators['high'], 
-                        'Low': indicators['low'],
-                        'Close': indicators['close'],
-                        'Volume': indicators['volume']
-                    }
-                    
-                    # Handle adjusted close if available
-                    if 'adjclose' in result['indicators']:
-                        df_data['Adj Close'] = result['indicators']['adjclose'][0]['adjclose']
-                    else:
-                        df_data['Adj Close'] = indicators['close']
-                    
-                    # Convert to DataFrame with datetime index
-                    dates = [datetime.fromtimestamp(ts) for ts in timestamps]
-                    df = pd.DataFrame(df_data, index=dates)
-                    
-                    # Remove any None values
-                    df = df.dropna()
-                    
-                    logging.info(f"Successfully fetched {len(df)} days of data via chart API")
-                    
-                    # Get company info
-                    company_info = self._fetch_company_info(ticker)
-                    
-                    return {
-                        'history': df,
-                        'info': company_info,
-                        'ticker': ticker
-                    }, None
-                    
-            except Exception as chart_error:
-                logging.warning(f"Chart API failed for {ticker}: {chart_error}")
+            if hist.empty:
+                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
             
-            # If both methods fail
-            logging.error(f"All API methods failed for {ticker}")
-            return None, f"Unable to fetch data for {ticker}. Please verify the ticker symbol."
+            # Get additional info
+            info = stock.info
+            
+            return {
+                'history': hist,
+                'info': info,
+                'ticker': ticker
+            }, None
             
         except Exception as e:
-            logging.error(f"Critical error fetching data for {ticker}: {str(e)}")
+            logging.error(f"Error fetching data for {ticker}: {str(e)}")
+            # More detailed error logging
             import traceback
-            logging.error(f"Full traceback: {traceback.format_exc()}")
-            return None, f"Error fetching data for {ticker}: {str(e)}"
+            logging.error(f"Traceback: {traceback.format_exc()}")
+            return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
     
-    def _fetch_company_info(self, ticker):
-        """Fetch company information using Yahoo Finance API"""
-        try:
-            import requests
-            
-            # Get basic quote info
-            quote_url = f"https://query1.finance.yahoo.com/v7/finance/quote"
-            params = {'symbols': ticker, 'formatted': 'false'}
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            
-            response = requests.get(quote_url, params=params, headers=headers, timeout=10)
-            
-            if response.status_code == 200:
-                data = response.json()
-                if 'quoteResponse' in data and data['quoteResponse']['result']:
-                    quote_data = data['quoteResponse']['result'][0]
-                    
-                    return {
-                        'symbol': ticker,
-                        'longName': quote_data.get('longName', ticker),
-                        'shortName': quote_data.get('shortName', ticker),
-                        'regularMarketPrice': quote_data.get('regularMarketPrice'),
-                        'currency': quote_data.get('currency', 'USD'),
-                        'exchange': quote_data.get('fullExchangeName', 'Unknown')
-                    }
-            
-            # Fallback info
-            return {
-                'symbol': ticker,
-                'longName': ticker,
-                'shortName': ticker,
-                'currency': 'USD'
-            }
-            
-        except Exception as e:
-            logging.warning(f"Could not fetch company info for {ticker}: {e}")
-            return {
-                'symbol': ticker,
-                'longName': ticker,
-                'shortName': ticker,
-                'currency': 'USD'
-            }
+
     
     def calculate_technical_indicators(self, df, maximum_brain=False):
         """Calculate technical indicators - standard or comprehensive based on mode"""
