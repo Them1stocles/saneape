@@ -579,19 +579,48 @@ class SaneApeApp {
                 this.remainingRequests = data.data;
                 this.updateRateLimitDisplay();
                 this.updateButtonState();
+            } else {
+                // User is not authenticated - clear any cached UI state
+                this.clearUserDisplay();
             }
         } catch (error) {
             console.error('Error loading user status:', error);
-            // Provide fallback values to prevent UI breaking
-            this.remainingRequests = {
-                standard_remaining: 2,
-                brain_remaining: 1,
-                total_used: 0
-            };
-            this.updateRateLimitDisplay();
-            this.updateButtonState();
-            // Don't throw - let this fail silently to prevent breaking other flows
+            // Clear user display on error (likely means not authenticated)
+            this.clearUserDisplay();
         }
+    }
+    
+    /**
+     * Clear user display when not authenticated
+     * Prevents showing cached credit information after logout
+     */
+    clearUserDisplay() {
+        // Clear credit displays
+        const subscriptionCredits = document.getElementById('subscription-credits');
+        const topupCredits = document.getElementById('topup-credits'); 
+        const totalCredits = document.getElementById('total-credits');
+        const navCredits = document.getElementById('nav-credits');
+        
+        if (subscriptionCredits) subscriptionCredits.textContent = '0';
+        if (topupCredits) topupCredits.textContent = '0';
+        if (totalCredits) totalCredits.textContent = '0';
+        if (navCredits) navCredits.textContent = 'Not logged in';
+        
+        // Reset to IP-based rate limiting
+        this.remainingRequests = {
+            standard_remaining: 2,
+            brain_remaining: 1,
+            total_used: 0
+        };
+        
+        this.updateRateLimitDisplay();
+        this.updateButtonState();
+        
+        // Clear any subscription badges
+        const subscriberBadges = document.querySelectorAll('.monthly-subscriber-badge');
+        subscriberBadges.forEach(badge => badge.style.display = 'none');
+        
+        console.log('User display cleared - not authenticated');
     }
     
     updateRateLimitDisplay() {

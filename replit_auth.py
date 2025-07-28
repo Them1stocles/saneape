@@ -209,15 +209,19 @@ def make_replit_blueprint():
         except Exception as e:
             logger.error(f"Error during logout for user {user_id}: {e}")
 
-        # Redirect to Replit logout
-        end_session_endpoint = issuer_url + "/session/end"
-        encoded_params = urlencode({
-            "client_id": repl_id,
-            "post_logout_redirect_uri": request.url_root,
-        })
-        logout_url = f"{end_session_endpoint}?{encoded_params}"
-
-        return redirect(logout_url)
+        # Force immediate redirect to clear browser cache
+        # Instead of redirecting to Replit logout (which can cause browser caching issues),
+        # redirect directly to home with cache-busting headers
+        from flask import make_response
+        
+        response = make_response(redirect(url_for('index', _external=True)))
+        
+        # Add cache-busting headers to force page reload
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        
+        return response
 
     @replit_bp.route("/error")
     def error():

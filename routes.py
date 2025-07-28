@@ -1314,40 +1314,57 @@ def get_cached_analysis(ticker):
 
 @app.route('/api/user-status')
 def api_user_status():
-    """API endpoint for user status information"""
+    """API endpoint to get user authentication and rate limit status"""
     try:
-        # Get client IP
-        client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
-        if client_ip:
-            client_ip = client_ip.split(',')[0].strip()
-        
-        # Direct database query for accurate status
-        today = date.today()
-        rate_limit = RateLimit.query.filter_by(
-            ip_address=client_ip,
-            date_created=today
-        ).first()
-        
-        if rate_limit:
-            standard_remaining = max(0, 6 - rate_limit.request_count)
-            brain_remaining = max(0, 2 - rate_limit.maximum_brain_count)
+        # Check if user authentication is enabled and user is authenticated
+        if is_user_auth_enabled() and current_user.is_authenticated:
+            # User is authenticated - return credit-based status
+            try:
+                credit_summary = credit_manager.get_user_credit_summary(current_user.id)
+                return jsonify({
+                    'success': True,
+                    'authenticated': True,
+                    'data': {
+                        'user_id': current_user.id,
+                        'total_credits': credit_summary.get('total_credits', 0),
+                        'subscription_credits': credit_summary.get('subscription_credits', 0),
+                        'topup_credits': credit_summary.get('topup_credits', 0),
+                        'rate_limit_type': 'credit_based'
+                    }
+                })
+            except Exception as e:
+                logging.error(f"Error getting credit summary for user {current_user.id}: {e}")
+                return jsonify({
+                    'success': False,
+                    'authenticated': True,
+                    'error': 'Failed to load credit information'
+                }), 500
         else:
-            standard_remaining = 6
-            brain_remaining = 2
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'standard_remaining': standard_remaining,
-                'brain_remaining': brain_remaining,
-                'total_used': (rate_limit.request_count + rate_limit.maximum_brain_count) if rate_limit else 0
-            }
-        })
+            # User is not authenticated - return IP-based limits
+            client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+            if client_ip:
+                client_ip = client_ip.split(',')[0].strip()
+            
+            rate_limiter = RateLimiter()
+            remaining_info = rate_limiter.get_remaining_requests(client_ip)
+            
+            return jsonify({
+                'success': True,
+                'authenticated': False,
+                'data': {
+                    'standard_remaining': remaining_info.get('standard_remaining', 2),
+                    'brain_remaining': remaining_info.get('brain_remaining', 1),
+                    'total_used': remaining_info.get('total_used', 0),
+                    'rate_limit_type': 'ip_based'
+                }
+            })
+            
     except Exception as e:
-        app.logger.error(f"Error getting user status: {str(e)}")
+        logging.error(f"Error in api_user_status: {e}")
         return jsonify({
-            'error': 'Failed to get user status',
-            'success': False
+            'success': False,
+            'authenticated': False,
+            'error': 'Failed to load user status'
         }), 500
 
 # Sharing Routes

@@ -110,6 +110,15 @@ Two main models:
 
 ## Recent Changes: Latest modifications with dates
 
+### July 28, 2025 - CRITICAL: Authentication & Logout System Fixed ✅
+- **Issue Identified**: Users experiencing broken authentication state where backend correctly identified users as not authenticated but frontend displayed cached credit information
+- **Logout Bug Fixed**: Updated logout route to redirect directly to home with cache-busting headers (`Cache-Control: no-cache, no-store, must-revalidate`) instead of going through Replit's logout endpoint  
+- **API Authentication Status**: Fixed `/api/user-status` endpoint to properly check authentication state and return different data for authenticated vs anonymous users
+- **Frontend State Management**: Added `clearUserDisplay()` JavaScript function to properly clear cached credit displays when user is not authenticated
+- **UI Consistency**: Improved authentication state handling to prevent showing stale user data after logout
+- **Testing Verified**: Logout now properly clears session and resets UI, API returns correct authentication status, and credit system works properly when authenticated
+- **User Impact**: Resolves "Daily Limit Reached" issues for users with active subscriptions and credits who were stuck in broken authentication state
+
 ### July 27, 2025 - Production-Grade Rate Limiting Enhancement
 - **Database Schema**: Added SystemLimits, AnalysisCache, and SecurityLog models for comprehensive tracking
 - **Cost Management**: Implemented CostManager with $25 configurable daily spend limits and OpenAI token estimation
