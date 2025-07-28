@@ -244,6 +244,118 @@
                 </div>
             </div>
         </div>
+
+        <!-- Subscription Management Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i data-feather="credit-card"></i> Subscription Management
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Subscription Overview -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i data-feather="users" class="mb-2" style="width: 32px; height: 32px;"></i>
+                                        <div class="h4 mb-1" id="totalSubscribers">0</div>
+                                        <small class="text-muted">Active Subscribers</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i data-feather="calendar" class="mb-2" style="width: 32px; height: 32px;"></i>
+                                        <div class="h4 mb-1" id="monthlyRevenue">$0</div>
+                                        <small class="text-muted">Monthly Revenue</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i data-feather="trending-up" class="mb-2" style="width: 32px; height: 32px;"></i>
+                                        <div class="h4 mb-1" id="churnRate">0%</div>
+                                        <small class="text-muted">Churn Rate</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i data-feather="zap" class="mb-2" style="width: 32px; height: 32px;"></i>
+                                        <div class="h4 mb-1" id="totalCreditsIssued">0</div>
+                                        <small class="text-muted">Credits Issued Today</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Subscription Actions -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6>Subscription Actions</h6>
+                                <div class="btn-group-vertical d-grid gap-2">
+                                    <button class="btn btn-outline-primary" id="viewAllSubscriptionsBtn">
+                                        <i data-feather="list"></i> View All Subscriptions
+                                    </button>
+                                    <button class="btn btn-outline-warning" id="syncStripeBtn">
+                                        <i data-feather="refresh-cw"></i> Sync with Stripe
+                                    </button>
+                                    <button class="btn btn-outline-info" id="exportSubscriptionsBtn">
+                                        <i data-feather="download"></i> Export Subscription Data
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Credit Management</h6>
+                                <div class="d-grid gap-2">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="userIdInput" placeholder="User ID">
+                                        <input type="number" class="form-control" id="creditsToAdd" placeholder="Credits" min="1">
+                                        <button class="btn btn-success" id="addCreditsBtn">Add Credits</button>
+                                    </div>
+                                    <button class="btn btn-outline-danger" id="expireAllCreditsBtn">
+                                        <i data-feather="clock"></i> Expire All Subscription Credits
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Subscriptions Table -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6>Recent Subscriptions</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>User</th>
+                                                <th>Plan</th>
+                                                <th>Status</th>
+                                                <th>Amount</th>
+                                                <th>Started</th>
+                                                <th>Next Billing</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="subscriptionsTableBody">
+                                            <tr>
+                                                <td colspan="7" class="text-center text-muted">Loading subscriptions...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -264,12 +376,141 @@
                 
                 if (data.success) {
                     updateDashboard(data.data);
+                    loadSubscriptions();
                 } else {
                     console.error('Failed to load dashboard data:', data.error);
                 }
             } catch (error) {
                 console.error('Error loading dashboard:', error);
             }
+        }
+
+        // Load subscription data
+        async function loadSubscriptions() {
+            try {
+                const response = await fetch('/admin/api/subscriptions');
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateSubscriptionsTable(data.subscriptions);
+                }
+            } catch (error) {
+                console.error('Error loading subscriptions:', error);
+            }
+        }
+
+        function updateSubscriptionsTable(subscriptions) {
+            const tbody = document.getElementById('subscriptionsTableBody');
+            tbody.innerHTML = '';
+            
+            if (subscriptions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No subscriptions found</td></tr>';
+                return;
+            }
+            
+            subscriptions.forEach(sub => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <img src="${sub.user_profile_image || '/static/images/default-avatar.png'}" 
+                                 class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
+                            <div>
+                                <div class="fw-semibold">${sub.user_display_name}</div>
+                                <small class="text-muted">${sub.user_email}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="badge bg-primary">${sub.plan_type}</span></td>
+                    <td><span class="badge bg-${sub.status === 'active' ? 'success' : 'warning'}">${sub.status}</span></td>
+                    <td>$${(sub.amount / 100).toFixed(2)}</td>
+                    <td>${new Date(sub.created_at).toLocaleDateString()}</td>
+                    <td>${sub.next_billing ? new Date(sub.next_billing).toLocaleDateString() : 'N/A'}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary btn-sm" onclick="viewSubscription('${sub.user_id}')">
+                                <i data-feather="eye"></i>
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="manageCredits('${sub.user_id}')">
+                                <i data-feather="zap"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Re-initialize feather icons for new content
+            feather.replace();
+        }
+
+        // Subscription management event handlers
+        document.getElementById('viewAllSubscriptionsBtn').addEventListener('click', function() {
+            // Toggle table visibility or load more data
+            loadSubscriptions();
+        });
+
+        document.getElementById('syncStripeBtn').addEventListener('click', async function() {
+            this.disabled = true;
+            this.innerHTML = '<i data-feather="refresh-cw"></i> Syncing...';
+            
+            try {
+                const response = await fetch('/admin/api/sync-stripe', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Stripe sync completed successfully');
+                    loadSubscriptions();
+                } else {
+                    alert('Sync failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('Sync error: ' + error.message);
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i data-feather="refresh-cw"></i> Sync with Stripe';
+                feather.replace();
+            }
+        });
+
+        document.getElementById('addCreditsBtn').addEventListener('click', async function() {
+            const userId = document.getElementById('userIdInput').value;
+            const credits = document.getElementById('creditsToAdd').value;
+            
+            if (!userId || !credits) {
+                alert('Please enter both User ID and Credits amount');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/api/add-credits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, credits: parseInt(credits) })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert(`Successfully added ${credits} credits to user ${userId}`);
+                    document.getElementById('userIdInput').value = '';
+                    document.getElementById('creditsToAdd').value = '';
+                } else {
+                    alert('Failed to add credits: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error adding credits: ' + error.message);
+            }
+        });
+
+        function viewSubscription(userId) {
+            // Navigate to user details or show modal
+            window.open(`/admin/user/${userId}`, '_blank');
+        }
+
+        function manageCredits(userId) {
+            // Pre-fill user ID in credit management form
+            document.getElementById('userIdInput').value = userId;
+            document.getElementById('creditsToAdd').focus();
         }
 
         function updateDashboard(data) {
@@ -314,6 +555,14 @@
             if (data.security_metrics) {
                 document.getElementById('securityEvents').textContent = data.security_metrics.today.events;
                 document.getElementById('uniqueIPs').textContent = data.security_metrics.today.unique_ips;
+            }
+
+            // Update subscription metrics
+            if (data.subscription_metrics) {
+                document.getElementById('totalSubscribers').textContent = data.subscription_metrics.active_subscribers;
+                document.getElementById('monthlyRevenue').textContent = `$${data.subscription_metrics.monthly_revenue.toFixed(2)}`;
+                document.getElementById('churnRate').textContent = `${data.subscription_metrics.churn_rate.toFixed(1)}%`;
+                document.getElementById('totalCreditsIssued').textContent = data.subscription_metrics.credits_issued_today;
             }
         }
 

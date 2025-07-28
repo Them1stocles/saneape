@@ -669,13 +669,19 @@ class StripeManager:
             # Calculate days until renewal
             days_until_renewal = (subscription.current_period_end - datetime.utcnow()).days
             
-            # Get plan details
+            # Get plan details from SubscriptionPlan enum based on plan_type
+            plan_info = None
+            for plan in SubscriptionPlan:
+                if plan.value['plan_id'] == subscription.plan_type:
+                    plan_info = plan.value
+                    break
+            
             plan_details = {
                 'plan_type': subscription.plan_type,
                 'credits_per_cycle': subscription.credits_per_cycle,
-                'amount': subscription.amount,
-                'currency': subscription.currency,
-                'interval': subscription.interval
+                'amount': plan_info['price'] if plan_info else 500,  # Default to $5.00
+                'currency': 'usd',
+                'interval': plan_info['interval'] if plan_info else subscription.plan_type
             }
             
             # Get Stripe subscription details if available
@@ -701,9 +707,9 @@ class StripeManager:
                     'status': subscription.status,
                     'plan_type': subscription.plan_type,
                     'credits_per_cycle': subscription.credits_per_cycle,
-                    'amount': subscription.amount,
-                    'currency': subscription.currency,
-                    'interval': subscription.interval,
+                    'amount': plan_details['amount'],
+                    'currency': plan_details['currency'],
+                    'interval': plan_details['interval'],
                     'current_period_start': subscription.current_period_start.isoformat() if subscription.current_period_start else None,
                     'current_period_end': subscription.current_period_end.isoformat() if subscription.current_period_end else None,
                     'created_at': subscription.created_at.isoformat(),

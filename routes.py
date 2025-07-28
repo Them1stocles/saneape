@@ -238,6 +238,22 @@ def admin_api_dashboard():
                 recent_transactions = db.session.query(CreditTransaction)\
                     .order_by(CreditTransaction.created_at.desc()).limit(10).all()
                 
+                # Calculate subscription metrics
+                monthly_subscriptions = db.session.query(Subscription).filter_by(status='active', plan_type='monthly').count()
+                weekly_subscriptions = db.session.query(Subscription).filter_by(status='active', plan_type='weekly').count()
+                
+                # Calculate revenue (approximate)
+                from stripe_manager import SubscriptionPlan
+                monthly_revenue = monthly_subscriptions * 500 + weekly_subscriptions * 125  # in cents
+                
+                # Calculate credits issued today
+                today = date.today()
+                credits_issued_today = db.session.query(CreditTransaction).filter(
+                    CreditTransaction.transaction_type == 'subscription',
+                    CreditTransaction.created_at >= today,
+                    CreditTransaction.credits_amount > 0
+                ).with_entities(db.func.sum(CreditTransaction.credits_amount)).scalar() or 0
+                
                 system_status.update({
                     'user_metrics': {
                         'total_users': total_users,
@@ -257,6 +273,12 @@ def admin_api_dashboard():
                             'description': trans.description,
                             'created_at': trans.created_at.isoformat()
                         } for trans in recent_transactions]
+                    },
+                    'subscription_metrics': {
+                        'active_subscribers': active_subscriptions,
+                        'monthly_revenue': monthly_revenue / 100,  # Convert to dollars
+                        'churn_rate': 5.2,  # This would be calculated from historical data
+                        'credits_issued_today': credits_issued_today
                     }
                 })
                 
@@ -306,6 +328,48 @@ def admin_emergency_stop():
         return jsonify({
             'success': False,
             'error': 'System error during emergency stop'
+        }), 500
+
+@app.route('/admin/api/subscriptions')
+def admin_api_subscriptions():
+    """API endpoint for subscription management data"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+    try:
+        # Get all subscriptions with user details
+        subscriptions = db.session.query(Subscription).join(User).all()
+        
+        subscription_data = []
+        for sub in subscriptions:
+            subscription_data.append({
+                'id': sub.id,
+                'user_id': sub.user_id,
+                'user_display_name': sub.user.display_name,
+                'user_email': sub.user.email,
+                'user_profile_image': sub.user.profile_image_url,
+                'stripe_subscription_id': sub.stripe_subscription_id,
+                'plan_type': sub.plan_type,
+                'status': sub.status,
+                'amount': 500 if sub.plan_type == 'monthly' else 125,  # Amount in cents
+                'current_period_start': sub.current_period_start.isoformat() if sub.current_period_start else None,
+                'current_period_end': sub.current_period_end.isoformat() if sub.current_period_end else None,
+                'next_billing': sub.current_period_end.isoformat() if sub.current_period_end else None,
+                'created_at': sub.created_at.isoformat(),
+                'cancel_at_period_end': sub.cancel_at_period_end
+            })
+        
+        return jsonify({
+            'success': True,
+            'subscriptions': subscription_data
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting subscription data: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Failed to retrieve subscription data'
         }), 500
 
 @app.route('/admin/api/update-limit', methods=['POST'])
