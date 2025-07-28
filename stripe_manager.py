@@ -298,7 +298,6 @@ class StripeManager:
                 return self._handle_payment_succeeded(event_data)
             elif event_type == 'invoice.payment_failed':
                 return self._handle_payment_failed(event_data)
-
             else:
                 logger.info(f"Unhandled webhook event type: {event_type}")
                 return True  # Don't fail for unhandled events
@@ -669,7 +668,10 @@ class StripeManager:
                 result = self._handle_payment_succeeded(event_data['data']['object'])
             elif event_type == 'invoice.payment_failed':
                 result = self._handle_payment_failed(event_data['data']['object'])
-
+            elif event_type == 'payment_intent.succeeded':
+                result = self._handle_payment_intent_succeeded(event_data['data']['object'])
+            elif event_type == 'payment_intent.payment_failed':
+                result = self._handle_payment_intent_failed(event_data['data']['object'])
             else:
                 return {
                     'success': False,
@@ -694,7 +696,36 @@ class StripeManager:
                 'event_id': event_data.get('id', 'unknown')
             }
     
-
+    def _handle_payment_intent_succeeded(self, payment_intent_data: Dict) -> bool:
+        """Handle successful payment intent"""
+        try:
+            payment_intent_id = payment_intent_data['id']
+            customer_id = payment_intent_data.get('customer')
+            amount = payment_intent_data.get('amount', 0)
+            
+            logger.info(f"Payment intent succeeded: {payment_intent_id}, Amount: ${amount/100:.2f}")
+            
+            # For test purposes, just log the success
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error handling payment intent success: {e}")
+            return False
+    
+    def _handle_payment_intent_failed(self, payment_intent_data: Dict) -> bool:
+        """Handle failed payment intent"""
+        try:
+            payment_intent_id = payment_intent_data['id']
+            customer_id = payment_intent_data.get('customer')
+            
+            logger.warning(f"Payment intent failed: {payment_intent_id}")
+            
+            # For test purposes, just log the failure
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error handling payment intent failure: {e}")
+            return False
     
     def _classify_failure_type(self, failure_reason: str) -> str:
         """Classify payment failure type for retry strategy"""

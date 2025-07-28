@@ -31,13 +31,14 @@ class CreditManager:
             
             if not credit_balance:
                 logger.info(f"Creating new credit balance for user {user_id}")
-                credit_balance = CreditBalance()
-                credit_balance.user_id = user_id
-                credit_balance.subscription_credits = 0
-                credit_balance.topup_credits = 0
-                credit_balance.credits_used_today = 0
-                credit_balance.credits_used_this_cycle = 0
-                credit_balance.last_reset_date = datetime.utcnow().date()
+                credit_balance = CreditBalance(
+                    user_id=user_id,
+                    subscription_credits=0,
+                    topup_credits=0,
+                    credits_used_today=0,
+                    credits_used_this_cycle=0,
+                    last_reset_date=datetime.utcnow().date()
+                )
                 db.session.add(credit_balance)
                 db.session.commit()
                 
@@ -151,7 +152,7 @@ class CreditManager:
             db.session.rollback()
             return False
     
-    def add_topup_credits_legacy(self, user_id: str, credits: int, payment_amount: float = None, 
+    def add_topup_credits(self, user_id: str, credits: int, payment_amount: float = None, 
                          stripe_payment_id: str = None, is_bonus: bool = False) -> bool:
         """
         Add top-up credits (never expire, unlimited rollover).
@@ -597,113 +598,6 @@ class CreditManager:
                 'can_afford_brain': False
             }
     
-    def grant_subscription_credits(self, user_id: str, credits: int, expiry_date: date) -> bool:
-        """
-        Grant subscription credits to user with expiry date.
-        This will expire any existing subscription credits (no rollover).
-        """
-        try:
-            credit_balance = self.get_or_create_credit_balance(user_id)
-            
-            # If there were existing subscription credits, record them as expired
-            if credit_balance.subscription_credits > 0:
-                self.record_transaction(
-                    user_id=user_id,
-                    transaction_type='expiry',
-                    credit_type='subscription',
-                    credits_amount=-credit_balance.subscription_credits,
-                    description=f"Expired {credit_balance.subscription_credits} subscription credits"
-                )
-            
-            # Set new subscription credits and expiry
-            credit_balance.subscription_credits = credits
-            credit_balance.subscription_credits_expiry = expiry_date
-            credit_balance.credits_used_this_cycle = 0  # Reset cycle usage
-            credit_balance.updated_at = datetime.utcnow()
-            
-            # Record the grant transaction
-            self.record_transaction(
-                user_id=user_id,
-                transaction_type='subscription_grant',
-                credit_type='subscription',
-                credits_amount=credits,
-                description=f"Granted {credits} subscription credits, expires {expiry_date}"
-            )
-            
-            db.session.commit()
-            logger.info(f"Granted {credits} subscription credits to user {user_id}, expires {expiry_date}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error granting subscription credits to user {user_id}: {e}")
-            db.session.rollback()
-            return False
-
-    def add_topup_credits(self, user_id: str, credits: int, payment_amount: float, stripe_payment_id: str) -> bool:
-        """
-        Add top-up credits to user (never expire, unlimited rollover).
-        """
-        try:
-            credit_balance = self.get_or_create_credit_balance(user_id)
-            
-            # Add top-up credits
-            credit_balance.topup_credits += credits
-            credit_balance.updated_at = datetime.utcnow()
-            
-            # Record the transaction
-            self.record_transaction(
-                user_id=user_id,
-                transaction_type='topup_purchase',
-                credit_type='topup',
-                credits_amount=credits,
-                stripe_payment_id=stripe_payment_id,
-                amount_paid=payment_amount,
-                description=f"Purchased {credits} top-up credits for ${payment_amount:.2f}"
-            )
-            
-            db.session.commit()
-            logger.info(f"Added {credits} top-up credits to user {user_id}")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error adding top-up credits to user {user_id}: {e}")
-            db.session.rollback()
-            return False
-
-    def suspend_subscription_credits(self, user_id: str) -> bool:
-        """
-        Suspend subscription credits (set to 0) while keeping top-up credits.
-        Used when subscription payment fails or is canceled.
-        """
-        try:
-            credit_balance = self.get_or_create_credit_balance(user_id)
-            
-            # Record expiration if there were credits
-            if credit_balance.subscription_credits > 0:
-                expired_credits = credit_balance.subscription_credits
-                
-                self.record_transaction(
-                    user_id=user_id,
-                    transaction_type='suspension',
-                    credit_type='subscription',
-                    credits_amount=-expired_credits,
-                    description=f"Suspended {expired_credits} subscription credits due to payment failure"
-                )
-                
-                # Set subscription credits to 0
-                credit_balance.subscription_credits = 0
-                credit_balance.updated_at = datetime.utcnow()
-                
-                db.session.commit()
-                logger.info(f"Suspended {expired_credits} subscription credits for user {user_id}")
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error suspending subscription credits for user {user_id}: {e}")
-            db.session.rollback()
-            return False
-
     def process_subscription_renewal(self, user_id: str) -> bool:
         """
         Process monthly subscription renewal:
