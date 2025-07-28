@@ -9,7 +9,8 @@ from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
 from credit_manager import credit_manager, CreditManager
-from stripe_manager import StripeManager
+# Deferred import to avoid circular dependency
+# from stripe_manager import StripeManager
 from feature_flags import is_user_auth_enabled, is_credit_system_enabled
 import replit_auth  # Import to register authentication routes
 from datetime import date, datetime, timedelta
@@ -380,6 +381,8 @@ def admin_sync_stripe():
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
         
     try:
+        # Deferred import to avoid circular dependency
+        from stripe_manager import StripeManager
         stripe_mgr = StripeManager()
         
         # Get all local subscriptions
@@ -389,15 +392,27 @@ def admin_sync_stripe():
         for sub in local_subscriptions:
             if sub.stripe_subscription_id:
                 try:
-                    # Sync with Stripe
+                    # Sync with Stripe using latest API (2025-06-30.basil)
                     import stripe
-                    stripe_sub = stripe.Subscription.retrieve(sub.stripe_subscription_id)
+                    stripe_sub = stripe.Subscription.retrieve(
+                        sub.stripe_subscription_id,
+                        expand=['latest_invoice', 'latest_invoice.lines']
+                    )
                     
                     # Update local subscription with Stripe data
                     sub.status = stripe_sub.status
-                    sub.current_period_start = datetime.fromtimestamp(stripe_sub.current_period_start) if hasattr(stripe_sub, 'current_period_start') else sub.current_period_start
-                    sub.current_period_end = datetime.fromtimestamp(stripe_sub.current_period_end) if hasattr(stripe_sub, 'current_period_end') else sub.current_period_end
-                    sub.cancel_at_period_end = stripe_sub.cancel_at_period_end if hasattr(stripe_sub, 'cancel_at_period_end') else sub.cancel_at_period_end
+                    
+                    # Handle billing period using latest API structure
+                    if (stripe_sub.latest_invoice and 
+                        hasattr(stripe_sub.latest_invoice, 'lines') and 
+                        stripe_sub.latest_invoice.lines.data):
+                        line_item = stripe_sub.latest_invoice.lines.data[0]
+                        if hasattr(line_item, 'period'):
+                            sub.current_period_start = datetime.fromtimestamp(line_item.period.start)
+                            sub.current_period_end = datetime.fromtimestamp(line_item.period.end)
+                    
+                    # Other subscription fields
+                    sub.cancel_at_period_end = getattr(stripe_sub, 'cancel_at_period_end', sub.cancel_at_period_end)
                     sub.updated_at = datetime.utcnow()
                     
                     sync_results['updated'] += 1
@@ -498,7 +513,8 @@ def admin_test_webhook():
         
         logging.info(f"ADMIN TEST: Testing webhook event {event_type}")
         
-        # Import stripe manager and create test event
+        # Import stripe manager and create test event (deferred import)
+        from stripe_manager import StripeManager
         stripe_mgr = StripeManager()
         
         # Create mock event data based on event type
@@ -708,6 +724,8 @@ def account_dashboard():
         
         # Get comprehensive user data using existing managers
         credit_mgr = CreditManager()
+        # Deferred import to avoid circular dependency
+        from stripe_manager import StripeManager
         stripe_mgr = StripeManager()
         
         # Gather all user account data safely

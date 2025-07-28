@@ -19,8 +19,9 @@ from monitoring import monitoring, AlertSeverity
 
 logger = logging.getLogger(__name__)
 
-# Configure Stripe
+# Configure Stripe with latest API version
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+stripe.api_version = "2025-06-30.basil"  # Use latest API version for consistency
 
 class SubscriptionPlan(Enum):
     """Subscription plan types with metadata"""
@@ -370,26 +371,46 @@ class StripeManager:
             subscription.plan_type = plan_type or 'weekly'  # Default to weekly if none specified
             subscription.status = 'active'
             
-            # Set billing period from Stripe data (2016-07-06 API compatibility)
-            if 'current_period_start' in subscription_data:
-                try:
-                    subscription.current_period_start = datetime.fromtimestamp(subscription_data['current_period_start'])
-                except (ValueError, TypeError):
-                    subscription.current_period_start = datetime.utcnow()
-            else:
-                subscription.current_period_start = datetime.utcnow()
+            # Set billing period from Stripe data (2025-06-30.basil API)
+            # In the latest API, billing periods are in the invoice, not subscription
+            subscription.current_period_start = datetime.fromtimestamp(
+                subscription_data.get('start_date', int(datetime.utcnow().timestamp()))
+            )
+            
+            # Get billing period from latest invoice or calculate default
+            try:
+                # Retrieve subscription with expanded latest invoice
+                stripe_subscription = stripe.Subscription.retrieve(
+                    subscription_id, 
+                    expand=['latest_invoice']
+                )
                 
-            if 'current_period_end' in subscription_data:
-                try:
-                    subscription.current_period_end = datetime.fromtimestamp(subscription_data['current_period_end'])
-                except (ValueError, TypeError):
-                    # Default to 7 days for weekly, 30 days for monthly
-                    days = 7 if plan_type == 'weekly' else 30
-                    subscription.current_period_end = datetime.utcnow() + timedelta(days=days)
-            else:
-                # Default to 7 days for weekly, 30 days for monthly  
-                days = 7 if plan_type == 'weekly' else 30
-                subscription.current_period_end = datetime.utcnow() + timedelta(days=days)
+                if (stripe_subscription.latest_invoice and 
+                    hasattr(stripe_subscription.latest_invoice, 'lines') and 
+                    stripe_subscription.latest_invoice.lines.data):
+                    
+                    # Get period from invoice line item
+                    line_item = stripe_subscription.latest_invoice.lines.data[0]
+                    if hasattr(line_item, 'period'):
+                        subscription.current_period_start = datetime.fromtimestamp(line_item.period.start)
+                        subscription.current_period_end = datetime.fromtimestamp(line_item.period.end)
+                    else:
+                        # Fallback to calculating from start date
+                        subscription.current_period_end = self._calculate_period_end(
+                            subscription.current_period_start, plan_type
+                        )
+                else:
+                    # Fallback to calculating from start date
+                    subscription.current_period_end = self._calculate_period_end(
+                        subscription.current_period_start, plan_type
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Could not retrieve billing period from invoice: {e}")
+                # Fallback to calculating from start date
+                subscription.current_period_end = self._calculate_period_end(
+                    subscription.current_period_start, plan_type
+                )
             
             db.session.add(subscription)
             
@@ -639,6 +660,16 @@ class StripeManager:
             return datetime(now.year + 1, 1, 1) - timedelta(days=1)
         else:
             return datetime(now.year, now.month + 1, 1) - timedelta(days=1)
+    
+    def _calculate_period_end(self, period_start: datetime, plan_type: str) -> datetime:
+        """Calculate period end date based on plan type and start date"""
+        if plan_type == 'weekly':
+            return period_start + timedelta(days=7)
+        elif plan_type == 'monthly':
+            return period_start + timedelta(days=30)
+        else:
+            # Default to monthly for unknown plan types
+            return period_start + timedelta(days=30)
     
     def _find_user_by_customer_id(self, customer_id: str) -> Optional[User]:
         """Find user by Stripe customer ID"""

@@ -8,7 +8,8 @@ from flask import Blueprint, request, jsonify, redirect, url_for, render_templat
 from flask_login import login_required, current_user
 
 from app import db
-from stripe_manager import stripe_manager, SubscriptionPlan, PaymentResult
+from stripe_manager import SubscriptionPlan, PaymentResult
+# stripe_manager instance will be imported when needed to avoid circular imports
 from models import User, Subscription, CreditBalance
 from feature_flags import feature_flags
 from monitoring import monitoring, AlertSeverity
@@ -58,7 +59,10 @@ def create_subscription(plan_type):
             flash('Authentication error', 'error')
             return redirect(url_for('index'))
             
-        result = stripe_manager.create_checkout_session(
+        # Deferred import to avoid circular dependency
+        from stripe_manager import StripeManager
+        stripe_mgr = StripeManager()
+        result = stripe_mgr.create_checkout_session(
             user=user,
             plan=plan,
             success_url=success_url,
@@ -133,8 +137,10 @@ def stripe_webhook():
         except:
             pass
         
-        # Process webhook with Stripe manager
-        success, message = stripe_manager.handle_webhook(payload, signature)
+        # Process webhook with Stripe manager (deferred import)
+        from stripe_manager import StripeManager
+        stripe_mgr = StripeManager()
+        success, message = stripe_mgr.handle_webhook(payload, signature)
         
         if success:
             logger.info(f"Webhook processed successfully: {message}")

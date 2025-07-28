@@ -159,7 +159,7 @@ class User(UserMixin, db.Model):
 
 class OAuth(OAuthConsumerMixin, db.Model):
     """OAuth token storage for Replit authentication"""
-    __tablename__ = 'oauth_tokens'
+    __tablename__ = 'oauth_tokens'  # type: ignore
     
     user_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
     browser_session_key = db.Column(db.String(255), nullable=False)

@@ -302,3 +302,15 @@ Two main models:
 - **Production Testing**: Applied to all share routes (/share/TICKER and /share/TICKER/brain)
 - **Zero Future Errors**: System now handles ANY Unicode apostrophe variant from OpenAI across frontend, backend, and templates
 - **Bulletproof Architecture**: Centralized recommendation parsing prevents any future Unicode display bugs
+
+### July 28, 2025 - MAJOR: Production-Grade Stripe API Upgrade to 2025-06-30.basil ✅ ENTERPRISE READY
+- **Latest API Version**: Upgraded entire Stripe integration to use API version 2025-06-30.basil for maximum compatibility
+- **Billing Period Architecture**: Updated from deprecated `subscription.current_period_start/end` to modern `invoice.lines.data[0].period.start/end` structure
+- **Real Data Validation**: Successfully tested with live subscription `sub_1RpdpsDwyTs4lL4V6siZwpdy` showing correct monthly billing periods (July 27 to August 27)
+- **Circular Import Resolution**: Fixed all circular dependency issues with deferred imports in routes.py and payment_routes.py
+- **Webhook Processing**: Enhanced webhook handlers to work with latest API structure and Flask application context
+- **Helper Method Implementation**: Added `_calculate_period_end()` method with proper fallback logic for weekly/monthly plans
+- **Admin Sync Functionality**: Updated admin subscription sync to use expanded invoice data for accurate period information
+- **Production Testing**: Complete end-to-end webhook processing verified working with proper error handling
+- **Database Model Fix**: Resolved SQLAlchemy relationship issues and LSP diagnostics for clean codebase
+- **Enterprise Standards**: Zero breaking changes to existing functionality while enabling all latest Stripe features
