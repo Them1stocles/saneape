@@ -606,25 +606,22 @@ body {
 /* Mobile dropdown blue background */
 @media (max-width: 991.98px) {
     .navbar-collapse {
-        position: fixed;
-        top: 0;
-        right: -100%;
-        width: 80%;
-        max-width: 300px;
-        height: 100vh;
-        background-color: #0066cc !important;
-        transition: right 0.3s ease-in-out;
-        padding-top: 60px;
-        overflow-y: auto;
-    }
-    
-    .navbar-collapse.show {
+        position: absolute;
+        top: 100%;
+        left: 0;
         right: 0;
-        box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+        background-color: #0066cc !important;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
     }
     
     .navbar-nav {
         padding: 1rem;
+    }
+    
+    .navbar-nav .nav-item {
+        margin: 0.25rem 0;
     }
 }
 
