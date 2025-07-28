@@ -186,18 +186,24 @@ def make_replit_blueprint():
 
     @replit_bp.route("/logout")
     def logout():
-        """Enhanced logout with comprehensive cleanup"""
+        """Enhanced logout with comprehensive cleanup and session destruction"""
         user_id = current_user.get_id() if current_user.is_authenticated else None
         
         try:
-            # Clear OAuth token
+            # Clear OAuth tokens from database
+            if user_id:
+                OAuth.query.filter_by(user_id=user_id).delete()
+                db.session.commit()
+                logger.debug(f"OAuth token deleted for user {user_id}")
+            
+            # Clear OAuth token from blueprint if exists  
             if hasattr(replit_bp, 'token') and replit_bp.token:
                 del replit_bp.token
                 
-            # Log out user
+            # CRITICAL: Log out user from Flask-Login FIRST
             logout_user()
             
-            # Clear session data
+            # CRITICAL: Completely destroy the session
             session.clear()
             
             # Record logout event
@@ -208,13 +214,18 @@ def make_replit_blueprint():
             
         except Exception as e:
             logger.error(f"Error during logout for user {user_id}: {e}")
+            # Still continue with logout even if cleanup fails
+            logout_user()
+            session.clear()
 
-        # Force immediate redirect to clear browser cache
-        # Instead of redirecting to Replit logout (which can cause browser caching issues),
-        # redirect directly to home with cache-busting headers
+        # Create response with complete session destruction
         from flask import make_response
         
         response = make_response(redirect(url_for('index', _external=True)))
+        
+        # CRITICAL: Destroy session cookie completely
+        response.set_cookie('session', '', expires=0, path='/')
+        response.set_cookie('session', '', expires=0, path='/', domain=None)
         
         # Add cache-busting headers to force page reload
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
