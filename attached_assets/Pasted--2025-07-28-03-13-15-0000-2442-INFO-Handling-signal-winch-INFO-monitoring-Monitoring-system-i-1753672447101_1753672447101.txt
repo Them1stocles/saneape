@@ -1,0 +1,278 @@
+[2025-07-28 03:13:15 +0000] [2442] [INFO] Handling signal: winch
+INFO:monitoring:Monitoring system initialized
+INFO:feature_flags:Feature flags initialized for production environment
+INFO:replit_auth:Initializing Replit OAuth with REPL_ID: de643cdc-fb46-45ed-a04a-08294e90d38e
+INFO:replit_auth:Replit authentication blueprint registered successfully
+INFO:root:Payment blueprint registered successfully
+INFO:cache_manager:Cache hit for TSLY_False
+DEBUG:yfinance:Entering history()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_tz_kv" ("key" VARCHAR(255) NOT NULL PRIMARY KEY, "value" VARCHAR(255)) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['TSLY', 1, 0])
+DEBUG:yfinance: Entering history()
+DEBUG:yfinance:TSLY: Yahoo GET parameters: {'range': '1d', 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:  Entering get()
+DEBUG:yfinance:   Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/TSLY
+DEBUG:yfinance:params={'range': '1d', 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:    Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:     Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:      Entering _get_cookie_basic()
+DEBUG:yfinance:       Entering _load_cookie_curlCffi()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_cookieschema" ("strategy" VARCHAR(255) NOT NULL PRIMARY KEY, "fetch_date" DATETIME NOT NULL, "cookie_bytes" BLOB NOT NULL) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."strategy", "t1"."fetch_date", "t1"."cookie_bytes" FROM "_cookieschema" AS "t1" WHERE ("t1"."strategy" = ?) LIMIT ? OFFSET ?', ['curlCffi', 1, 0])
+DEBUG:yfinance:       Exiting _load_cookie_curlCffi()
+DEBUG:yfinance:reusing persistent cookie
+DEBUG:yfinance:      Exiting _get_cookie_basic()
+DEBUG:yfinance:      Entering _get_crumb_basic()
+DEBUG:yfinance:       Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:       Exiting _get_cookie_basic()
+DEBUG:yfinance:crumb = 'pdgGkZPeBFe'
+DEBUG:yfinance:      Exiting _get_crumb_basic()
+DEBUG:yfinance:     Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance:   Exiting _make_request()
+DEBUG:yfinance:  Exiting get()
+DEBUG:yfinance:TSLY: yfinance received OHLC data: 2025-07-25 13:30:00 only
+DEBUG:yfinance:TSLY: OHLC after cleaning: 2025-07-25 09:30:00-04:00 only
+DEBUG:yfinance:TSLY: OHLC after combining events: 2025-07-25 00:00:00-04:00 only
+DEBUG:yfinance:TSLY: yfinance returning OHLC: 2025-07-25 00:00:00-04:00 only
+DEBUG:yfinance: Exiting history()
+DEBUG:yfinance:Exiting history()
+INFO:root:Updated cached TSLY with current price: $7.75
+DEBUG:yfinance:Entering history()
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['TSLY', 1, 0])
+DEBUG:yfinance: Entering history()
+DEBUG:yfinance:TSLY: Yahoo GET parameters: {'period1': '2023-07-29 03:13:29-04:00', 'period2': '2025-07-28 03:13:29-04:00', 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:  Entering get()
+DEBUG:yfinance:   Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/TSLY
+DEBUG:yfinance:params={'period1': 1690614809, 'period2': 1753686809, 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:    Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:     Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:      Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:      Exiting _get_cookie_basic()
+DEBUG:yfinance:      Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:      Exiting _get_crumb_basic()
+DEBUG:yfinance:     Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance:   Exiting _make_request()
+DEBUG:yfinance:  Exiting get()
+DEBUG:yfinance:TSLY: yfinance received OHLC data: 2023-07-31 13:30:00 -> 2025-07-25 13:30:00
+DEBUG:yfinance:TSLY: OHLC after cleaning: 2023-07-31 09:30:00-04:00 -> 2025-07-25 09:30:00-04:00
+DEBUG:yfinance:TSLY: OHLC after combining events: 2023-07-31 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance:TSLY: yfinance returning OHLC: 2023-07-31 00:00:00-04:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance: Exiting history()
+DEBUG:yfinance:Exiting history()
+DEBUG:yfinance:get_raw_json(): https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLY
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLY
+DEBUG:yfinance:params={'modules': 'financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail', 'corsDomain': 'finance.yahoo.com', 'formatted': 'false', 'symbol': 'TSLY'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:get_raw_json(): https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:params={'symbols': 'TSLY', 'formatted': 'false'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/TSLY?symbol=TSLY&type=trailingPegRatio&period1=1737936000&period2=1753747200
+DEBUG:yfinance:params=None
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:get_raw_json(): https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLY
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v10/finance/quoteSummary/TSLY
+DEBUG:yfinance:params={'modules': 'financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail', 'corsDomain': 'finance.yahoo.com', 'formatted': 'false', 'symbol': 'TSLY'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:get_raw_json(): https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:params={'symbols': 'TSLY', 'formatted': 'false'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['TSLY', 1, 0])
+DEBUG:yfinance:Entering history()
+DEBUG:yfinance:TSLY: Yahoo GET parameters: {'period1': '1926-08-21 23:13:34-04:00', 'period2': '2025-07-27 23:13:29-04:00', 'interval': '1d', 'includePrePost': True, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance: Entering get()
+DEBUG:yfinance:  Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/TSLY
+DEBUG:yfinance:params={'period1': -1368391586, 'period2': 1753672409, 'interval': '1d', 'includePrePost': True, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:   Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:    Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:     Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:     Exiting _get_cookie_basic()
+DEBUG:yfinance:     Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:     Exiting _get_crumb_basic()
+DEBUG:yfinance:    Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance:  Exiting _make_request()
+DEBUG:yfinance: Exiting get()
+DEBUG:yfinance:TSLY: yfinance received OHLC data: 2022-11-23 14:30:00 -> 2025-07-25 13:30:00
+DEBUG:yfinance:TSLY: OHLC after cleaning: 2022-11-23 09:30:00-05:00 -> 2025-07-25 09:30:00-04:00
+DEBUG:yfinance:TSLY: OHLC after combining events: 2022-11-23 00:00:00-05:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance:TSLY: yfinance returning OHLC: 2022-11-23 00:00:00-05:00 -> 2025-07-25 00:00:00-04:00
+DEBUG:yfinance:Exiting history()
+INFO:income_analyzer:TSLY: Payment intervals: [27, 27, 27, 28, 28, 28, 28, 28, 28, 28, 29, 30] days, median: 28, avg: 28.0
+INFO:income_analyzer:TSLY: Calculated yield 128.46% from 13 payments (frequency: monthly)
+INFO:root:Income metrics calculated for TSLY: True
+DEBUG:openai._base_client:Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-39ed4266-087a-45c0-8e83-8d08ca15c8cf', 'json_data': {'messages': [{'role': 'system', 'content': 'You are an expert technical analyst. Always respond with valid JSON format.'}, {'role': 'user', 'content': 'You are an expert stock technical analyst performing Standard Analysis. Given the following historical data for stock ticker TSLY (YieldMax TSLA Option Income Strategy ETF):\n\nCurrent Price: $7.75\n30-day Price Change: -0.26%\n30-day Average Volume: 41,451,797\n30-day Volatility (StdDev): 0.25\nCurrent RSI: 62.67\nCurrent MACD: 0.0220\nBollinger Band Position: middle\nPrice vs SMA-20: above\nPrice vs SMA-50: below\nPrice vs SMA-200: below\nStochastic %K: 52.31\nStochastic %D: 59.91\nOBV Trend: increasing\n\nAnalyze this stock using ALL of these technical analysis methods and indicators: Wyckoff Method (accumulation/distribution phases), Bollinger Bands, Moving Averages (SMA and EMA), MACD, RSI, Stochastic Oscillator, On-Balance Volume (OBV), Average Directional Index (ADX), and price action patterns.\n\nFor each method/indicator:\n- Briefly explain the method and how it applies to this data\n- State whether it suggests a \'Buy\' signal (positive outlook) or \'No Buy\' signal (negative or neutral outlook)\n\nThen, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly \'Yes, buy!\' if the consensus is positive, or \'No, don\'t buy!\' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.\n\nDo not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the historical price and volume data provided.\n\nRespond in JSON format with this structure:\n{\n    "recommendation": "Yes, buy!" or "No, don\'t buy!",\n    "confidence": "high" or "medium" or "low",\n    "overall_explanation": "Brief explanation of the overall decision",\n    "technical_analysis": [\n        {\n            "method": "Method name",\n            "explanation": "How this method applies to the data",\n            "signal": "Buy" or "No Buy",\n            "strength": "Strong" or "Moderate" or "Weak"\n        }\n    ]\n}'}], 'model': 'gpt-4o', 'response_format': {'type': 'json_object'}, 'temperature': 0.3}}
+DEBUG:openai._base_client:Sending HTTP Request: POST https://api.openai.com/v1/chat/completions
+DEBUG:httpcore.connection:connect_tcp.started host='api.openai.com' port=443 local_address=None timeout=5.0 socket_options=None
+DEBUG:httpcore.connection:connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f54ba8fced0>
+DEBUG:httpcore.connection:start_tls.started ssl_context=<ssl.SSLContext object at 0x7f54bac35f40> server_hostname='api.openai.com' timeout=5.0
+DEBUG:httpcore.connection:start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7f54ba8fcf90>
+DEBUG:httpcore.http11:send_request_headers.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_headers.complete
+DEBUG:httpcore.http11:send_request_body.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_body.complete
+DEBUG:httpcore.http11:receive_response_headers.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:receive_response_headers.complete return_value=(b'HTTP/1.1', 200, b'OK', [(b'Date', b'Mon, 28 Jul 2025 03:13:36 GMT'), (b'Content-Type', b'application/json'), (b'Transfer-Encoding', b'chunked'), (b'Connection', b'keep-alive'), (b'access-control-expose-headers', b'X-Request-ID'), (b'openai-organization', b'user-ts5baauwb90d1rfvrj6gsjer'), (b'openai-processing-ms', b'6677'), (b'openai-project', b'proj_9qsS1cRhQam2UbWCwrVbmY9g'), (b'openai-version', b'2020-10-01'), (b'x-envoy-upstream-service-time', b'6683'), (b'x-ratelimit-limit-requests', b'500'), (b'x-ratelimit-limit-tokens', b'30000'), (b'x-ratelimit-remaining-requests', b'499'), (b'x-ratelimit-remaining-tokens', b'29493'), (b'x-ratelimit-reset-requests', b'120ms'), (b'x-ratelimit-reset-tokens', b'1.014s'), (b'x-request-id', b'291443b3-3e36-4e61-b3ad-b810cf12c1b5'), (b'cf-cache-status', b'DYNAMIC'), (b'Set-Cookie', b'__cf_bm=Auj5OQKYYK9N3AAUz1XGs65Ij87SrHaobsqeOJQGEig-1753672416-1.0.1.1-EqdL9vbykpbssUZc7V_O.Ingbh9mK5gnNpDkiDuVuHM0GgD8Ias8BF3Yr_pzmjIkPI.tNnsMe1xNAJBrfYw6srPbt7vIKfg6HILX3.0QLkg; path=/; expires=Mon, 28-Jul-25 03:43:36 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'Strict-Transport-Security', b'max-age=31536000; includeSubDomains; preload'), (b'X-Content-Type-Options', b'nosniff'), (b'Set-Cookie', b'_cfuvid=V7AYKiULqTIW_8vNmUL4bry3i_aRUJu6VfA_7HvXO.8-1753672416791-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), (b'Server', b'cloudflare'), (b'CF-RAY', b'96613372b8a9104e-ORD'), (b'Content-Encoding', b'gzip'), (b'alt-svc', b'h3=":443"; ma=86400')])
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+DEBUG:httpcore.http11:receive_response_body.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:receive_response_body.complete
+DEBUG:httpcore.http11:response_closed.started
+DEBUG:httpcore.http11:response_closed.complete
+DEBUG:openai._base_client:HTTP Response: POST https://api.openai.com/v1/chat/completions "200 OK" Headers([('date', 'Mon, 28 Jul 2025 03:13:36 GMT'), ('content-type', 'application/json'), ('transfer-encoding', 'chunked'), ('connection', 'keep-alive'), ('access-control-expose-headers', 'X-Request-ID'), ('openai-organization', 'user-ts5baauwb90d1rfvrj6gsjer'), ('openai-processing-ms', '6677'), ('openai-project', 'proj_9qsS1cRhQam2UbWCwrVbmY9g'), ('openai-version', '2020-10-01'), ('x-envoy-upstream-service-time', '6683'), ('x-ratelimit-limit-requests', '500'), ('x-ratelimit-limit-tokens', '30000'), ('x-ratelimit-remaining-requests', '499'), ('x-ratelimit-remaining-tokens', '29493'), ('x-ratelimit-reset-requests', '120ms'), ('x-ratelimit-reset-tokens', '1.014s'), ('x-request-id', '291443b3-3e36-4e61-b3ad-b810cf12c1b5'), ('cf-cache-status', 'DYNAMIC'), ('set-cookie', '__cf_bm=Auj5OQKYYK9N3AAUz1XGs65Ij87SrHaobsqeOJQGEig-1753672416-1.0.1.1-EqdL9vbykpbssUZc7V_O.Ingbh9mK5gnNpDkiDuVuHM0GgD8Ias8BF3Yr_pzmjIkPI.tNnsMe1xNAJBrfYw6srPbt7vIKfg6HILX3.0QLkg; path=/; expires=Mon, 28-Jul-25 03:43:36 GMT; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('strict-transport-security', 'max-age=31536000; includeSubDomains; preload'), ('x-content-type-options', 'nosniff'), ('set-cookie', '_cfuvid=V7AYKiULqTIW_8vNmUL4bry3i_aRUJu6VfA_7HvXO.8-1753672416791-0.0.1.1-604800000; path=/; domain=.api.openai.com; HttpOnly; Secure; SameSite=None'), ('server', 'cloudflare'), ('cf-ray', '96613372b8a9104e-ORD'), ('content-encoding', 'gzip'), ('alt-svc', 'h3=":443"; ma=86400')])
+DEBUG:openai._base_client:request_id: 291443b3-3e36-4e61-b3ad-b810cf12c1b5
+INFO:root:OpenAI Response: {
+    "recommendation": "No, don't buy!",
+    "confidence": "medium",
+    "overall_explanation": "The majority of indicators suggest a neutral to negative outlook, with several key indicators such as the MACD, SMA, and Stochastic Oscillator not strongly supporting a buy decision. The RSI is neutral, and the price is below longer-term moving averages, indicating potential weakness.",
+    "technical_analysis": [
+        {
+            "method": "Wyckoff Method",
+            "explanation": "The Wyckoff Method analyzes accumulation and distribution phases. Current data does not provide clear evidence of accumulation, as the price is below key moving averages.",
+            "signal": "No Buy",
+            "strength": "Moderate"
+        },
+        {
+            "method": "Bollinger Bands",
+            "explanation": "The price is positioned in the middle of the Bollinger Bands, indicating a neutral stance without clear overbought or oversold conditions.",
+            "signal": "No Buy",
+            "strength": "Weak"
+        },
+        {
+            "method": "Moving Averages",
+            "explanation": "The price is above the SMA-20 but below the SMA-50 and SMA-200, suggesting short-term strength but longer-term weakness.",
+            "signal": "No Buy",
+            "strength": "Moderate"
+        },
+        {
+            "method": "MACD",
+            "explanation": "The MACD is slightly positive at 0.0220, but not strong enough to indicate a clear bullish trend.",
+            "signal": "No Buy",
+            "strength": "Weak"
+        },
+        {
+            "method": "RSI",
+            "explanation": "The RSI is at 62.67, which is neutral to slightly overbought, not providing a strong buy signal.",
+            "signal": "No Buy",
+            "strength": "Moderate"
+        },
+        {
+            "method": "Stochastic Oscillator",
+            "explanation": "The Stochastic %K is at 52.31, close to the %D at 59.91, indicating a neutral stance without strong momentum.",
+            "signal": "No Buy",
+            "strength": "Weak"
+        },
+        {
+            "method": "On-Balance Volume (OBV)",
+            "explanation": "The OBV trend is increasing, suggesting accumulation, which is a positive sign.",
+            "signal": "Buy",
+            "strength": "Moderate"
+        },
+        {
+            "method": "Average Directional Index (ADX)",
+            "explanation": "The ADX is not provided, but typically evaluates trend strength. Without this data, no conclusion can be drawn.",
+            "signal": "No Buy",
+            "strength": "Weak"
+        },
+        {
+            "method": "Price Action Patterns",
+            "explanation": "No specific price action patterns are identified in the data provided.",
+            "signal": "No Buy",
+            "strength": "Weak"
+        }
+    ]
+}
+INFO:root:Parsed Analysis: {'recommendation': "No, don't buy!", 'confidence': 'medium', 'overall_explanation': 'The majority of indicators suggest a neutral to negative outlook, with several key indicators such as the MACD, SMA, and Stochastic Oscillator not strongly supporting a buy decision. The RSI is neutral, and the price is below longer-term moving averages, indicating potential weakness.', 'technical_analysis': [{'method': 'Wyckoff Method', 'explanation': 'The Wyckoff Method analyzes accumulation and distribution phases. Current data does not provide clear evidence of accumulation, as the price is below key moving averages.', 'signal': 'No Buy', 'strength': 'Moderate'}, {'method': 'Bollinger Bands', 'explanation': 'The price is positioned in the middle of the Bollinger Bands, indicating a neutral stance without clear overbought or oversold conditions.', 'signal': 'No Buy', 'strength': 'Weak'}, {'method': 'Moving Averages', 'explanation': 'The price is above the SMA-20 but below the SMA-50 and SMA-200, suggesting short-term strength but longer-term weakness.', 'signal': 'No Buy', 'strength': 'Moderate'}, {'method': 'MACD', 'explanation': 'The MACD is slightly positive at 0.0220, but not strong enough to indicate a clear bullish trend.', 'signal': 'No Buy', 'strength': 'Weak'}, {'method': 'RSI', 'explanation': 'The RSI is at 62.67, which is neutral to slightly overbought, not providing a strong buy signal.', 'signal': 'No Buy', 'strength': 'Moderate'}, {'method': 'Stochastic Oscillator', 'explanation': 'The Stochastic %K is at 52.31, close to the %D at 59.91, indicating a neutral stance without strong momentum.', 'signal': 'No Buy', 'strength': 'Weak'}, {'method': 'On-Balance Volume (OBV)', 'explanation': 'The OBV trend is increasing, suggesting accumulation, which is a positive sign.', 'signal': 'Buy', 'strength': 'Moderate'}, {'method': 'Average Directional Index (ADX)', 'explanation': 'The ADX is not provided, but typically evaluates trend strength. Without this data, no conclusion can be drawn.', 'signal': 'No Buy', 'strength': 'Weak'}, {'method': 'Price Action Patterns', 'explanation': 'No specific price action patterns are identified in the data provided.', 'signal': 'No Buy', 'strength': 'Weak'}]}
+INFO:cost_manager:Recorded API call: 34 calls, $0.4095 cost
+INFO:cache_manager:Cached analysis for TSLY_False until 2025-07-28 09:13:37.226449

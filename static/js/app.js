@@ -345,20 +345,21 @@ class SaneApeApp {
             formData.append('maximum_brain', maximumBrain.toString());
             formData.append('income_focus', incomeFocus.toString());
             
-            // Create timeout promise for long-running requests
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('Request timeout - analysis taking longer than expected')), 120000); // 2 minutes
-            });
+            // Create fetch promise with proper timeout handling
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 minutes
             
-            // Create fetch promise with extended timeout
-            const fetchPromise = fetch('/analyze', {
+            const response = await fetch('/analyze', {
                 method: 'POST',
                 body: formData,
-                // Note: fetch timeout isn't standard, but we use Promise.race below
+                signal: controller.signal
             });
             
-            // Race between fetch and timeout
-            const response = await Promise.race([fetchPromise, timeoutPromise]);
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
             
             const data = await response.json();
             
@@ -407,8 +408,17 @@ class SaneApeApp {
             
             // Enhanced error messaging based on error type
             let errorMessage = 'Network error. Please check your connection and try again.';
-            if (error.message && error.message.includes('timeout')) {
+            
+            if (error.name === 'AbortError') {
                 errorMessage = 'Analysis is taking longer than expected. This can happen with complex stocks. Please try again or contact support if the issue persists.';
+            } else if (error.message && error.message.includes('HTTP')) {
+                errorMessage = `Server error: ${error.message}. Please try again.`;
+            } else if (error.message && error.message.includes('JSON')) {
+                errorMessage = 'Server response format error. Please try again.';
+            } else if (error.message) {
+                // Log the specific error for debugging
+                console.error('Specific error details:', error.message);
+                errorMessage = 'Analysis failed. Please try again or contact support.';
             }
             
             this.showAlert(errorMessage, 'danger');
