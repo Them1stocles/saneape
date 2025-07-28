@@ -9,7 +9,7 @@ from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
 from credit_manager import credit_manager, CreditManager
-from stripe_manager import StripeManager
+# stripe_manager imported locally where needed to avoid circular import
 from feature_flags import is_user_auth_enabled, is_credit_system_enabled
 import replit_auth  # Import to register authentication routes
 from datetime import date, datetime, timedelta
@@ -380,7 +380,7 @@ def admin_sync_stripe():
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
         
     try:
-        stripe_mgr = StripeManager()
+        from stripe_manager import stripe_manager as stripe_mgr
         
         # Get all local subscriptions
         local_subscriptions = Subscription.query.all()
@@ -499,7 +499,7 @@ def admin_test_webhook():
         logging.info(f"ADMIN TEST: Testing webhook event {event_type}")
         
         # Import stripe manager and create test event
-        stripe_mgr = StripeManager()
+        from stripe_manager import stripe_manager as stripe_mgr
         
         # Create mock event data based on event type
         mock_events = {
@@ -708,7 +708,7 @@ def account_dashboard():
         
         # Get comprehensive user data using existing managers
         credit_mgr = CreditManager()
-        stripe_mgr = StripeManager()
+        from stripe_manager import stripe_manager as stripe_mgr
         
         # Gather all user account data safely
         try:
