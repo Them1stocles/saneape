@@ -677,24 +677,42 @@ class SaneApeApp {
         const isValidInput = ticker.length > 0 && ticker.length <= 5 && /^[A-Za-z]+$/.test(ticker);
         const isMaxBrain = this.maxBrainCheck.checked;
         
-        const hasStandardRemaining = this.remainingRequests.standard_remaining > 0;
-        const hasBrainRemaining = this.remainingRequests.brain_remaining > 0;
-        
         let canAnalyze = isValidInput && !this.isAnalyzing;
         let buttonText = 'Analyze Stock';
         let buttonClass = 'btn btn-primary btn-lg w-100';
         
-        if (isMaxBrain) {
-            canAnalyze = canAnalyze && hasBrainRemaining;
-            if (!hasBrainRemaining) {
-                buttonText = 'Maximum Brain Limit Reached';
+        // Check rate limit type - use credits for authenticated users
+        if (this.remainingRequests.rate_limit_type === 'credit_based') {
+            // CREDIT-BASED RATE LIMITING (Authenticated users)
+            const totalCredits = this.remainingRequests.total_credits || 0;
+            const requiredCredits = isMaxBrain ? 2 : 1;
+            
+            if (totalCredits < requiredCredits) {
+                canAnalyze = false;
+                if (totalCredits === 0) {
+                    buttonText = 'No Credits Remaining';
+                } else {
+                    buttonText = `Need ${requiredCredits} Credits (Have ${totalCredits})`;
+                }
                 buttonClass = 'btn btn-secondary btn-lg w-100';
             }
         } else {
-            canAnalyze = canAnalyze && hasStandardRemaining;
-            if (!hasStandardRemaining) {
-                buttonText = 'Daily Limit Reached';
-                buttonClass = 'btn btn-secondary btn-lg w-100';
+            // IP-BASED RATE LIMITING (Anonymous users)
+            const hasStandardRemaining = this.remainingRequests.standard_remaining > 0;
+            const hasBrainRemaining = this.remainingRequests.brain_remaining > 0;
+            
+            if (isMaxBrain) {
+                canAnalyze = canAnalyze && hasBrainRemaining;
+                if (!hasBrainRemaining) {
+                    buttonText = 'Maximum Brain Limit Reached';
+                    buttonClass = 'btn btn-secondary btn-lg w-100';
+                }
+            } else {
+                canAnalyze = canAnalyze && hasStandardRemaining;
+                if (!hasStandardRemaining) {
+                    buttonText = 'Daily Limit Reached';
+                    buttonClass = 'btn btn-secondary btn-lg w-100';
+                }
             }
         }
         

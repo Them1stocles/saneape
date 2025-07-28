@@ -110,6 +110,14 @@ Two main models:
 
 ## Recent Changes: Latest modifications with dates
 
+### July 28, 2025 - CRITICAL: Frontend Rate Limiting Logic Fixed for Authenticated Users ✅
+- **Root Cause Identified**: Frontend JavaScript was always using IP-based rate limiting logic (`standard_remaining`, `brain_remaining`) to determine analyze button state, even for authenticated users with credits
+- **Frontend Fix Applied**: Updated `updateButtonState()` function in `static/js/app.js` to properly check `rate_limit_type` and use credit-based logic for authenticated users
+- **Credit-Based Logic**: For authenticated users, now checks `total_credits >= requiredCredits` (1 for standard, 2 for brain) instead of IP-based remaining requests
+- **IP-Based Fallback**: Anonymous users continue using existing IP-based rate limiting system
+- **User Impact**: Authenticated users with credits (like the user with 269 credits) can now properly analyze stocks without false "Daily Limit Reached" errors
+- **Technical Details**: Frontend now properly distinguishes between `credit_based` and `ip_based` rate limiting types returned by `/api/user-status` endpoint
+
 ### July 28, 2025 - CRITICAL: Production Rate Limiting Feature Flag Fixed ✅
 - **Root Cause Identified**: The `enhanced_rate_limiting` feature flag was disabled in production environment, causing authenticated users to fall back to IP-based rate limiting instead of using their credit balance
 - **Production Fix Applied**: Enabled `enhanced_rate_limiting` flag in all environments (development, staging, production) with 100% rollout
