@@ -242,9 +242,9 @@ def admin_api_dashboard():
                 monthly_subscriptions = db.session.query(Subscription).filter_by(status='active', plan_type='monthly').count()
                 weekly_subscriptions = db.session.query(Subscription).filter_by(status='active', plan_type='weekly').count()
                 
-                # Calculate revenue (approximate)
+                # Calculate revenue (approximate) - both plans are $5/month
                 from stripe_manager import SubscriptionPlan
-                monthly_revenue = monthly_subscriptions * 500 + weekly_subscriptions * 125  # in cents
+                monthly_revenue = monthly_subscriptions * 500 + weekly_subscriptions * 500  # in cents
                 
                 # Calculate credits issued today
                 today = date.today()
@@ -352,7 +352,7 @@ def admin_api_subscriptions():
                 'stripe_subscription_id': sub.stripe_subscription_id,
                 'plan_type': sub.plan_type,
                 'status': sub.status,
-                'amount': 500 if sub.plan_type == 'monthly' else 125,  # Amount in cents
+                'amount': 500,  # Both plans are $5/month in cents
                 'current_period_start': sub.current_period_start.isoformat() if sub.current_period_start else None,
                 'current_period_end': sub.current_period_end.isoformat() if sub.current_period_end else None,
                 'next_billing': sub.current_period_end.isoformat() if sub.current_period_end else None,
@@ -370,6 +370,104 @@ def admin_api_subscriptions():
         return jsonify({
             'success': False,
             'error': 'Failed to retrieve subscription data'
+        }), 500
+
+@app.route('/admin/api/sync-stripe', methods=['POST'])
+def admin_sync_stripe():
+    """Sync subscription data with Stripe"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+    try:
+        stripe_mgr = StripeManager()
+        
+        # Get all local subscriptions
+        local_subscriptions = Subscription.query.all()
+        sync_results = {'updated': 0, 'created': 0, 'errors': 0}
+        
+        for sub in local_subscriptions:
+            if sub.stripe_subscription_id:
+                try:
+                    # Sync with Stripe
+                    import stripe
+                    stripe_sub = stripe.Subscription.retrieve(sub.stripe_subscription_id)
+                    
+                    # Update local subscription with Stripe data
+                    sub.status = stripe_sub.status
+                    sub.current_period_start = datetime.fromtimestamp(stripe_sub.current_period_start) if hasattr(stripe_sub, 'current_period_start') else sub.current_period_start
+                    sub.current_period_end = datetime.fromtimestamp(stripe_sub.current_period_end) if hasattr(stripe_sub, 'current_period_end') else sub.current_period_end
+                    sub.cancel_at_period_end = stripe_sub.cancel_at_period_end if hasattr(stripe_sub, 'cancel_at_period_end') else sub.cancel_at_period_end
+                    sub.updated_at = datetime.utcnow()
+                    
+                    sync_results['updated'] += 1
+                    
+                except Exception as e:
+                    logging.error(f"Error syncing subscription {sub.id}: {e}")
+                    sync_results['errors'] += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f"Sync completed: {sync_results['updated']} updated, {sync_results['errors']} errors",
+            'results': sync_results
+        })
+        
+    except Exception as e:
+        logging.error(f"Error during Stripe sync: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Sync failed: {str(e)}'
+        }), 500
+
+@app.route('/admin/api/add-credits', methods=['POST'])
+def admin_add_credits():
+    """Add credits to a user account"""
+    # Check admin authentication
+    if not session.get('admin_authenticated'):
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
+        
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        credits = data.get('credits')
+        
+        if not user_id or not credits or credits <= 0:
+            return jsonify({
+                'success': False,
+                'error': 'Valid user ID and positive credit amount required'
+            }), 400
+        
+        # Check if user exists
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({
+                'success': False,
+                'error': 'User not found'
+            }), 404
+        
+        # Add credits using credit manager
+        credit_mgr = CreditManager()
+        result = credit_mgr.add_topup_credits(user_id, credits, f"Admin manual credit addition")
+        
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': f"Successfully added {credits} credits to user {user_id}",
+                'new_balance': result.get('new_balance', 'Unknown')
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Failed to add credits')
+            }), 500
+            
+    except Exception as e:
+        logging.error(f"Error adding credits: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Error adding credits: {str(e)}'
         }), 500
 
 @app.route('/admin/api/update-limit', methods=['POST'])

@@ -350,7 +350,7 @@
         
         async function loadCreditBalance() {
             try {
-                const response = await fetch('/payment/credit-balance', {
+                const response = await fetch('/api/account/credits', {
                     credentials: 'same-origin',
                     headers: {
                         'Accept': 'application/json',
@@ -362,7 +362,13 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const data = await response.json();
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to load credit data');
+                }
+                
+                const data = result.credits;
                 
                 // Update navigation credits
                 const navCredits = document.getElementById('nav-credits');
@@ -393,36 +399,80 @@
             } catch (error) {
                 console.error('Error loading credit balance:', error);
                 // Show error state
-                document.getElementById('subscription-credits').textContent = '-';
-                document.getElementById('topup-credits').textContent = '-';
-                document.getElementById('total-credits').textContent = '-';
+                document.getElementById('subscription-credits').textContent = 'Error';
+                document.getElementById('topup-credits').textContent = 'Error';
+                document.getElementById('total-credits').textContent = 'Error';
                 const navCredits = document.getElementById('nav-credits');
                 if (navCredits) {
                     navCredits.textContent = 'Error loading';
                 }
-                }
-            } catch (error) {
-                console.error('Error loading credit balance:', error);
-                document.getElementById('subscription-credits').textContent = 'Error';
-                document.getElementById('topup-credits').textContent = 'Error';
-                document.getElementById('total-credits').textContent = 'Error';
             }
         }
         
         async function loadTransactionHistory() {
             try {
-                // This would be implemented later with a proper endpoint
-                // For now, show placeholder
+                const response = await fetch('/api/account/transactions', {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const tbody = document.querySelector('#credit-transactions tbody');
+                
+                if (!response.ok) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                <small>Unable to load transaction history</small>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success || !result.transactions.length) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="4" class="text-center text-muted">
+                                <small>No transactions found</small>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                // Display transactions
+                tbody.innerHTML = '';
+                result.transactions.forEach(tx => {
+                    const row = document.createElement('tr');
+                    const date = new Date(tx.created_at).toLocaleDateString();
+                    const type = tx.transaction_type.replace('_', ' ').toUpperCase();
+                    const credits = tx.credits_amount > 0 ? `+${tx.credits_amount}` : tx.credits_amount;
+                    const creditClass = tx.credits_amount > 0 ? 'text-success' : 'text-danger';
+                    
+                    row.innerHTML = `
+                        <td>${date}</td>
+                        <td><span class="badge bg-light text-dark">${type}</span></td>
+                        <td><span class="${creditClass}">${credits}</span></td>
+                        <td class="small">${tx.description || 'N/A'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+            } catch (error) {
+                console.error('Error loading transaction history:', error);
                 const tbody = document.querySelector('#credit-transactions tbody');
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="4" class="text-center text-muted">
-                            <small>Transaction history will be available soon</small>
+                            <small>Error loading transactions</small>
                         </td>
                     </tr>
                 `;
-            } catch (error) {
-                console.error('Error loading transaction history:', error);
             }
         }
         
