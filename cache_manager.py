@@ -12,7 +12,7 @@ import logging
 class CacheManager:
     """Manages analysis result caching with 6-hour TTL"""
     
-    CACHE_DURATION_HOURS = 1
+    CACHE_DURATION_HOURS = 6
     
     def __init__(self):
         self.logger = logging.getLogger(__name__)
