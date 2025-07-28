@@ -215,11 +215,10 @@ def get_credit_balance():
         
         # If no credit balance exists, create one
         if not credit_balance:
-            credit_balance = CreditBalance(
-                user_id=current_user.id,
-                subscription_credits=0,
-                topup_credits=0
-            )
+            credit_balance = CreditBalance()
+            credit_balance.user_id = current_user.id
+            credit_balance.subscription_credits = 0
+            credit_balance.topup_credits = 0
             db.session.add(credit_balance)
             db.session.commit()
         

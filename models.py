@@ -167,7 +167,7 @@ class OAuth(OAuthConsumerMixin, db.Model):
     # Unique constraint for user + session + provider
     __table_args__ = (
         UniqueConstraint('user_id', 'browser_session_key', 'provider', 
-                        name='uq_user_browser_session_provider'),
+                        name='uq_oauth_user_browser_session_provider'),
         Index('idx_oauth_user_provider', 'user_id', 'provider'),
     )
 

@@ -336,6 +336,10 @@ class StripeManager:
             logger.error(f"Error handling checkout completion: {e}")
             return False
     
+    def _handle_checkout_session_completed(self, session_data: Dict) -> bool:
+        """Handle checkout.session.completed webhook event (alias for consistency)"""
+        return self._handle_checkout_completed(session_data)
+    
     def _handle_subscription_created(self, subscription_data: Dict) -> bool:
         """Handle new subscription creation"""
         try:
@@ -363,14 +367,36 @@ class StripeManager:
             subscription.user_id = user.id
             subscription.stripe_subscription_id = subscription_id
             subscription.stripe_customer_id = customer_id
-            subscription.plan_type = plan_type
+            subscription.plan_type = plan_type or 'weekly'  # Default to weekly if none specified
             subscription.status = 'active'
+            
+            # Set billing period from Stripe data (2016-07-06 API compatibility)
+            if 'current_period_start' in subscription_data:
+                try:
+                    subscription.current_period_start = datetime.fromtimestamp(subscription_data['current_period_start'])
+                except (ValueError, TypeError):
+                    subscription.current_period_start = datetime.utcnow()
+            else:
+                subscription.current_period_start = datetime.utcnow()
+                
+            if 'current_period_end' in subscription_data:
+                try:
+                    subscription.current_period_end = datetime.fromtimestamp(subscription_data['current_period_end'])
+                except (ValueError, TypeError):
+                    # Default to 7 days for weekly, 30 days for monthly
+                    days = 7 if plan_type == 'weekly' else 30
+                    subscription.current_period_end = datetime.utcnow() + timedelta(days=days)
+            else:
+                # Default to 7 days for weekly, 30 days for monthly  
+                days = 7 if plan_type == 'weekly' else 30
+                subscription.current_period_end = datetime.utcnow() + timedelta(days=days)
             
             db.session.add(subscription)
             
             # Grant initial subscription credits with null safety
             if subscription_id:
-                self._grant_subscription_credits(user.id, credits_per_period, subscription_id)
+                source_id = subscription_id if subscription_id else "unknown"
+                self._grant_subscription_credits(user.id, credits_per_period, source_id)
             
             db.session.commit()
             
@@ -398,10 +424,11 @@ class StripeManager:
                 return False
             
             # Grant subscription credits for new billing period
+            safe_subscription_id = subscription_id if subscription_id else "unknown_payment"
             self._grant_subscription_credits(
                 subscription.user_id, 
                 subscription.credits_per_cycle,
-                subscription_id
+                safe_subscription_id
             )
             
             # Update subscription status
@@ -771,8 +798,8 @@ class StripeManager:
                         'status': stripe_sub.status,
                         'cancel_at_period_end': stripe_sub.cancel_at_period_end,
                         'canceled_at': stripe_sub.canceled_at,
-                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start).isoformat() if hasattr(stripe_sub, 'current_period_start') else None,
-                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end).isoformat() if hasattr(stripe_sub, 'current_period_end') else None
+                        'current_period_start': datetime.fromtimestamp(stripe_sub.current_period_start).isoformat() if stripe_sub.current_period_start else None,
+                        'current_period_end': datetime.fromtimestamp(stripe_sub.current_period_end).isoformat() if stripe_sub.current_period_end else None
                     }
                 except Exception as e:
                     logger.warning(f"Could not retrieve Stripe subscription details: {e}")
@@ -788,12 +815,12 @@ class StripeManager:
                     'amount': plan_details['amount'],
                     'currency': plan_details['currency'],
                     'interval': plan_details['interval'],
-                    'current_period_start': subscription.current_period_start.isoformat() if subscription.current_period_start else None,
-                    'current_period_end': subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+                    'current_period_start': subscription.current_period_start.isoformat() if hasattr(subscription, 'current_period_start') and subscription.current_period_start else None,
+                    'current_period_end': subscription.current_period_end.isoformat() if hasattr(subscription, 'current_period_end') and subscription.current_period_end else None,
                     'created_at': subscription.created_at.isoformat(),
                     'updated_at': subscription.updated_at.isoformat()
                 },
-                'next_billing': subscription.current_period_end.isoformat() if subscription.current_period_end else None,
+                'next_billing': subscription.current_period_end.isoformat() if hasattr(subscription, 'current_period_end') and subscription.current_period_end else None,
                 'days_until_renewal': days_until_renewal,
                 'plan_details': plan_details,
                 'stripe_details': stripe_details
