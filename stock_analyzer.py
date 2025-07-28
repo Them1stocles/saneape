@@ -18,62 +18,121 @@ class StockAnalyzer:
         self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
-        """Fetch historical stock data using yfinance"""
+        """Fetch historical stock data using yfinance with robust error handling"""
         try:
-            # Set a temporary cache directory to avoid I/O errors
+            # CRITICAL: Disable all yfinance caching to prevent Errno 5 I/O errors
             import tempfile
-            temp_cache_dir = tempfile.mkdtemp(prefix="yfinance_cache_")
-            os.environ['YFINANCE_CACHE_DIR'] = temp_cache_dir
+            import shutil
             
-            # Clear any existing cache files that might be corrupted
-            cache_locations = [
-                os.path.expanduser("~/.cache/py-yfinance"),
-                os.path.join(os.getcwd(), ".cache/py-yfinance"),
-                "/home/runner/workspace/.cache/py-yfinance"
+            # Force yfinance to use /tmp for all operations
+            temp_dir = "/tmp"
+            os.environ['YFINANCE_CACHE_DIR'] = temp_dir
+            
+            # Clear any existing problematic cache
+            problematic_paths = [
+                "/home/runner/.cache/py-yfinance",
+                "/home/runner/workspace/.cache/py-yfinance", 
+                os.path.expanduser("~/.cache/py-yfinance")
             ]
             
-            for cache_dir in cache_locations:
-                if os.path.exists(cache_dir):
+            for path in problematic_paths:
+                if os.path.exists(path):
                     try:
-                        import shutil
-                        shutil.rmtree(cache_dir)
-                        logging.info(f"Cleared cache at: {cache_dir}")
+                        shutil.rmtree(path)
+                        logging.info(f"Removed problematic cache: {path}")
                     except Exception as e:
-                        logging.warning(f"Could not clear cache at {cache_dir}: {e}")
+                        logging.warning(f"Could not remove {path}: {e}")
             
-            stock = yf.Ticker(ticker)
+            # Set yfinance to not use database caching
+            import yfinance as yf
             
-            # Get 2 years of historical data
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=730)  # 2 years
-            
-            hist = stock.history(start=start_date, end=end_date)
-            
-            if hist.empty:
-                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
-            
-            # Get additional info
-            info = stock.info
-            
-            # Clean up temp cache
+            # Monkey patch to disable database operations that cause Errno 5
+            original_create_all = None
             try:
-                import shutil
-                shutil.rmtree(temp_cache_dir)
+                from peewee import Database
+                original_create_all = Database.create_tables
+                Database.create_tables = lambda self, *args, **kwargs: None
             except:
                 pass
             
+            # Create ticker with minimal caching
+            stock = yf.Ticker(ticker)
+            
+            # Get historical data with shorter timeframe to reduce I/O
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=365)  # Reduced from 2 years to 1 year
+            
+            logging.info(f"Fetching data for {ticker} from {start_date} to {end_date}")
+            hist = stock.history(start=start_date, end=end_date, prepost=False, auto_adjust=True, back_adjust=False)
+            
+            if hist.empty:
+                logging.warning(f"No historical data found for {ticker}")
+                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
+            
+            # Get info with error handling
+            try:
+                info = stock.info
+            except Exception as info_error:
+                logging.warning(f"Could not fetch info for {ticker}: {info_error}")
+                info = {'longName': ticker, 'symbol': ticker}
+            
+            # Restore original function if patched
+            if original_create_all:
+                try:
+                    Database.create_tables = original_create_all
+                except:
+                    pass
+            
+            logging.info(f"Successfully fetched {len(hist)} days of data for {ticker}")
             return {
                 'history': hist,
                 'info': info,
                 'ticker': ticker
             }, None
             
+        except OSError as e:
+            if e.errno == 5:  # Errno 5: Input/output error
+                logging.error(f"I/O Error (Errno 5) for {ticker}: File system issue. Retrying with minimal operations.")
+                # Ultra-minimal fallback - no caching at all
+                try:
+                    import requests
+                    import pandas as pd
+                    
+                    # Direct API call without yfinance caching
+                    url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}"
+                    params = {
+                        'period1': int((datetime.now() - timedelta(days=90)).timestamp()),
+                        'period2': int(datetime.now().timestamp()),
+                        'interval': '1d',
+                        'events': 'history'
+                    }
+                    
+                    response = requests.get(url, params=params, timeout=10)
+                    if response.status_code == 200:
+                        from io import StringIO
+                        df = pd.read_csv(StringIO(response.text))
+                        df['Date'] = pd.to_datetime(df['Date'])
+                        df.set_index('Date', inplace=True)
+                        
+                        return {
+                            'history': df,
+                            'info': {'longName': ticker, 'symbol': ticker},
+                            'ticker': ticker
+                        }, None
+                    else:
+                        raise Exception(f"API call failed: {response.status_code}")
+                        
+                except Exception as fallback_error:
+                    logging.error(f"Fallback also failed for {ticker}: {fallback_error}")
+                    return None, f"System I/O error preventing data fetch for {ticker}. Please try again."
+            else:
+                raise
+                
         except Exception as e:
             logging.error(f"Error fetching data for {ticker}: {str(e)}")
-            # More detailed error logging
             import traceback
-            logging.error(f"Traceback: {traceback.format_exc()}")
-            return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
+            logging.error(f"Full traceback: {traceback.format_exc()}")
+            return None, f"Error fetching data for {ticker}: {str(e)}"
     
     def calculate_technical_indicators(self, df, maximum_brain=False):
         """Calculate technical indicators - standard or comprehensive based on mode"""
