@@ -345,10 +345,20 @@ class SaneApeApp {
             formData.append('maximum_brain', maximumBrain.toString());
             formData.append('income_focus', incomeFocus.toString());
             
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData
+            // Create timeout promise for long-running requests
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Request timeout - analysis taking longer than expected')), 120000); // 2 minutes
             });
+            
+            // Create fetch promise with extended timeout
+            const fetchPromise = fetch('/analyze', {
+                method: 'POST',
+                body: formData,
+                // Note: fetch timeout isn't standard, but we use Promise.race below
+            });
+            
+            // Race between fetch and timeout
+            const response = await Promise.race([fetchPromise, timeoutPromise]);
             
             const data = await response.json();
             
@@ -391,7 +401,14 @@ class SaneApeApp {
             
         } catch (error) {
             console.error('Analysis error:', error);
-            this.showAlert('Network error. Please check your connection and try again.', 'danger');
+            
+            // Enhanced error messaging based on error type
+            let errorMessage = 'Network error. Please check your connection and try again.';
+            if (error.message && error.message.includes('timeout')) {
+                errorMessage = 'Analysis is taking longer than expected. This can happen with complex stocks. Please try again or contact support if the issue persists.';
+            }
+            
+            this.showAlert(errorMessage, 'danger');
             return Promise.resolve(); // Prevent unhandled promise rejection
         } finally {
             this.setAnalyzingState(false);
@@ -404,12 +421,46 @@ class SaneApeApp {
         if (analyzing) {
             this.loadingState.classList.remove('d-none');
             this.form.style.opacity = '0.7';
+            this.startProgressIndicator();
         } else {
             this.loadingState.classList.add('d-none');
             this.form.style.opacity = '1';
+            this.stopProgressIndicator();
         }
         
         this.updateButtonState();
+    }
+    
+    startProgressIndicator() {
+        const loadingText = this.loadingState.querySelector('span');
+        let step = 0;
+        const steps = [
+            'Analyzing your stock...',
+            'Fetching market data...',
+            'Running technical analysis...',
+            'Processing AI insights...',
+            'Finalizing results...'
+        ];
+        
+        // Update text immediately
+        if (loadingText) {
+            loadingText.textContent = steps[0];
+        }
+        
+        // Progress indicator that cycles through steps
+        this.progressInterval = setInterval(() => {
+            step = (step + 1) % steps.length;
+            if (loadingText) {
+                loadingText.textContent = steps[step];
+            }
+        }, 8000); // Change message every 8 seconds
+    }
+    
+    stopProgressIndicator() {
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+            this.progressInterval = null;
+        }
     }
     
     displayResults(data) {
@@ -960,7 +1011,7 @@ class SaneApeApp {
             
             if (data.success) {
                 this.displayResults(data);
-                this.showAlert('success', `Loaded cached analysis for ${ticker} (no rate limit used)`);
+                this.showAlert(`Loaded cached analysis for ${ticker} (no rate limit used)`, 'success');
                 
                 // Google Analytics cached analysis event
                 if (typeof gtag !== 'undefined') {
@@ -972,11 +1023,11 @@ class SaneApeApp {
                     });
                 }
             } else {
-                this.showAlert('warning', data.error || 'Cached analysis not available');
+                this.showAlert(data.error || 'Cached analysis not available', 'warning');
             }
         } catch (error) {
             console.error('Error loading cached analysis:', error);
-            this.showAlert('danger', 'Failed to load cached analysis');
+            this.showAlert('Failed to load cached analysis', 'danger');
         } finally {
             this.setAnalyzingState(false);
         }
