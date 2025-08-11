@@ -630,15 +630,21 @@ Respond in JSON format with this structure:
             # Updated August 11, 2025 per user request for Maximum Brain enhancement
             model_to_use = "gpt-5" if maximum_brain else "gpt-4o"
             
-            response = self.openai_client.chat.completions.create(
-                model=model_to_use,
-                messages=[
+            # GPT-5 API parameters (temperature must be 1.0 or omitted)
+            api_params = {
+                "model": model_to_use,
+                "messages": [
                     {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"},
-                temperature=0.3
-            )
+                "response_format": {"type": "json_object"}
+            }
+            
+            # Add temperature parameter only for GPT-4o (GPT-5 only supports default temperature=1)
+            if not maximum_brain:
+                api_params["temperature"] = 0.3
+            
+            response = self.openai_client.chat.completions.create(**api_params)
             
             # Log successful API connection - HTTP 200 status confirmed
             logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
