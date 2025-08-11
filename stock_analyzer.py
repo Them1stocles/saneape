@@ -456,12 +456,21 @@ class StockAnalyzer:
                 indicator_values = {}
                 successful_indicators = []
                 failed_indicators = []
+                zero_value_indicators = []
+                missing_column_indicators = []
                 
                 # Process critical indicators first
                 for display_name, column_name in critical_indicators:
                     try:
+                        if column_name not in latest_row.index:
+                            missing_column_indicators.append(f"{display_name} (missing column '{column_name}')")
+                            failed_indicators.append(f"{display_name} (critical)")
+                            continue
+                            
                         value = self.safe_get_value(latest_row, column_name)
-                        if value != 0:  # Only include non-zero values
+                        if value == 0:  # Track zero values separately
+                            zero_value_indicators.append(f"{display_name} = 0")
+                        else:
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
                     except Exception as e:
@@ -471,19 +480,53 @@ class StockAnalyzer:
                 # Process optional indicators (limit to prevent payload bloat)
                 max_optional = 25  # Limit optional indicators for payload size management
                 optional_count = 0
+                hit_limit_indicators = []
                 
                 for display_name, column_name in optional_indicators:
                     if optional_count >= max_optional:
-                        break
+                        hit_limit_indicators.append(display_name)
+                        continue
+                        
                     try:
+                        if column_name not in latest_row.index:
+                            missing_column_indicators.append(f"{display_name} (missing column '{column_name}')")
+                            failed_indicators.append(f"{display_name} (optional)")
+                            continue
+                            
                         value = self.safe_get_value(latest_row, column_name)
-                        if value != 0:  # Only include non-zero values
+                        if value == 0:  # Track zero values separately
+                            zero_value_indicators.append(f"{display_name} = 0")
+                        else:
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
                             optional_count += 1
                     except Exception as e:
                         failed_indicators.append(f"{display_name} (optional)")
                         logging.warning(f"Optional indicator {display_name} failed: {e}")
+                
+                # Comprehensive logging for debugging
+                logging.info(f"=== MAXIMUM BRAIN INDICATOR ANALYSIS FOR {summary.get('ticker', 'UNKNOWN')} ===")
+                logging.info(f"✅ Successfully included: {len(successful_indicators)} indicators")
+                logging.info(f"   {', '.join(successful_indicators)}")
+                
+                if zero_value_indicators:
+                    logging.info(f"⚪ Zero value indicators (filtered): {len(zero_value_indicators)}")
+                    logging.info(f"   {', '.join(zero_value_indicators)}")
+                
+                if missing_column_indicators:
+                    logging.info(f"❌ Missing column indicators: {len(missing_column_indicators)}")
+                    logging.info(f"   {', '.join(missing_column_indicators)}")
+                
+                if hit_limit_indicators:
+                    logging.info(f"🚫 Hit optional limit (25): {len(hit_limit_indicators)} indicators")
+                    logging.info(f"   {', '.join(hit_limit_indicators)}")
+                
+                if failed_indicators:
+                    logging.info(f"💥 Calculation errors: {len(failed_indicators)}")
+                    logging.info(f"   {', '.join(failed_indicators)}")
+                
+                total_attempted = len(critical_indicators) + len(optional_indicators)
+                logging.info(f"📊 SUMMARY: {len(successful_indicators)}/{total_attempted} indicators used")
                 
                 summary['indicator_values'] = indicator_values
                 summary['indicator_stats'] = {
