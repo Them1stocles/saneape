@@ -9,7 +9,6 @@ import logging
 
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
-from scipy.signal import find_peaks
 from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
@@ -323,23 +322,53 @@ class StockAnalyzer:
             stock_df['fib_38.2'] = recent_high - (diff * 0.382)
             stock_df['fib_61.8'] = recent_high - (diff * 0.618)
             
-            # 27. Support/Resistance Levels using peak detection
+            # 27. Support/Resistance Levels using local pandas/numpy peak detection
             try:
                 highs = df['High'].values
                 lows = df['Low'].values
-                resistance_peaks, _ = find_peaks(highs, distance=10, prominence=highs.std()*0.5)
-                support_peaks, _ = find_peaks(-lows, distance=10, prominence=lows.std()*0.5)
                 
+                # Pure pandas/numpy peak detection algorithm
+                def find_local_peaks(data, distance=10, prominence_factor=0.5):
+                    """Local peak detection using pure pandas/numpy"""
+                    peaks = []
+                    prominence_threshold = np.std(data) * prominence_factor
+                    
+                    for i in range(distance, len(data) - distance):
+                        # Check if current point is higher than surrounding points
+                        left_max = np.max(data[i-distance:i])
+                        right_max = np.max(data[i+1:i+distance+1])
+                        current = data[i]
+                        
+                        # Peak conditions: higher than neighbors and meets prominence
+                        if current > left_max and current > right_max:
+                            prominence = current - max(left_max, right_max)
+                            if prominence >= prominence_threshold:
+                                peaks.append(i)
+                    
+                    return np.array(peaks)
+                
+                # Find resistance peaks (high points)
+                resistance_peaks = find_local_peaks(highs, distance=10, prominence_factor=0.5)
+                
+                # Find support peaks (low points - invert data)
+                support_peaks = find_local_peaks(-lows, distance=10, prominence_factor=0.5)
+                
+                # Initialize columns
                 stock_df['resistance_level'] = np.nan
                 stock_df['support_level'] = np.nan
+                
+                # Set peak values
                 if len(resistance_peaks) > 0:
                     stock_df.iloc[resistance_peaks, stock_df.columns.get_loc('resistance_level')] = highs[resistance_peaks]
                 if len(support_peaks) > 0:
                     stock_df.iloc[support_peaks, stock_df.columns.get_loc('support_level')] = lows[support_peaks]
                     
+                # Forward fill to maintain levels
                 stock_df['resistance_level'] = stock_df['resistance_level'].ffill()
                 stock_df['support_level'] = stock_df['support_level'].ffill()
-            except:
+                
+            except Exception as peak_error:
+                logging.warning(f"Peak detection failed, using rolling max/min fallback: {peak_error}")
                 stock_df['resistance_level'] = df['High'].rolling(20).max()
                 stock_df['support_level'] = df['Low'].rolling(20).min()
             
