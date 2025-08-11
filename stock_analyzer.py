@@ -1314,7 +1314,10 @@ Respond in JSON format with this structure:
             logging.error(f"Maximum Brain mode: {maximum_brain}")
             logging.error(f"AI Analysis Error Traceback: {error_details}")
             if maximum_brain:
-                prompt_length = len(prompt) if 'prompt' in locals() else 'unknown'
+                try:
+                    prompt_length = len(locals().get('prompt', '')) if 'prompt' in locals() else 'unknown'
+                except:
+                    prompt_length = 'unknown'
                 logging.error(f"Maximum Brain prompt length: {prompt_length}")
                 logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
             return None, f"Error analyzing stock data: {str(e)}"
