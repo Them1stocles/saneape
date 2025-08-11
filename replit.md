@@ -57,9 +57,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 11, 2025 - Maximum Brain SSL Issues Resolved & GPT-5 Upgrade
-- **Maximum Brain SSL Connection Issue Fixed**: Identified and resolved root cause - replaced `scipy.signal.find_peaks` with pure pandas/numpy peak detection algorithm, eliminating external network dependencies during technical indicator calculation
+### August 11, 2025 - Maximum Brain SSL Issues, Enhanced Debugging & API Resilience
+- **Maximum Brain SSL Connection Issue Partially Resolved**: Replaced `scipy.signal.find_peaks` with pure pandas/numpy peak detection to eliminate external network dependencies during indicator calculation. However, SSL connection errors still persist during OpenAI API calls
 - **Graceful Indicator Handling Implemented**: Added production-grade resilience system with priority-based indicator processing (10 critical + 25 optional indicators), individual error isolation, payload size optimization, and comprehensive success/failure tracking
-- **GPT-5 Model Upgrade**: Enhanced Maximum Brain analysis with GPT-5 model for superior analytical capabilities while maintaining GPT-4o for standard analysis
-- **Payload Optimization**: Smart filtering system excludes zero values and limits optional indicators to prevent OpenAI API timeouts, with detailed logging for payload size monitoring
-- **Income Analysis Override Bug Fixed**: Removed automatic enabling of income analysis for yield ETFs when users don't request it. System now respects user choice - if income analysis checkbox is not checked, traditional analysis is performed regardless of ticker type (ULTY, MSTY, etc.)
+- **Enhanced Debugging System**: Implemented comprehensive indicator analysis logging that categorizes the 12 failed indicators into: zero values, missing columns, optional limit reached, and calculation errors. System now provides detailed breakdowns showing which 23 of 35 indicators succeeded and exactly why others failed
+- **GPT-5 Model Upgrade Attempted**: GPT-5 not yet available in OpenAI API - falls back to optimized GPT-4o with enhanced parameters for Maximum Brain (temperature=0.1, max_tokens=4096) vs standard analysis (temperature=0.3, max_tokens=2048)
+- **API Retry Logic**: Implemented exponential backoff retry system for OpenAI rate limiting (HTTP 429) with 3 automatic retries and 1s/2s/4s delays
+- **Payload Optimization**: Smart filtering system excludes zero values and limits optional indicators to prevent API timeouts, with detailed payload size monitoring
+- **Rate Limiting Issues**: Encountered OpenAI API rate limiting (HTTP 429) and intermittent SSL connection failures that cause worker crashes
+- **Outstanding Issues**: SSL connection errors during OpenAI API calls still cause analysis failures and worker restarts. Root cause appears to be network-level SSL handshake failures rather than application code issues
+- **Income Analysis Override Bug Fixed**: System now respects user choice - if income analysis checkbox is not checked, traditional analysis is performed regardless of ticker type
