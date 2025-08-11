@@ -626,11 +626,12 @@ Respond in JSON format with this structure:
 
 
 
-            # Model selection: GPT-5 for Maximum Brain analysis, GPT-4o for standard analysis
+            # Model selection: Enhanced model for Maximum Brain analysis
+            # GPT-5 not yet available, using GPT-4o with optimized parameters for Maximum Brain
             # Updated August 11, 2025 per user request for Maximum Brain enhancement
-            model_to_use = "gpt-5" if maximum_brain else "gpt-4o"
+            model_to_use = "gpt-4o" if maximum_brain else "gpt-4o"
             
-            # GPT-5 API parameters (temperature must be 1.0 or omitted)
+            # API parameters optimized for Maximum Brain vs Standard analysis
             api_params = {
                 "model": model_to_use,
                 "messages": [
@@ -640,9 +641,13 @@ Respond in JSON format with this structure:
                 "response_format": {"type": "json_object"}
             }
             
-            # Add temperature parameter only for GPT-4o (GPT-5 only supports default temperature=1)
-            if not maximum_brain:
-                api_params["temperature"] = 0.3
+            # Optimized parameters for Maximum Brain analysis
+            if maximum_brain:
+                api_params["temperature"] = 0.1  # Lower temperature for more focused analysis
+                api_params["max_tokens"] = 4096  # Higher token limit for comprehensive analysis
+            else:
+                api_params["temperature"] = 0.3  # Standard temperature
+                api_params["max_tokens"] = 2048  # Standard token limit
             
             response = self.openai_client.chat.completions.create(**api_params)
             
