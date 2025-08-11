@@ -17,7 +17,7 @@ class StockAnalyzer:
         self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
-        """Fetch historical stock data using yfinance"""
+        """Fetch historical stock data using yfinance with robust error handling"""
         try:
             import yfinance as yf
             
@@ -27,26 +27,56 @@ class StockAnalyzer:
             end_date = datetime.now()
             start_date = end_date - timedelta(days=730)  # 2 years
             
-            hist = stock.history(start=start_date, end=end_date)
+            # Try multiple approaches to handle timezone and I/O issues
+            hist = None
+            info = None
             
-            if hist.empty:
+            # First attempt: standard approach
+            try:
+                hist = stock.history(start=start_date, end=end_date)
+                info = stock.info
+            except (OSError, IOError) as io_error:
+                if "Input/output error" in str(io_error) or "Errno 5" in str(io_error):
+                    logging.warning(f"I/O error for {ticker}, trying alternative approach: {str(io_error)}")
+                    # Try with different parameters to avoid timezone issues
+                    try:
+                        # Use period parameter instead of start/end dates to avoid timezone parsing
+                        hist = stock.history(period="2y")
+                        info = stock.info
+                    except Exception as fallback_error:
+                        logging.warning(f"Fallback approach also failed for {ticker}: {str(fallback_error)}")
+                        # Try minimal data fetch
+                        try:
+                            hist = stock.history(period="1y")  # Try 1 year if 2 years fails
+                            info = {}  # Use empty info if info fetch fails
+                        except Exception:
+                            raise io_error  # Re-raise original error if all attempts fail
+                else:
+                    raise  # Re-raise if it's not the I/O error we're handling
+            
+            if hist is None or hist.empty:
                 return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
-            
-            # Get additional info
-            info = stock.info
             
             return {
                 'history': hist,
-                'info': info,
+                'info': info or {},
                 'ticker': ticker
             }, None
             
         except Exception as e:
-            logging.error(f"Error fetching data for {ticker}: {str(e)}")
+            error_msg = str(e)
+            logging.error(f"Error fetching data for {ticker}: {error_msg}")
             # More detailed error logging
             import traceback
             logging.error(f"Traceback: {traceback.format_exc()}")
-            return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
+            
+            # Provide more specific error messages
+            if "Input/output error" in error_msg or "Errno 5" in error_msg:
+                return None, f"System I/O error occurred while fetching data for {ticker}. This is typically a temporary issue - please try again in a few moments."
+            elif "No data found" in error_msg or "404" in error_msg:
+                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol exists on Yahoo Finance."
+            else:
+                return None, f"Error fetching data for {ticker}. Please verify the ticker symbol and try again."
     
 
     
