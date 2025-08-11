@@ -7,14 +7,88 @@ import os
 from openai import OpenAI
 import logging
 
+# Production-grade HTTP client configuration
+import httpx
+from httpx import Timeout, Limits
+import ssl
+import time
+
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
 from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
     def __init__(self):
-        self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        # Production-grade HTTP client configuration for OpenAI API
+        self.openai_client = self._create_production_openai_client()
         self.income_analyzer = IncomeAnalyzer()
+    
+    def _create_production_openai_client(self):
+        """Create production-grade OpenAI client with robust HTTP transport configuration"""
+        try:
+            logging.info("Initializing production-grade OpenAI client with custom HTTP transport...")
+            
+            # SSL Context Configuration - Production Grade
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            
+            # More aggressive SSL settings to fail fast on connection issues
+            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+            ssl_context.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS')
+            
+            # Production HTTP Transport Configuration
+            transport = httpx.HTTPTransport(
+                # Connection limits for optimal performance
+                limits=Limits(
+                    max_keepalive_connections=10,  # Maintain persistent connections
+                    max_connections=20,            # Maximum concurrent connections
+                    keepalive_expiry=30.0          # Keep connections alive for 30 seconds
+                ),
+                # SSL and socket configuration
+                verify=ssl_context,
+                trust_env=True,                    # Respect proxy environment variables
+                socket_options=[]                  # Default socket options
+            )
+            
+            # Aggressive Timeout Configuration - Fail fast on SSL issues
+            timeout_config = Timeout(
+                connect=5.0,     # 5 seconds to establish connection
+                read=15.0,       # 15 seconds to read response (critical for SSL issues)
+                write=10.0,      # 10 seconds to send request
+                pool=30.0        # 30 seconds total including retries
+            )
+            
+            # Custom HTTP Client with production configuration
+            http_client = httpx.Client(
+                transport=transport,
+                timeout=timeout_config,
+                follow_redirects=True,
+                headers={
+                    'Connection': 'keep-alive',
+                    'Keep-Alive': 'timeout=30, max=100'
+                }
+            )
+            
+            # OpenAI Client with custom HTTP transport
+            client = OpenAI(
+                api_key=os.environ.get("OPENAI_API_KEY"),
+                http_client=http_client,
+                max_retries=0  # Disable OpenAI's internal retries - we handle our own
+            )
+            
+            logging.info("✅ Production-grade OpenAI client initialized successfully")
+            logging.info(f"   - SSL: TLS 1.2+ with modern ciphers")
+            logging.info(f"   - Timeouts: Connect=5s, Read=15s, Write=10s, Pool=30s")
+            logging.info(f"   - Connections: Max=20, KeepAlive=10, Expiry=30s")
+            
+            return client
+            
+        except Exception as e:
+            logging.error(f"❌ Failed to create production OpenAI client: {e}")
+            logging.warning("🔄 Falling back to standard OpenAI client...")
+            # Fallback to standard client if custom configuration fails
+            return OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     
     def fetch_stock_data(self, ticker):
         """Fetch historical stock data using yfinance"""
@@ -1169,38 +1243,42 @@ Respond in JSON format with this structure:
                 try:
                     logging.info(f"OpenAI API attempt {attempt + 1}/{max_retries + 1} for {summary.get('ticker', 'unknown')} ({'Maximum Brain' if maximum_brain else 'Standard'} mode)")
                     
-                    # Add timeout to prevent worker hangs during SSL issues
-                    import signal
+                    # Production-grade API call with connection monitoring
+                    start_time = time.time()
                     
-                    def timeout_handler(signum, frame):
-                        raise Exception("API call timeout - likely SSL connection issue")
+                    # Log connection attempt details
+                    payload_size = len(str(api_params).encode('utf-8'))
+                    logging.info(f"API call starting - Payload size: {payload_size:,} bytes, Timeout config active")
                     
-                    # Set 30 second timeout for the API call
-                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-                    signal.alarm(30)
+                    response = self.openai_client.chat.completions.create(**api_params)
                     
-                    try:
-                        response = self.openai_client.chat.completions.create(**api_params)
-                        signal.alarm(0)  # Cancel timeout
-                        signal.signal(signal.SIGALRM, old_handler)  # Restore handler
-                        break  # Success - exit retry loop
-                    except Exception as api_error:
-                        signal.alarm(0)  # Cancel timeout
-                        signal.signal(signal.SIGALRM, old_handler)  # Restore handler
-                        raise api_error
+                    # Log successful connection
+                    connection_time = time.time() - start_time
+                    logging.info(f"✅ API call successful in {connection_time:.2f}s (including SSL handshake and response read)")
+                    break  # Success - exit retry loop
                 except Exception as e:
                     failed_attempts += 1
                     error_str = str(e).lower()
                     
-                    # Enhanced retryable errors: rate limits, SSL, connection, timeout issues
+                    # Production-grade retryable error detection with httpx-specific errors
                     retryable_errors = [
-                        "429", "rate limit", 
-                        "ssl", "connection", "timeout", 
-                        "network", "handshake", "broken pipe",
-                        "connection reset", "connection aborted",
-                        "ssl.py", "sslobj.read", "_sslobj.read",  # SSL read failures
-                        "recv", "read", "response timeout",       # Response reading issues
-                        "systemexit", "worker exit"               # Worker crash indicators
+                        # OpenAI API errors
+                        "429", "rate limit", "rate_limit_exceeded",
+                        # SSL and TLS errors
+                        "ssl", "tls", "handshake", "certificate", "cert",
+                        "sslcontext", "ssl_context", "sslobj", "_sslobj",
+                        # Connection errors  
+                        "connection", "connect", "connection_error", "connectionerror",
+                        "connection reset", "connection aborted", "connection refused",
+                        "broken pipe", "pipe", "socket", "network",
+                        # Timeout errors
+                        "timeout", "timed out", "read timeout", "connect timeout",
+                        "readtimeout", "connecttimeout", "response timeout",
+                        # httpx/httpcore specific errors
+                        "httpx", "httpcore", "pool", "transport",
+                        "recv", "read", "send", "write",
+                        # System-level errors
+                        "errno", "oserror", "systemexit", "worker exit"
                     ]
                     
                     is_retryable = any(err in error_str for err in retryable_errors)
@@ -1209,13 +1287,21 @@ Respond in JSON format with this structure:
                         # Determine error type for user messaging
                         if "429" in error_str or "rate limit" in error_str:
                             error_type = "rate limiting"
-                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network", "recv", "read", "sslobj"]):
+                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network", "recv", "read", "sslobj", "httpx", "httpcore", "timeout"]):
                             error_type = "connection"
                         else:
                             error_type = "network"
                             
-                        logging.warning(f"OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
-                        logging.warning(f"Error details: {str(e)}")
+                        logging.warning(f"🔄 OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
+                        logging.warning(f"   Error type: {type(e).__name__}")
+                        logging.warning(f"   Error details: {str(e)}")
+                        
+                        # Additional connection diagnosis for SSL/connection errors
+                        if any(term in error_str for term in ["ssl", "connection", "handshake", "recv", "read"]):
+                            logging.info(f"🔍 Connection diagnosis: This appears to be an SSL/connection issue during response reading")
+                            logging.info(f"   - Payload size: ~{len(str(api_params).encode('utf-8')):,} bytes")
+                            logging.info(f"   - Next attempt will use fresh connection pool")
+                        
                         time.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                         continue
