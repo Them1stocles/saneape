@@ -150,7 +150,7 @@ class StockAnalyzer:
             # 1. RSI (Relative Strength Index)
             logging.info("📊 Calculating RSI (Relative Strength Index)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['rsi_14'] = stockstats_df['rsi']
                         logging.info("✅ RSI calculated using stockstats")
@@ -184,7 +184,7 @@ class StockAnalyzer:
             # 2. MACD (Moving Average Convergence Divergence)
             logging.info("📊 Calculating MACD (Moving Average Convergence Divergence)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['macd'] = stockstats_df['macd']
                         stock_df['macd_signal'] = stockstats_df['macds']
@@ -233,7 +233,7 @@ class StockAnalyzer:
             # 3-5. Moving Averages
             logging.info("📊 Calculating Moving Averages (SMA 20/50/200, EMA 12/26)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['sma_20'] = stockstats_df['close_20_sma']
                         stock_df['sma_50'] = stockstats_df['close_50_sma'] 
@@ -292,7 +292,7 @@ class StockAnalyzer:
             # 6. Bollinger Bands
             logging.info("📊 Calculating Bollinger Bands...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['bb_upper'] = stockstats_df['boll_ub']
                         stock_df['bb_middle'] = stockstats_df['boll']
@@ -492,6 +492,12 @@ class StockAnalyzer:
             # 13. Average True Range (ATR) - Use already calculated ATR from ADX
             logging.info("📊 Calculating Average True Range (ATR)...")
             try:
+                # Calculate ATR using True Range method
+                high_low = df['High'] - df['Low']
+                high_close = np.abs(df['High'] - df['Close'].shift())
+                low_close = np.abs(df['Low'] - df['Close'].shift())
+                tr = np.maximum(high_low, np.maximum(high_close, low_close))
+                atr = tr.rolling(14).mean()
                 stock_df['atr'] = atr
                 
                 # Validate ATR value
@@ -1308,7 +1314,8 @@ Respond in JSON format with this structure:
             logging.error(f"Maximum Brain mode: {maximum_brain}")
             logging.error(f"AI Analysis Error Traceback: {error_details}")
             if maximum_brain:
-                logging.error(f"Maximum Brain prompt length: {len(prompt) if 'prompt' in locals() else 'unknown'}")
+                prompt_length = len(prompt) if 'prompt' in locals() else 'unknown'
+                logging.error(f"Maximum Brain prompt length: {prompt_length}")
                 logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
             return None, f"Error analyzing stock data: {str(e)}"
     
