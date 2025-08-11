@@ -1,0 +1,274 @@
+[2025-08-11 22:20:13 +0000] [267] [INFO] Handling signal: winch
+INFO:root:Payment blueprint registered successfully
+INFO:root:Authenticated user 39526636 accessed index
+INFO:rate_limiter:Rate limit check: auth=True, credit_system=True, user_auth=True
+INFO:rate_limiter:Using credit-based rate limiting for user 39526636
+INFO:cache_manager:Cache miss for HURA_True
+INFO:credit_manager:Deducted 2 credits from user 39526636 for brain analysis of HURA
+INFO:rate_limiter:Credits deducted for user 39526636: 2 credits
+DEBUG:yfinance:Entering history()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_tz_kv" ("key" VARCHAR(255) NOT NULL PRIMARY KEY, "value" VARCHAR(255)) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."key", "t1"."value" FROM "_tz_kv" AS "t1" WHERE ("t1"."key" = ?) LIMIT ? OFFSET ?', ['HURA', 1, 0])
+DEBUG:yfinance: Entering history()
+DEBUG:yfinance:HURA: Yahoo GET parameters: {'period1': '2023-08-12 22:20:27-04:00', 'period2': '2025-08-11 22:20:27-04:00', 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:  Entering get()
+DEBUG:yfinance:   Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v8/finance/chart/HURA
+DEBUG:yfinance:params={'period1': 1691893227, 'period2': 1754965227, 'interval': '1d', 'includePrePost': False, 'events': 'div,splits,capitalGains'}
+DEBUG:yfinance:    Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:     Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:      Entering _get_cookie_basic()
+DEBUG:yfinance:       Entering _load_cookie_curlCffi()
+DEBUG:peewee:('CREATE TABLE IF NOT EXISTS "_cookieschema" ("strategy" VARCHAR(255) NOT NULL PRIMARY KEY, "fetch_date" DATETIME NOT NULL, "cookie_bytes" BLOB NOT NULL) WITHOUT ROWID', [])
+DEBUG:peewee:('SELECT "t1"."strategy", "t1"."fetch_date", "t1"."cookie_bytes" FROM "_cookieschema" AS "t1" WHERE ("t1"."strategy" = ?) LIMIT ? OFFSET ?', ['curlCffi', 1, 0])
+DEBUG:yfinance:       Exiting _load_cookie_curlCffi()
+DEBUG:yfinance:reusing persistent cookie
+DEBUG:yfinance:      Exiting _get_cookie_basic()
+DEBUG:yfinance:      Entering _get_crumb_basic()
+DEBUG:yfinance:       Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:       Exiting _get_cookie_basic()
+DEBUG:yfinance:crumb = 'pdgGkZPeBFe'
+DEBUG:yfinance:      Exiting _get_crumb_basic()
+DEBUG:yfinance:     Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance:   Exiting _make_request()
+DEBUG:yfinance:  Exiting get()
+DEBUG:yfinance:HURA: yfinance received OHLC data: 2023-08-14 13:30:00 -> 2025-08-11 20:00:00
+DEBUG:yfinance:HURA: OHLC after cleaning: 2023-08-14 09:30:00-04:00 -> 2025-08-11 16:00:00-04:00
+DEBUG:yfinance:HURA: OHLC after combining events: 2023-08-14 00:00:00-04:00 -> 2025-08-11 00:00:00-04:00
+DEBUG:yfinance:HURA: yfinance returning OHLC: 2023-08-14 00:00:00-04:00 -> 2025-08-11 00:00:00-04:00
+DEBUG:yfinance: Exiting history()
+DEBUG:yfinance:Exiting history()
+DEBUG:yfinance:get_raw_json(): https://query2.finance.yahoo.com/v10/finance/quoteSummary/HURA
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query2.finance.yahoo.com/v10/finance/quoteSummary/HURA
+DEBUG:yfinance:params={'modules': 'financialData,quoteType,defaultKeyStatistics,assetProfile,summaryDetail', 'corsDomain': 'finance.yahoo.com', 'formatted': 'false', 'symbol': 'HURA'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:get_raw_json(): https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/v7/finance/quote?
+DEBUG:yfinance:params={'symbols': 'HURA', 'formatted': 'false'}
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+DEBUG:yfinance:Entering get()
+DEBUG:yfinance: Entering _make_request()
+DEBUG:yfinance:url=https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/HURA?symbol=HURA&type=trailingPegRatio&period1=1739145600&period2=1754956800
+DEBUG:yfinance:params=None
+DEBUG:yfinance:  Entering _get_cookie_and_crumb()
+DEBUG:yfinance:cookie_mode = 'basic'
+DEBUG:yfinance:   Entering _get_cookie_and_crumb_basic()
+DEBUG:yfinance:    Entering _get_cookie_basic()
+DEBUG:yfinance:reusing cookie
+DEBUG:yfinance:    Exiting _get_cookie_basic()
+DEBUG:yfinance:    Entering _get_crumb_basic()
+DEBUG:yfinance:reusing crumb
+DEBUG:yfinance:    Exiting _get_crumb_basic()
+DEBUG:yfinance:   Exiting _get_cookie_and_crumb_basic()
+DEBUG:yfinance:  Exiting _get_cookie_and_crumb()
+DEBUG:yfinance:response code=200
+DEBUG:yfinance: Exiting _make_request()
+DEBUG:yfinance:Exiting get()
+INFO:root:Starting technical indicator calculation for HURA, Maximum Brain: True
+INFO:root:=== STARTING COMPREHENSIVE INDICATOR CALCULATION ===
+INFO:root:Input dataframe shape: (500, 7)
+INFO:root:Input columns: ['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']
+INFO:root:✅ Stockstats conversion successful
+INFO:root:📊 Calculating RSI (Relative Strength Index)...
+INFO:root:✅ RSI calculated using stockstats
+INFO:root:✅ RSI final value: 60.88
+INFO:root:📊 Calculating MACD (Moving Average Convergence Divergence)...
+INFO:root:✅ MACD calculated using stockstats
+INFO:root:✅ MACD values - MACD: 0.0040, Signal: -0.0130, Histogram: 0.0170
+INFO:root:📊 Calculating Moving Averages (SMA 20/50/200, EMA 12/26)...
+INFO:root:✅ Moving Averages calculated using stockstats
+INFO:root:✅ SMA_20: 2.62
+INFO:root:✅ SMA_50: 2.59
+INFO:root:✅ SMA_200: 3.72
+INFO:root:✅ EMA_12: 2.62
+INFO:root:✅ EMA_26: 2.61
+INFO:root:✅ Successful Moving Averages: SMA_20, SMA_50, SMA_200, EMA_12, EMA_26
+INFO:root:📊 Calculating Bollinger Bands...
+INFO:root:✅ Bollinger Bands calculated using stockstats
+INFO:root:✅ BB_Upper: 3.03
+INFO:root:✅ BB_Middle: 2.62
+INFO:root:✅ BB_Lower: 2.20
+INFO:root:📊 Calculating Stochastic Oscillator...
+INFO:root:✅ Stochastic_K: 88.37
+INFO:root:✅ Stochastic_D: 33.34
+INFO:root:📊 Calculating ADX (Average Directional Index)...
+INFO:root:✅ ADX: 1.13
+INFO:root:📊 Calculating CCI (Commodity Channel Index)...
+INFO:root:✅ CCI: 110.11
+INFO:root:📊 Calculating Williams %R...
+INFO:root:✅ Williams %R: -11.63
+INFO:root:📊 Calculating Pattern Detection Flags (6 indicators)...
+INFO:root:✅ Pattern Detection Flags calculated successfully
+INFO:root:================================================================================
+INFO:root:🎯 COMPREHENSIVE INDICATOR CALCULATION COMPLETE
+INFO:root:================================================================================
+INFO:root:📊 CALCULATION PHASE RESULTS:
+INFO:root:   ✅ Successfully calculated: 23 indicators
+INFO:root:   ❌ Failed calculations: 0 indicators
+INFO:root:   ⚪ Zero/NaN values: 0 indicators
+INFO:root:   🚫 Missing prerequisites: 0 indicators
+INFO:root:   📈 Total attempted: 23 indicators
+INFO:root:✅ SUCCESSFUL INDICATORS (23):
+INFO:root:   RSI, MACD, MACD_Signal, MACD_Histogram, SMA_20, SMA_50, SMA_200, EMA_12, EMA_26, BB_Upper, BB_Middle, BB_Lower, Stochastic_K, Stochastic_D, ADX, CCI, Williams_R, Trend_Strength, Volume_Trend, Price_Momentum, Volatility, RSI_Divergence_Flag, MACD_Crossover_Flag
+INFO:root:📋 DATAFRAME SUMMARY:
+INFO:root:   Original columns: 7
+INFO:root:   New indicator columns: 55
+INFO:root:   Total final columns: 62
+INFO:root:   Final dataframe shape: (500, 62)
+INFO:root:================================================================================
+INFO:root:🎯 MOVING TO DATA SUMMARIZATION PHASE
+INFO:root:================================================================================
+INFO:root:Technical indicators calculated successfully for HURA
+INFO:root:Starting data summarization for HURA, Maximum Brain: True
+INFO:root:=== MAXIMUM BRAIN INDICATOR ANALYSIS FOR HURA ===
+INFO:root:✅ Successfully included: 35 indicators
+INFO:root:   RSI, MACD, MACD_Signal, ADX, SMA_20, SMA_50, SMA_200, Bollinger_Upper, Bollinger_Lower, Stochastic_K, MACD_Histogram, EMA_12, EMA_26, Bollinger_Middle, Stochastic_D, CCI, Williams_R, MFI, OBV, ATR, Ultimate_Oscillator, TRIX, Momentum, ROC, Donchian_Upper, Donchian_Lower, Keltner_Upper, Keltner_Lower, Aroon_Down, Parabolic_SAR, VWAP, AD_Line, Tenkan_Sen, Kijun_Sen, Pivot_Point
+INFO:root:⚪ Zero value indicators (filtered): 1
+INFO:root:   Aroon_Up = 0
+INFO:root:🚫 Hit optional limit (25): 15 indicators
+INFO:root:   Resistance_R1, Support_S1, Fibonacci_23.6, Fibonacci_38.2, Fibonacci_61.8, Resistance_Level, Support_Level, RMI, Supertrend, Trend_Strength, Volume_Trend, Price_Momentum, Volatility, RSI_Divergence_Flag, MACD_Crossover_Flag
+INFO:root:📊 SUMMARY: 35/51 indicators used
+INFO:root:Maximum Brain indicators for HURA: 35 successful, 0 failed
+INFO:root:Data summarization completed for HURA. Indicator count: 35
+INFO:root:Starting AI analysis for HURA, Maximum Brain: True, Income Focus: False
+INFO:root:Maximum Brain payload size: 729 characters
+INFO:root:OpenAI API attempt 1/4 for HURA (Maximum Brain mode)
+DEBUG:openai._base_client:Request options: {'method': 'post', 'url': '/chat/completions', 'files': None, 'idempotency_key': 'stainless-python-retry-fe9869ff-166a-4402-8b5c-6ca0f4745261', 'json_data': {'messages': [{'role': 'system', 'content': 'You are an expert technical analyst. Always respond with valid JSON format.'}, {'role': 'user', 'content': 'You are an expert stock technical analyst performing MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities. Given the following pre-computed technical indicator values for stock ticker HURA (TuHURA Biosciences, Inc.):\n\nCurrent Price: $3.05\n30-day Price Change: 36.77%\n30-day Average Volume: 446,031\n30-day Volatility (StdDev): 0.20\n\nPRE-COMPUTED TECHNICAL INDICATOR VALUES:\n{\n  "RSI": 60.8763,\n  "MACD": 0.004,\n  "MACD_Signal": -0.013,\n  "ADX": 1.13,\n  "SMA_20": 2.6155,\n  "SMA_50": 2.5896,\n  "SMA_200": 3.7193,\n  "Bollinger_Upper": 3.034,\n  "Bollinger_Lower": 2.197,\n  "Stochastic_K": 88.3721,\n  "MACD_Histogram": 0.017,\n  "EMA_12": 2.616,\n  "EMA_26": 2.612,\n  "Bollinger_Middle": 2.6155,\n  "Stochastic_D": 33.3447,\n  "CCI": 110.1113,\n  "Williams_R": -11.6279,\n  "MFI": 85.3812,\n  "OBV": 20946404.0,\n  "ATR": 0.226,\n  "Ultimate_Oscillator": 57.4357,\n  "TRIX": 3.2577,\n  "Momentum": 0.27,\n  "ROC": 7.3944,\n  "Donchian_Upper": 3.15,\n  "Donchian_Lower": 2.23,\n  "Keltner_Upper": 2.9729,\n  "Keltner_Lower": 2.2381,\n  "Aroon_Down": 7.1429,\n  "Parabolic_SAR": 2.29,\n  "VWAP": 5.1512,\n  "AD_Line": -3026278.7618,\n  "Tenkan_Sen": 2.72,\n  "Kijun_Sen": 2.69,\n  "Pivot_Point": 2.8367\n}\n\nAnalyze this stock using ALL of these technical analysis methods and indicators: Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns.\n\nUse the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.\n\nFor each method/indicator:\n- Briefly explain the method and how it applies to this data\n- State whether it suggests a \'Buy\' signal (positive outlook) or \'No Buy\' signal (negative or neutral outlook)\n\nThen, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly \'Yes, buy!\' if the consensus is positive, or \'No, don\'t buy!\' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.\n\nDo not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the pre-computed indicator values provided.\n\nRespond in JSON format with this structure:\n{\n    "recommendation": "Yes, buy!" or "No, don\'t buy!",\n    "confidence": "high" or "medium" or "low",\n    "overall_explanation": "Brief explanation of the overall decision",\n    "technical_analysis": [\n        {\n            "method": "Method name",\n            "explanation": "How this method applies to the data",\n            "signal": "Buy" or "No Buy",\n            "strength": "Strong" or "Moderate" or "Weak"\n        }\n    ]\n}'}], 'model': 'gpt-4o', 'max_tokens': 4096, 'response_format': {'type': 'json_object'}, 'temperature': 0.1}}
+DEBUG:openai._base_client:Sending HTTP Request: POST https://api.openai.com/v1/chat/completions
+DEBUG:httpcore.connection:connect_tcp.started host='api.openai.com' port=443 local_address=None timeout=5.0 socket_options=None
+DEBUG:httpcore.connection:connect_tcp.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7fd6762dd290>
+DEBUG:httpcore.connection:start_tls.started ssl_context=<ssl.SSLContext object at 0x7fd676fce210> server_hostname='api.openai.com' timeout=5.0
+DEBUG:httpcore.connection:start_tls.complete return_value=<httpcore._backends.sync.SyncStream object at 0x7fd6762dd2d0>
+DEBUG:httpcore.http11:send_request_headers.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_headers.complete
+DEBUG:httpcore.http11:send_request_body.started request=<Request [b'POST']>
+DEBUG:httpcore.http11:send_request_body.complete
+DEBUG:httpcore.http11:receive_response_headers.started request=<Request [b'POST']>
+[2025-08-11 22:20:57 +0000] [267] [CRITICAL] WORKER TIMEOUT (pid:278)
+DEBUG:httpcore.http11:receive_response_headers.failed exception=SystemExit(1)
+DEBUG:httpcore.http11:response_closed.started
+DEBUG:httpcore.http11:response_closed.complete
+[2025-08-11 22:20:57 +0000] [278] [ERROR] Error handling request /analyze
+Traceback (most recent call last):
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/sync.py", line 134, in handle
+    self.handle_request(listener, req, client, addr)
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/sync.py", line 177, in handle_request
+    respiter = self.wsgi(environ, resp.start_response)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1536, in __call__
+    return self.wsgi_app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/werkzeug/middleware/proxy_fix.py", line 183, in __call__
+    return self.app(environ, start_response)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/routes.py", line 120, in analyze_stock
+    result = analyzer.analyze_stock(ticker, maximum_brain, income_focus)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/stock_analyzer.py", line 1350, in analyze_stock
+    analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/stock_analyzer.py", line 1014, in analyze_with_ai
+    response = self.openai_client.chat.completions.create(**api_params)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/openai/_utils/_utils.py", line 287, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/openai/resources/chat/completions/completions.py", line 1087, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/openai/_base_client.py", line 1256, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/openai/_base_client.py", line 979, in request
+    response = self._client.send(
+               ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/httpcore/_backends/sync.py", line 128, in read
+    return self._sock.recv(max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/ssl.py", line 1295, in recv
+    return self.read(buflen)
+           ^^^^^^^^^^^^^^^^^
+  File "/nix/store/7d088dip86hlzri9sk0h78b63yfmx0a0-python3-3.11.13/lib/python3.11/ssl.py", line 1168, in read
+    return self._sslobj.read(len)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/gunicorn/workers/base.py", line 204, in handle_abort
+    sys.exit(1)
+SystemExit: 1
+[2025-08-11 22:20:57 +0000] [278] [INFO] Worker exiting (pid: 278)

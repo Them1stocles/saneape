@@ -13,7 +13,11 @@ from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
     def __init__(self):
-        self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+        # Configure OpenAI client with timeout settings to prevent SSL hangs
+        self.openai_client = OpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY"),
+            timeout=60.0  # 60 second timeout for all operations
+        )
         self.income_analyzer = IncomeAnalyzer()
     
     def fetch_stock_data(self, ticker):
@@ -988,7 +992,8 @@ Respond in JSON format with this structure:
                     {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
                     {"role": "user", "content": prompt}
                 ],
-                "response_format": {"type": "json_object"}
+                "response_format": {"type": "json_object"},
+                "timeout": 45  # 45 second timeout to prevent SSL hangs
             }
             
             # Optimized parameters for Maximum Brain analysis
@@ -1022,7 +1027,8 @@ Respond in JSON format with this structure:
                         "429", "rate limit", 
                         "ssl", "connection", "timeout", 
                         "network", "handshake", "broken pipe",
-                        "connection reset", "connection aborted"
+                        "connection reset", "connection aborted",
+                        "worker timeout", "systemexit"
                     ]
                     
                     is_retryable = any(err in error_str for err in retryable_errors)
