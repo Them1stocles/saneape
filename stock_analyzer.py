@@ -370,7 +370,12 @@ class StockAnalyzer:
             return stock_df
             
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
             logging.error(f"Error calculating comprehensive indicators: {str(e)}")
+            logging.error(f"Comprehensive indicators error traceback: {error_details}")
+            logging.error(f"Dataframe shape: {df.shape if df is not None else 'None'}")
+            logging.error(f"Dataframe columns: {list(df.columns) if df is not None else 'None'}")
             # Fallback to standard indicators if comprehensive calculation fails
             return self.calculate_standard_indicators(df)
     
@@ -611,17 +616,23 @@ Respond in JSON format with this structure:
                 return None, "Empty response from AI analysis"
             
         except Exception as e:
-            logging.error(f"Error in AI analysis: {str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            logging.error(f"Error in AI analysis for {summary.get('ticker', 'unknown')}: {str(e)}")
+            logging.error(f"Maximum Brain mode: {maximum_brain}")
+            logging.error(f"AI Analysis Error Traceback: {error_details}")
+            if maximum_brain:
+                logging.error(f"Maximum Brain prompt length: {len(prompt) if 'prompt' in locals() else 'unknown'}")
+                logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
             return None, f"Error analyzing stock data: {str(e)}"
     
     def analyze_stock(self, ticker, maximum_brain=False, income_focus=False):
         """Main method to analyze a stock with optional income-focused analysis"""
         try:
-            # Auto-detect if ticker is a yield ETF
+            # Check if ticker is a yield ETF for informational purposes only
             is_yield_etf = self.income_analyzer.is_yield_etf(ticker)
-            if is_yield_etf and not income_focus:
-                logging.info(f"Auto-detected {ticker} as yield ETF, enabling income analysis")
-                income_focus = True
+            if is_yield_etf:
+                logging.info(f"Detected {ticker} as yield ETF. Income analysis: {'enabled' if income_focus else 'disabled by user choice'}")
             
             # Fetch stock data
             stock_data, error = self.fetch_stock_data(ticker)
@@ -629,10 +640,14 @@ Respond in JSON format with this structure:
                 return {'success': False, 'error': error or 'Failed to fetch stock data'}
             
             # Calculate technical indicators (pass maximum_brain parameter)
+            logging.info(f"Starting technical indicator calculation for {ticker}, Maximum Brain: {maximum_brain}")
             df_with_indicators = self.calculate_technical_indicators(stock_data['history'], maximum_brain)
+            logging.info(f"Technical indicators calculated successfully for {ticker}")
             
             # Summarize data (pass maximum_brain parameter)
+            logging.info(f"Starting data summarization for {ticker}, Maximum Brain: {maximum_brain}")
             summary = self.summarize_data(df_with_indicators, stock_data['info'], maximum_brain)
+            logging.info(f"Data summarization completed for {ticker}. Indicator count: {len(summary.get('indicator_values', {}))}")
             
             # Calculate income metrics if requested or auto-detected
             income_metrics = None
@@ -641,9 +656,12 @@ Respond in JSON format with this structure:
                 logging.info(f"Income metrics calculated for {ticker}: {income_metrics is not None}")
             
             # Get AI analysis (with income focus if applicable)
+            logging.info(f"Starting AI analysis for {ticker}, Maximum Brain: {maximum_brain}, Income Focus: {income_focus}")
             analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics)
             if error or analysis is None:
+                logging.error(f"AI analysis failed for {ticker}: {error}")
                 return {'success': False, 'error': error or 'Failed to get AI analysis'}
+            logging.info(f"AI analysis completed successfully for {ticker}")
             
             result = {
                 'success': True,
