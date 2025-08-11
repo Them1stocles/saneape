@@ -1168,18 +1168,39 @@ Respond in JSON format with this structure:
             for attempt in range(max_retries + 1):
                 try:
                     logging.info(f"OpenAI API attempt {attempt + 1}/{max_retries + 1} for {summary.get('ticker', 'unknown')} ({'Maximum Brain' if maximum_brain else 'Standard'} mode)")
-                    response = self.openai_client.chat.completions.create(**api_params)
-                    break  # Success - exit retry loop
+                    
+                    # Add timeout to prevent worker hangs during SSL issues
+                    import signal
+                    
+                    def timeout_handler(signum, frame):
+                        raise Exception("API call timeout - likely SSL connection issue")
+                    
+                    # Set 30 second timeout for the API call
+                    old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(30)
+                    
+                    try:
+                        response = self.openai_client.chat.completions.create(**api_params)
+                        signal.alarm(0)  # Cancel timeout
+                        signal.signal(signal.SIGALRM, old_handler)  # Restore handler
+                        break  # Success - exit retry loop
+                    except Exception as api_error:
+                        signal.alarm(0)  # Cancel timeout
+                        signal.signal(signal.SIGALRM, old_handler)  # Restore handler
+                        raise api_error
                 except Exception as e:
                     failed_attempts += 1
                     error_str = str(e).lower()
                     
-                    # Check for retryable errors: rate limits, SSL, connection, timeout issues
+                    # Enhanced retryable errors: rate limits, SSL, connection, timeout issues
                     retryable_errors = [
                         "429", "rate limit", 
                         "ssl", "connection", "timeout", 
                         "network", "handshake", "broken pipe",
-                        "connection reset", "connection aborted"
+                        "connection reset", "connection aborted",
+                        "ssl.py", "sslobj.read", "_sslobj.read",  # SSL read failures
+                        "recv", "read", "response timeout",       # Response reading issues
+                        "systemexit", "worker exit"               # Worker crash indicators
                     ]
                     
                     is_retryable = any(err in error_str for err in retryable_errors)
@@ -1188,7 +1209,7 @@ Respond in JSON format with this structure:
                         # Determine error type for user messaging
                         if "429" in error_str or "rate limit" in error_str:
                             error_type = "rate limiting"
-                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network"]):
+                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network", "recv", "read", "sslobj"]):
                             error_type = "connection"
                         else:
                             error_type = "network"
@@ -1198,10 +1219,15 @@ Respond in JSON format with this structure:
                         time.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                         continue
-                    elif maximum_brain and failed_attempts >= 2:
-                        # Maximum Brain multi-call fallback after 2 failures
-                        logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
-                        return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+                    elif maximum_brain and failed_attempts >= 1:
+                        # Maximum Brain multi-call fallback after 1 SSL failure (faster recovery)
+                        if any(term in error_str for term in ["ssl", "connection", "timeout", "recv", "read"]):
+                            logging.warning(f"Maximum Brain analysis failed due to SSL/connection issue, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
+                            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+                        elif failed_attempts >= 2:
+                            # Other errors require 2 failures
+                            logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
+                            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
                     else:
                         # Final failure or non-retryable error
                         if "429" in error_str or "rate limit" in error_str:
