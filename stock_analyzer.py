@@ -458,10 +458,8 @@ class StockAnalyzer:
                 # Validate MFI value
                 mfi_val = stock_df['mfi'].iloc[-1]
                 if pd.isna(mfi_val):
-                    # Use simplified calculation as fallback
-                    stock_df['mfi'] = 50.0  # Neutral MFI value
-                    indicator_calculation_log['zero_values'].append(f"MFI = NaN (fallback: 50.0)")
-                    logging.warning("⚠️ MFI calculation produced NaN, using neutral fallback")
+                    indicator_calculation_log['failed'].append(f"MFI = NaN (calculation failed)")
+                    logging.error("❌ MFI calculation produced NaN - no valid data available")
                 else:
                     indicator_calculation_log['successful'].append("MFI")
                     logging.info(f"✅ MFI: {mfi_val:.2f}")
@@ -469,7 +467,7 @@ class StockAnalyzer:
             except Exception as e:
                 indicator_calculation_log['failed'].append(f"MFI: {str(e)}")
                 logging.error(f"❌ MFI calculation failed: {e}")
-                stock_df['mfi'] = 50.0  # Neutral fallback
+                # Do not create synthetic data
             
             # 12. On-Balance Volume (OBV)
             logging.info("📊 Calculating On-Balance Volume (OBV)...")
@@ -613,11 +611,7 @@ class StockAnalyzer:
             except Exception as e:
                 indicator_calculation_log['failed'].append(f"Pivot Points: {str(e)}")
                 logging.error(f"❌ Pivot Points calculation failed: {e}")
-                # Fallback values
-                current_price = df['Close'].iloc[-1]
-                stock_df['pivot'] = current_price
-                stock_df['r1'] = current_price * 1.02
-                stock_df['s1'] = current_price * 0.98
+                # Do not create synthetic pivot levels
             
             # 26. Fibonacci Retracements - Basic levels
             logging.info("📊 Calculating Fibonacci Retracements (23.6%, 38.2%, 61.8%)...")
@@ -631,14 +625,10 @@ class StockAnalyzer:
                 latest_high = recent_high.iloc[-1]
                 
                 if pd.isna(latest_diff) or latest_diff < 0.01:
-                    # Fallback: use wider range or current price levels
-                    current_price = df['Close'].iloc[-1]
-                    price_range = current_price * 0.1  # 10% range fallback
-                    stock_df['fib_23.6'] = current_price - (price_range * 0.236)
-                    stock_df['fib_38.2'] = current_price - (price_range * 0.382)
-                    stock_df['fib_61.8'] = current_price - (price_range * 0.618)
-                    indicator_calculation_log['zero_values'].append(f"Fibonacci (fallback used, diff={latest_diff})")
-                    logging.warning(f"⚠️ Fibonacci using fallback, price range too small: {latest_diff}")
+                    # No meaningful price range for Fibonacci calculation
+                    indicator_calculation_log['failed'].append(f"Fibonacci (price range too small: {latest_diff})")
+                    logging.error(f"❌ Fibonacci calculation failed - insufficient price range: {latest_diff}")
+                    # Do not create synthetic Fibonacci levels
                 else:
                     stock_df['fib_23.6'] = recent_high - (diff * 0.236)
                     stock_df['fib_38.2'] = recent_high - (diff * 0.382)
@@ -665,11 +655,7 @@ class StockAnalyzer:
             except Exception as e:
                 indicator_calculation_log['failed'].append(f"Fibonacci Retracements: {str(e)}")
                 logging.error(f"❌ Fibonacci Retracements calculation failed: {e}")
-                # Fallback calculations
-                current_price = df['Close'].iloc[-1]
-                stock_df['fib_23.6'] = current_price * 0.95
-                stock_df['fib_38.2'] = current_price * 0.90
-                stock_df['fib_61.8'] = current_price * 0.85
+                # Do not create synthetic Fibonacci levels
             
             # 27. Support/Resistance Levels using local pandas/numpy peak detection
             logging.info("📊 Calculating Support/Resistance Levels...")
@@ -805,11 +791,8 @@ class StockAnalyzer:
                 # Validate Supertrend value
                 supertrend_val = stock_df['supertrend'].iloc[-1]
                 if pd.isna(supertrend_val) or supertrend_val <= 0:
-                    # Fallback to moving average
-                    stock_df['supertrend'] = df['Close'].rolling(20).mean()
-                    supertrend_val = stock_df['supertrend'].iloc[-1]
-                    indicator_calculation_log['zero_values'].append(f"Supertrend = {supertrend_val} (fallback used)")
-                    logging.warning(f"⚠️ Supertrend using MA fallback: {supertrend_val:.2f}")
+                    indicator_calculation_log['failed'].append(f"Supertrend = {supertrend_val} (invalid value)")
+                    logging.error(f"❌ Supertrend calculation produced invalid value: {supertrend_val}")
                 else:
                     indicator_calculation_log['successful'].append("Supertrend")
                     logging.info(f"✅ Supertrend: {supertrend_val:.2f}")
@@ -817,8 +800,7 @@ class StockAnalyzer:
             except Exception as e:
                 indicator_calculation_log['failed'].append(f"Supertrend: {str(e)}")
                 logging.error(f"❌ Supertrend calculation failed: {e}")
-                # Fallback to simple moving average
-                stock_df['supertrend'] = df['Close'].rolling(20).mean()
+                # Do not create synthetic Supertrend data
             
             # 30-35. Pattern Detection Flags
             logging.info("📊 Calculating Pattern Detection Flags (6 indicators)...")
