@@ -424,61 +424,75 @@ class StockAnalyzer:
             }
             
             if maximum_brain:
-                # Comprehensive indicator values for Maximum Brain Analysis
+                # Comprehensive indicator values for Maximum Brain Analysis with graceful handling
                 latest_row = df.iloc[-1]
-                summary['indicator_values'] = {
-                    'RSI': self.safe_get_value(latest_row, 'rsi_14'),
-                    'ADX': self.safe_get_value(latest_row, 'adx'),
-                    'MACD': self.safe_get_value(latest_row, 'macd'),
-                    'MACD_Signal': self.safe_get_value(latest_row, 'macd_signal'),
-                    'MACD_Histogram': self.safe_get_value(latest_row, 'macd_histogram'),
-                    'SMA_20': self.safe_get_value(latest_row, 'sma_20'),
-                    'SMA_50': self.safe_get_value(latest_row, 'sma_50'),
-                    'SMA_200': self.safe_get_value(latest_row, 'sma_200'),
-                    'EMA_12': self.safe_get_value(latest_row, 'ema_12'),
-                    'EMA_26': self.safe_get_value(latest_row, 'ema_26'),
-                    'Bollinger_Upper': self.safe_get_value(latest_row, 'bb_upper'),
-                    'Bollinger_Middle': self.safe_get_value(latest_row, 'bb_middle'),
-                    'Bollinger_Lower': self.safe_get_value(latest_row, 'bb_lower'),
-                    'Stochastic_K': self.safe_get_value(latest_row, 'stoch_k'),
-                    'Stochastic_D': self.safe_get_value(latest_row, 'stoch_d'),
-                    'CCI': self.safe_get_value(latest_row, 'cci'),
-                    'Williams_R': self.safe_get_value(latest_row, 'williams_r'),
-                    'MFI': self.safe_get_value(latest_row, 'mfi'),
-                    'OBV': self.safe_get_value(latest_row, 'obv'),
-                    'ATR': self.safe_get_value(latest_row, 'atr'),
-                    'Ultimate_Oscillator': self.safe_get_value(latest_row, 'ultimate_osc'),
-                    'TRIX': self.safe_get_value(latest_row, 'trix'),
-                    'Momentum': self.safe_get_value(latest_row, 'momentum'),
-                    'ROC': self.safe_get_value(latest_row, 'roc'),
-                    'Donchian_Upper': self.safe_get_value(latest_row, 'donchian_upper'),
-                    'Donchian_Lower': self.safe_get_value(latest_row, 'donchian_lower'),
-                    'Keltner_Upper': self.safe_get_value(latest_row, 'keltner_upper'),
-                    'Keltner_Lower': self.safe_get_value(latest_row, 'keltner_lower'),
-                    'Aroon_Up': self.safe_get_value(latest_row, 'aroon_up'),
-                    'Aroon_Down': self.safe_get_value(latest_row, 'aroon_down'),
-                    'Parabolic_SAR': self.safe_get_value(latest_row, 'sar'),
-                    'VWAP': self.safe_get_value(latest_row, 'vwap'),
-                    'AD_Line': self.safe_get_value(latest_row, 'ad_line'),
-                    'Tenkan_Sen': self.safe_get_value(latest_row, 'tenkan_sen'),
-                    'Kijun_Sen': self.safe_get_value(latest_row, 'kijun_sen'),
-                    'Pivot_Point': self.safe_get_value(latest_row, 'pivot'),
-                    'Resistance_R1': self.safe_get_value(latest_row, 'r1'),
-                    'Support_S1': self.safe_get_value(latest_row, 's1'),
-                    'Fibonacci_23.6': self.safe_get_value(latest_row, 'fib_23.6'),
-                    'Fibonacci_38.2': self.safe_get_value(latest_row, 'fib_38.2'),
-                    'Fibonacci_61.8': self.safe_get_value(latest_row, 'fib_61.8'),
-                    'Resistance_Level': self.safe_get_value(latest_row, 'resistance_level'),
-                    'Support_Level': self.safe_get_value(latest_row, 'support_level'),
-                    'RMI': self.safe_get_value(latest_row, 'rmi'),
-                    'Supertrend': self.safe_get_value(latest_row, 'supertrend'),
-                    'Trend_Strength': self.safe_get_value(latest_row, 'trend_strength'),
-                    'Volume_Trend': self.safe_get_value(latest_row, 'volume_trend'),
-                    'Price_Momentum': self.safe_get_value(latest_row, 'price_momentum'),
-                    'Volatility': self.safe_get_value(latest_row, 'volatility'),
-                    'RSI_Divergence_Flag': self.safe_get_value(latest_row, 'rsi_divergence'),
-                    'MACD_Crossover_Flag': self.safe_get_value(latest_row, 'macd_crossover')
+                
+                # Define critical and optional indicators for payload optimization
+                critical_indicators = [
+                    ('RSI', 'rsi_14'), ('MACD', 'macd'), ('MACD_Signal', 'macd_signal'), 
+                    ('ADX', 'adx'), ('SMA_20', 'sma_20'), ('SMA_50', 'sma_50'), ('SMA_200', 'sma_200'),
+                    ('Bollinger_Upper', 'bb_upper'), ('Bollinger_Lower', 'bb_lower'), ('Stochastic_K', 'stoch_k')
+                ]
+                
+                optional_indicators = [
+                    ('MACD_Histogram', 'macd_histogram'), ('EMA_12', 'ema_12'), ('EMA_26', 'ema_26'),
+                    ('Bollinger_Middle', 'bb_middle'), ('Stochastic_D', 'stoch_d'), ('CCI', 'cci'),
+                    ('Williams_R', 'williams_r'), ('MFI', 'mfi'), ('OBV', 'obv'), ('ATR', 'atr'),
+                    ('Ultimate_Oscillator', 'ultimate_osc'), ('TRIX', 'trix'), ('Momentum', 'momentum'),
+                    ('ROC', 'roc'), ('Donchian_Upper', 'donchian_upper'), ('Donchian_Lower', 'donchian_lower'),
+                    ('Keltner_Upper', 'keltner_upper'), ('Keltner_Lower', 'keltner_lower'),
+                    ('Aroon_Up', 'aroon_up'), ('Aroon_Down', 'aroon_down'), ('Parabolic_SAR', 'sar'),
+                    ('VWAP', 'vwap'), ('AD_Line', 'ad_line'), ('Tenkan_Sen', 'tenkan_sen'),
+                    ('Kijun_Sen', 'kijun_sen'), ('Pivot_Point', 'pivot'), ('Resistance_R1', 'r1'),
+                    ('Support_S1', 's1'), ('Fibonacci_23.6', 'fib_23.6'), ('Fibonacci_38.2', 'fib_38.2'),
+                    ('Fibonacci_61.8', 'fib_61.8'), ('Resistance_Level', 'resistance_level'),
+                    ('Support_Level', 'support_level'), ('RMI', 'rmi'), ('Supertrend', 'supertrend'),
+                    ('Trend_Strength', 'trend_strength'), ('Volume_Trend', 'volume_trend'),
+                    ('Price_Momentum', 'price_momentum'), ('Volatility', 'volatility'),
+                    ('RSI_Divergence_Flag', 'rsi_divergence'), ('MACD_Crossover_Flag', 'macd_crossover')
+                ]
+                
+                # Build indicator values with graceful error handling
+                indicator_values = {}
+                successful_indicators = []
+                failed_indicators = []
+                
+                # Process critical indicators first
+                for display_name, column_name in critical_indicators:
+                    try:
+                        value = self.safe_get_value(latest_row, column_name)
+                        if value != 0:  # Only include non-zero values
+                            indicator_values[display_name] = value
+                            successful_indicators.append(display_name)
+                    except Exception as e:
+                        failed_indicators.append(f"{display_name} (critical)")
+                        logging.warning(f"Critical indicator {display_name} failed: {e}")
+                
+                # Process optional indicators (limit to prevent payload bloat)
+                max_optional = 25  # Limit optional indicators for payload size management
+                optional_count = 0
+                
+                for display_name, column_name in optional_indicators:
+                    if optional_count >= max_optional:
+                        break
+                    try:
+                        value = self.safe_get_value(latest_row, column_name)
+                        if value != 0:  # Only include non-zero values
+                            indicator_values[display_name] = value
+                            successful_indicators.append(display_name)
+                            optional_count += 1
+                    except Exception as e:
+                        failed_indicators.append(f"{display_name} (optional)")
+                        logging.warning(f"Optional indicator {display_name} failed: {e}")
+                
+                summary['indicator_values'] = indicator_values
+                summary['indicator_stats'] = {
+                    'total_successful': len(successful_indicators),
+                    'total_failed': len(failed_indicators),
+                    'critical_available': len([i for i, _ in critical_indicators if i in successful_indicators])
                 }
+                
+                logging.info(f"Maximum Brain indicators for {summary.get('ticker', 'UNKNOWN')}: {len(successful_indicators)} successful, {len(failed_indicators)} failed")
             else:
                 # Standard mode indicators
                 summary.update({
@@ -691,6 +705,12 @@ Respond in JSON format with this structure:
             
             # Get AI analysis (with income focus if applicable)
             logging.info(f"Starting AI analysis for {ticker}, Maximum Brain: {maximum_brain}, Income Focus: {income_focus}")
+            
+            # Log payload size for Maximum Brain mode
+            if maximum_brain:
+                payload_size = len(json.dumps(summary.get('indicator_values', {})))
+                logging.info(f"Maximum Brain payload size: {payload_size} characters")
+                
             analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics)
             if error or analysis is None:
                 logging.error(f"AI analysis failed for {ticker}: {error}")
