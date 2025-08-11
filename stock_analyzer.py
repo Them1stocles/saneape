@@ -444,17 +444,75 @@ class StockAnalyzer:
                 stock_df['williams_r'] = 0
             
             # 11. Money Flow Index (MFI) - Custom calculation
-            typical_price = (df['High'] + df['Low'] + df['Close']) / 3
-            money_flow = typical_price * df['Volume']
-            positive_flow = money_flow.where(typical_price.diff() > 0, 0).rolling(14).sum()
-            negative_flow = money_flow.where(typical_price.diff() < 0, 0).rolling(14).sum()
-            stock_df['mfi'] = 100 - (100 / (1 + positive_flow / negative_flow))
+            logging.info("📊 Calculating Money Flow Index (MFI)...")
+            try:
+                typical_price = (df['High'] + df['Low'] + df['Close']) / 3
+                money_flow = typical_price * df['Volume']
+                positive_flow = money_flow.where(typical_price.diff() > 0, 0).rolling(14).sum()
+                negative_flow = money_flow.where(typical_price.diff() < 0, 0).rolling(14).sum()
+                
+                # Prevent division by zero
+                mfi_ratio = positive_flow / negative_flow.replace(0, 1)
+                stock_df['mfi'] = 100 - (100 / (1 + mfi_ratio))
+                
+                # Validate MFI value
+                mfi_val = stock_df['mfi'].iloc[-1]
+                if pd.isna(mfi_val):
+                    # Use simplified calculation as fallback
+                    stock_df['mfi'] = 50.0  # Neutral MFI value
+                    indicator_calculation_log['zero_values'].append(f"MFI = NaN (fallback: 50.0)")
+                    logging.warning("⚠️ MFI calculation produced NaN, using neutral fallback")
+                else:
+                    indicator_calculation_log['successful'].append("MFI")
+                    logging.info(f"✅ MFI: {mfi_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"MFI: {str(e)}")
+                logging.error(f"❌ MFI calculation failed: {e}")
+                stock_df['mfi'] = 50.0  # Neutral fallback
             
             # 12. On-Balance Volume (OBV)
-            stock_df['obv'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
+            logging.info("📊 Calculating On-Balance Volume (OBV)...")
+            try:
+                stock_df['obv'] = (np.sign(df['Close'].diff()) * df['Volume']).cumsum()
+                
+                # Validate OBV value
+                obv_val = stock_df['obv'].iloc[-1]
+                if pd.isna(obv_val):
+                    indicator_calculation_log['zero_values'].append(f"OBV = NaN")
+                    logging.warning(f"⚠️ OBV has problematic value: {obv_val}")
+                    stock_df['obv'] = 0
+                else:
+                    indicator_calculation_log['successful'].append("OBV")
+                    logging.info(f"✅ OBV: {obv_val:.0f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"OBV: {str(e)}")
+                logging.error(f"❌ OBV calculation failed: {e}")
+                stock_df['obv'] = 0
             
             # 13. Average True Range (ATR) - Use already calculated ATR from ADX
-            stock_df['atr'] = atr
+            logging.info("📊 Calculating Average True Range (ATR)...")
+            try:
+                stock_df['atr'] = atr
+                
+                # Validate ATR value
+                atr_val = stock_df['atr'].iloc[-1]
+                if pd.isna(atr_val) or atr_val <= 0:
+                    # Fallback ATR calculation
+                    simple_range = (df['High'] - df['Low']).rolling(14).mean()
+                    stock_df['atr'] = simple_range
+                    atr_val = stock_df['atr'].iloc[-1]
+                    indicator_calculation_log['zero_values'].append(f"ATR = {atr_val} (fallback used)")
+                    logging.warning(f"⚠️ ATR using fallback calculation: {atr_val:.4f}")
+                else:
+                    indicator_calculation_log['successful'].append("ATR")
+                    logging.info(f"✅ ATR: {atr_val:.4f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"ATR: {str(e)}")
+                logging.error(f"❌ ATR calculation failed: {e}")
+                stock_df['atr'] = (df['High'] - df['Low']).rolling(14).mean()
             
             # 14. Ultimate Oscillator - Custom calculation
             bp = df['Close'] - np.minimum(df['Low'], df['Close'].shift(1))
@@ -527,19 +585,94 @@ class StockAnalyzer:
             # === CUSTOM PATTERN DETECTION ===
             
             # 25. Pivot Points
-            stock_df['pivot'] = (df['High'] + df['Low'] + df['Close']) / 3
-            stock_df['r1'] = (2 * stock_df['pivot']) - df['Low']
-            stock_df['s1'] = (2 * stock_df['pivot']) - df['High']
+            logging.info("📊 Calculating Pivot Points (Pivot, R1, S1)...")
+            try:
+                stock_df['pivot'] = (df['High'] + df['Low'] + df['Close']) / 3
+                stock_df['r1'] = (2 * stock_df['pivot']) - df['Low']
+                stock_df['s1'] = (2 * stock_df['pivot']) - df['High']
+                
+                # Validate Pivot Point values
+                pivot_values = {
+                    'Pivot_Point': stock_df['pivot'].iloc[-1],
+                    'Resistance_R1': stock_df['r1'].iloc[-1],
+                    'Support_S1': stock_df['s1'].iloc[-1]
+                }
+                
+                pivot_successful = []
+                for name, value in pivot_values.items():
+                    if pd.isna(value) or value <= 0:
+                        indicator_calculation_log['zero_values'].append(f"{name} = {value}")
+                        logging.warning(f"⚠️ {name} has problematic value: {value}")
+                    else:
+                        pivot_successful.append(name)
+                        logging.info(f"✅ {name}: {value:.2f}")
+                
+                if pivot_successful:
+                    indicator_calculation_log['successful'].extend(pivot_successful)
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Pivot Points: {str(e)}")
+                logging.error(f"❌ Pivot Points calculation failed: {e}")
+                # Fallback values
+                current_price = df['Close'].iloc[-1]
+                stock_df['pivot'] = current_price
+                stock_df['r1'] = current_price * 1.02
+                stock_df['s1'] = current_price * 0.98
             
             # 26. Fibonacci Retracements - Basic levels
-            recent_high = df['High'].rolling(50).max()
-            recent_low = df['Low'].rolling(50).min()
-            diff = recent_high - recent_low
-            stock_df['fib_23.6'] = recent_high - (diff * 0.236)
-            stock_df['fib_38.2'] = recent_high - (diff * 0.382)
-            stock_df['fib_61.8'] = recent_high - (diff * 0.618)
+            logging.info("📊 Calculating Fibonacci Retracements (23.6%, 38.2%, 61.8%)...")
+            try:
+                recent_high = df['High'].rolling(50).max()
+                recent_low = df['Low'].rolling(50).min()
+                diff = recent_high - recent_low
+                
+                # Only calculate if meaningful price range exists
+                latest_diff = diff.iloc[-1]
+                latest_high = recent_high.iloc[-1]
+                
+                if pd.isna(latest_diff) or latest_diff < 0.01:
+                    # Fallback: use wider range or current price levels
+                    current_price = df['Close'].iloc[-1]
+                    price_range = current_price * 0.1  # 10% range fallback
+                    stock_df['fib_23.6'] = current_price - (price_range * 0.236)
+                    stock_df['fib_38.2'] = current_price - (price_range * 0.382)
+                    stock_df['fib_61.8'] = current_price - (price_range * 0.618)
+                    indicator_calculation_log['zero_values'].append(f"Fibonacci (fallback used, diff={latest_diff})")
+                    logging.warning(f"⚠️ Fibonacci using fallback, price range too small: {latest_diff}")
+                else:
+                    stock_df['fib_23.6'] = recent_high - (diff * 0.236)
+                    stock_df['fib_38.2'] = recent_high - (diff * 0.382)
+                    stock_df['fib_61.8'] = recent_high - (diff * 0.618)
+                    
+                    # Validate Fibonacci values
+                    fib_values = {
+                        'Fibonacci_23.6': stock_df['fib_23.6'].iloc[-1],
+                        'Fibonacci_38.2': stock_df['fib_38.2'].iloc[-1],
+                        'Fibonacci_61.8': stock_df['fib_61.8'].iloc[-1]
+                    }
+                    
+                    fib_successful = []
+                    for name, value in fib_values.items():
+                        if pd.isna(value):
+                            indicator_calculation_log['zero_values'].append(f"{name} = NaN")
+                        else:
+                            fib_successful.append(name)
+                            logging.info(f"✅ {name}: {value:.2f}")
+                    
+                    if fib_successful:
+                        indicator_calculation_log['successful'].extend(fib_successful)
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Fibonacci Retracements: {str(e)}")
+                logging.error(f"❌ Fibonacci Retracements calculation failed: {e}")
+                # Fallback calculations
+                current_price = df['Close'].iloc[-1]
+                stock_df['fib_23.6'] = current_price * 0.95
+                stock_df['fib_38.2'] = current_price * 0.90
+                stock_df['fib_61.8'] = current_price * 0.85
             
             # 27. Support/Resistance Levels using local pandas/numpy peak detection
+            logging.info("📊 Calculating Support/Resistance Levels...")
             try:
                 highs = df['High'].values
                 lows = df['Low'].values
@@ -548,6 +681,9 @@ class StockAnalyzer:
                 def find_local_peaks(data, distance=10, prominence_factor=0.5):
                     """Local peak detection using pure pandas/numpy"""
                     peaks = []
+                    if len(data) < 30:  # Not enough data for peak detection
+                        return np.array(peaks)
+                    
                     prominence_threshold = np.std(data) * prominence_factor
                     
                     for i in range(distance, len(data) - distance):
@@ -574,36 +710,115 @@ class StockAnalyzer:
                 stock_df['resistance_level'] = np.nan
                 stock_df['support_level'] = np.nan
                 
-                # Set peak values
+                # Set peak values or use fallback
                 if len(resistance_peaks) > 0:
                     stock_df.iloc[resistance_peaks, stock_df.columns.get_loc('resistance_level')] = highs[resistance_peaks]
+                    stock_df['resistance_level'] = stock_df['resistance_level'].ffill()
+                else:
+                    # Fallback: use rolling max
+                    stock_df['resistance_level'] = df['High'].rolling(20).max()
+                    
                 if len(support_peaks) > 0:
                     stock_df.iloc[support_peaks, stock_df.columns.get_loc('support_level')] = lows[support_peaks]
+                    stock_df['support_level'] = stock_df['support_level'].ffill()
+                else:
+                    # Fallback: use rolling min
+                    stock_df['support_level'] = df['Low'].rolling(20).min()
                     
-                # Forward fill to maintain levels
-                stock_df['resistance_level'] = stock_df['resistance_level'].ffill()
-                stock_df['support_level'] = stock_df['support_level'].ffill()
+                # Validate Support/Resistance values
+                resistance_val = stock_df['resistance_level'].iloc[-1]
+                support_val = stock_df['support_level'].iloc[-1]
                 
+                sr_successful = []
+                if not pd.isna(resistance_val) and resistance_val > 0:
+                    sr_successful.append("Resistance_Level")
+                    logging.info(f"✅ Resistance_Level: {resistance_val:.2f}")
+                else:
+                    indicator_calculation_log['zero_values'].append(f"Resistance_Level = {resistance_val}")
+                    
+                if not pd.isna(support_val) and support_val > 0:
+                    sr_successful.append("Support_Level")
+                    logging.info(f"✅ Support_Level: {support_val:.2f}")
+                else:
+                    indicator_calculation_log['zero_values'].append(f"Support_Level = {support_val}")
+                
+                if sr_successful:
+                    indicator_calculation_log['successful'].extend(sr_successful)
+                    
             except Exception as peak_error:
-                logging.warning(f"Peak detection failed, using rolling max/min fallback: {peak_error}")
+                indicator_calculation_log['failed'].append(f"Support/Resistance: {str(peak_error)}")
+                logging.error(f"❌ Support/Resistance calculation failed: {peak_error}")
+                # Robust fallback
                 stock_df['resistance_level'] = df['High'].rolling(20).max()
                 stock_df['support_level'] = df['Low'].rolling(20).min()
             
             # 28. RMI (Relative Momentum Index) - Custom RSI variant
-            momentum_changes = df['Close'].diff(1).diff(1)  # Second-order momentum
-            gain_rmi = momentum_changes.where(momentum_changes > 0, 0).rolling(14).mean()
-            loss_rmi = (-momentum_changes.where(momentum_changes < 0, 0)).rolling(14).mean()
-            rs_rmi = gain_rmi / loss_rmi
-            stock_df['rmi'] = 100 - (100 / (1 + rs_rmi))
+            logging.info("📊 Calculating RMI (Relative Momentum Index)...")
+            try:
+                momentum_changes = df['Close'].diff(1).diff(1)  # Second-order momentum
+                gain_rmi = momentum_changes.where(momentum_changes > 0, 0).rolling(14).mean()
+                loss_rmi = (-momentum_changes.where(momentum_changes < 0, 0)).rolling(14).mean()
+                
+                # Prevent division by zero
+                rs_rmi = gain_rmi / loss_rmi.replace(0, 1)
+                stock_df['rmi'] = 100 - (100 / (1 + rs_rmi))
+                
+                # Validate RMI value
+                rmi_val = stock_df['rmi'].iloc[-1]
+                if pd.isna(rmi_val):
+                    # Fallback to standard RSI if RMI fails
+                    stock_df['rmi'] = stock_df['rsi_14']
+                    rmi_val = stock_df['rmi'].iloc[-1]
+                    indicator_calculation_log['zero_values'].append(f"RMI = NaN (fallback to RSI: {rmi_val:.2f})")
+                    logging.warning(f"⚠️ RMI using RSI fallback: {rmi_val:.2f}")
+                else:
+                    indicator_calculation_log['successful'].append("RMI")
+                    logging.info(f"✅ RMI: {rmi_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"RMI: {str(e)}")
+                logging.error(f"❌ RMI calculation failed: {e}")
+                # Fallback to RSI
+                stock_df['rmi'] = stock_df['rsi_14']
             
             # 29. Supertrend - Use calculated ATR
-            hl2 = (df['High'] + df['Low']) / 2
-            atr_mult = atr * 3
-            upper_band = hl2 + atr_mult
-            lower_band = hl2 - atr_mult
-            stock_df['supertrend'] = np.where(df['Close'] <= lower_band, lower_band, 
-                                            np.where(df['Close'] >= upper_band, upper_band, np.nan))
-            stock_df['supertrend'] = stock_df['supertrend'].ffill()
+            logging.info("📊 Calculating Supertrend...")
+            try:
+                hl2 = (df['High'] + df['Low']) / 2
+                
+                # Ensure ATR is valid
+                current_atr = stock_df['atr'].iloc[-1]
+                if pd.isna(current_atr) or current_atr <= 0:
+                    # Use simple volatility as fallback
+                    simple_volatility = df['Close'].rolling(14).std()
+                    atr_mult = simple_volatility * 2
+                    logging.warning(f"⚠️ Supertrend using volatility fallback instead of ATR")
+                else:
+                    atr_mult = stock_df['atr'] * 2  # Reduced multiplier for stability
+                
+                upper_band = hl2 + atr_mult
+                lower_band = hl2 - atr_mult
+                
+                # Simplified Supertrend logic
+                stock_df['supertrend'] = np.where(df['Close'] > hl2, lower_band, upper_band)
+                
+                # Validate Supertrend value
+                supertrend_val = stock_df['supertrend'].iloc[-1]
+                if pd.isna(supertrend_val) or supertrend_val <= 0:
+                    # Fallback to moving average
+                    stock_df['supertrend'] = df['Close'].rolling(20).mean()
+                    supertrend_val = stock_df['supertrend'].iloc[-1]
+                    indicator_calculation_log['zero_values'].append(f"Supertrend = {supertrend_val} (fallback used)")
+                    logging.warning(f"⚠️ Supertrend using MA fallback: {supertrend_val:.2f}")
+                else:
+                    indicator_calculation_log['successful'].append("Supertrend")
+                    logging.info(f"✅ Supertrend: {supertrend_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Supertrend: {str(e)}")
+                logging.error(f"❌ Supertrend calculation failed: {e}")
+                # Fallback to simple moving average
+                stock_df['supertrend'] = df['Close'].rolling(20).mean()
             
             # 30-35. Pattern Detection Flags
             logging.info("📊 Calculating Pattern Detection Flags (6 indicators)...")
@@ -745,8 +960,9 @@ class StockAnalyzer:
                             continue
                             
                         value = self.safe_get_value(latest_row, column_name)
-                        if value == 0:  # Track zero values separately
-                            zero_value_indicators.append(f"{display_name} = 0")
+                        # Intelligent zero-value filtering - only exclude if truly invalid
+                        if self.is_invalid_indicator_value(value, display_name):
+                            zero_value_indicators.append(f"{display_name} = {value}")
                         else:
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
@@ -771,8 +987,9 @@ class StockAnalyzer:
                             continue
                             
                         value = self.safe_get_value(latest_row, column_name)
-                        if value == 0:  # Track zero values separately
-                            zero_value_indicators.append(f"{display_name} = 0")
+                        # Intelligent zero-value filtering - only exclude if truly invalid
+                        if self.is_invalid_indicator_value(value, display_name):
+                            zero_value_indicators.append(f"{display_name} = {value}")
                         else:
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
@@ -849,6 +1066,55 @@ class StockAnalyzer:
             return 0
         except:
             return 0
+    
+    def is_invalid_indicator_value(self, value, indicator_name):
+        """Intelligent indicator value validation - only exclude truly invalid values"""
+        # Never exclude NaN values
+        if pd.isna(value):
+            return True
+            
+        # Indicators that can legitimately be zero or negative
+        oscillators_can_be_zero = [
+            'MACD', 'MACD_Histogram', 'Momentum', 'ROC', 'TRIX', 'Williams_R', 
+            'CCI', 'Ultimate_Oscillator', 'RMI', 'Stochastic_K', 'Stochastic_D'
+        ]
+        
+        # Indicators that can be negative
+        can_be_negative = [
+            'MACD', 'MACD_Signal', 'MACD_Histogram', 'Momentum', 'ROC', 'TRIX', 
+            'Williams_R', 'CCI', 'OBV', 'AD_Line'
+        ]
+        
+        # Price-based indicators should never be zero or negative
+        price_indicators = [
+            'SMA_20', 'SMA_50', 'SMA_200', 'EMA_12', 'EMA_26', 'BB_Upper', 
+            'BB_Middle', 'BB_Lower', 'VWAP', 'Pivot_Point', 'Resistance_R1', 
+            'Support_S1', 'Fibonacci_23.6', 'Fibonacci_38.2', 'Fibonacci_61.8',
+            'Resistance_Level', 'Support_Level', 'Supertrend', 'ATR',
+            'Donchian_Upper', 'Donchian_Lower', 'Keltner_Upper', 'Keltner_Lower'
+        ]
+        
+        # Check for invalid conditions
+        if indicator_name in price_indicators and value <= 0:
+            return True
+            
+        # Check for impossible RSI/MFI values
+        if indicator_name in ['RSI', 'MFI', 'RMI'] and (value < 0 or value > 100):
+            return True
+            
+        # Zero is valid for oscillators and some indicators
+        if indicator_name in oscillators_can_be_zero and value == 0:
+            return False
+            
+        # Negative values are valid for some indicators
+        if indicator_name in can_be_negative and value < 0:
+            return False
+            
+        # Default case: zero is invalid for most indicators unless specifically allowed
+        if value == 0 and indicator_name not in oscillators_can_be_zero:
+            return True
+            
+        return False
     
     def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None):
         """Send data to OpenAI for technical analysis with optional income analysis"""
