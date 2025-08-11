@@ -692,7 +692,29 @@ Respond in JSON format with this structure:
                 api_params["temperature"] = 0.3  # Standard temperature
                 api_params["max_tokens"] = 2048  # Standard token limit
             
-            response = self.openai_client.chat.completions.create(**api_params)
+            # Implement retry logic for OpenAI API rate limits (HTTP 429)
+            import time
+            max_retries = 3
+            retry_delay = 1  # Start with 1 second delay
+            
+            for attempt in range(max_retries + 1):
+                try:
+                    response = self.openai_client.chat.completions.create(**api_params)
+                    break  # Success - exit retry loop
+                except Exception as e:
+                    error_str = str(e).lower()
+                    if "429" in error_str or "rate limit" in error_str:
+                        if attempt < max_retries:
+                            logging.warning(f"OpenAI rate limit hit (attempt {attempt + 1}/{max_retries + 1}), waiting {retry_delay}s...")
+                            time.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                            continue
+                        else:
+                            logging.error(f"OpenAI rate limit exceeded after {max_retries + 1} attempts")
+                            raise Exception("OpenAI API rate limit exceeded. Please wait a few minutes and try again.")
+                    else:
+                        # Non-rate-limit error, don't retry
+                        raise e
             
             # Log successful API connection - HTTP 200 status confirmed
             logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
