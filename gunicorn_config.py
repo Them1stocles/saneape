@@ -4,7 +4,7 @@
 bind = "0.0.0.0:5000"
 workers = 1
 worker_class = "sync"
-timeout = 180  # 3 minutes to handle long OpenAI requests
+timeout = 120  # 2 minutes to handle long OpenAI requests
 keepalive = 5
 preload_app = True
 reload = True

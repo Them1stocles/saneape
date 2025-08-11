@@ -595,6 +595,11 @@ Respond in JSON format with this structure:
                 temperature=0.3
             )
             
+            # Log successful API connection - HTTP 200 status confirmed
+            logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
+            logging.info(f"Maximum Brain mode: {maximum_brain}")
+            logging.info(f"Response status confirmed, processing content...")
+            
             content = response.choices[0].message.content
             if content:
                 logging.info(f"OpenAI Response: {content}")
