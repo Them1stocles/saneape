@@ -818,9 +818,20 @@ class SaneApeApp {
             
             // Enhanced error messaging based on error type
             let errorMessage = 'Network error. Please check your connection and try again.';
+            const maximumBrain = this.maxBrainCheck.checked;
             
             if (error.name === 'AbortError') {
-                errorMessage = 'Analysis is taking longer than expected. This can happen with complex stocks. Please try again or contact support if the issue persists.';
+                if (maximumBrain) {
+                    errorMessage = 'Maximum Brain analysis is taking longer than expected. The system automatically retries connection issues and uses fallback methods. Please try again.';
+                } else {
+                    errorMessage = 'Analysis is taking longer than expected. This can happen with complex stocks. Please try again or contact support if the issue persists.';
+                }
+            } else if (error.message && error.message.includes('HTTP 500')) {
+                if (maximumBrain) {
+                    errorMessage = 'Connection issue occurred during Maximum Brain analysis. The system attempted automatic retries and fallback methods. Please try again in a moment.';
+                } else {
+                    errorMessage = `Server error: ${error.message}. Please try again.`;
+                }
             } else if (error.message && error.message.includes('HTTP')) {
                 errorMessage = `Server error: ${error.message}. Please try again.`;
             } else if (error.message && error.message.includes('JSON')) {
@@ -828,7 +839,11 @@ class SaneApeApp {
             } else if (error.message) {
                 // Log the specific error for debugging
                 console.error('Specific error details:', error.message);
-                errorMessage = 'Analysis failed. Please try again or contact support.';
+                if (maximumBrain) {
+                    errorMessage = 'Maximum Brain analysis encountered an issue. The system includes automatic retry logic for connection problems. Please try again.';
+                } else {
+                    errorMessage = 'Analysis failed. Please try again or contact support.';
+                }
             }
             
             this.showAlert(errorMessage, 'danger');
@@ -857,7 +872,18 @@ class SaneApeApp {
     startProgressIndicator() {
         const loadingText = this.loadingState.querySelector('span');
         let step = 0;
-        const steps = [
+        const maximumBrain = this.maxBrainCheck.checked;
+        
+        // Enhanced progress messages with retry awareness
+        const steps = maximumBrain ? [
+            'Analyzing your stock with Maximum Brain...',
+            'Fetching comprehensive market data...',
+            'Running 35+ technical indicators...',
+            'Processing advanced AI insights...',
+            'Connecting to AI service...',
+            'If connection issues occur, automatic retries will be attempted...',
+            'Finalizing comprehensive analysis...'
+        ] : [
             'Analyzing your stock...',
             'Fetching market data...',
             'Running technical analysis...',
@@ -876,7 +902,7 @@ class SaneApeApp {
             if (loadingText) {
                 loadingText.textContent = steps[step];
             }
-        }, 8000); // Change message every 8 seconds
+        }, maximumBrain ? 6000 : 8000); // Faster updates for Maximum Brain
     }
     
     stopProgressIndicator() {

@@ -692,29 +692,64 @@ Respond in JSON format with this structure:
                 api_params["temperature"] = 0.3  # Standard temperature
                 api_params["max_tokens"] = 2048  # Standard token limit
             
-            # Implement retry logic for OpenAI API rate limits (HTTP 429)
+            # Enhanced retry logic for OpenAI API errors (rate limits, SSL, connection issues)
             import time
             max_retries = 3
             retry_delay = 1  # Start with 1 second delay
+            response = None
+            
+            # Track if this is a Maximum Brain analysis for potential multi-call fallback
+            failed_attempts = 0
             
             for attempt in range(max_retries + 1):
                 try:
+                    logging.info(f"OpenAI API attempt {attempt + 1}/{max_retries + 1} for {summary.get('ticker', 'unknown')} ({'Maximum Brain' if maximum_brain else 'Standard'} mode)")
                     response = self.openai_client.chat.completions.create(**api_params)
                     break  # Success - exit retry loop
                 except Exception as e:
+                    failed_attempts += 1
                     error_str = str(e).lower()
-                    if "429" in error_str or "rate limit" in error_str:
-                        if attempt < max_retries:
-                            logging.warning(f"OpenAI rate limit hit (attempt {attempt + 1}/{max_retries + 1}), waiting {retry_delay}s...")
-                            time.sleep(retry_delay)
-                            retry_delay *= 2  # Exponential backoff
-                            continue
+                    
+                    # Check for retryable errors: rate limits, SSL, connection, timeout issues
+                    retryable_errors = [
+                        "429", "rate limit", 
+                        "ssl", "connection", "timeout", 
+                        "network", "handshake", "broken pipe",
+                        "connection reset", "connection aborted"
+                    ]
+                    
+                    is_retryable = any(err in error_str for err in retryable_errors)
+                    
+                    if is_retryable and attempt < max_retries:
+                        # Determine error type for user messaging
+                        if "429" in error_str or "rate limit" in error_str:
+                            error_type = "rate limiting"
+                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network"]):
+                            error_type = "connection"
                         else:
-                            logging.error(f"OpenAI rate limit exceeded after {max_retries + 1} attempts")
-                            raise Exception("OpenAI API rate limit exceeded. Please wait a few minutes and try again.")
+                            error_type = "network"
+                            
+                        logging.warning(f"OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
+                        logging.warning(f"Error details: {str(e)}")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    elif maximum_brain and failed_attempts >= 2:
+                        # Maximum Brain multi-call fallback after 2 failures
+                        logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
+                        return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
                     else:
-                        # Non-rate-limit error, don't retry
-                        raise e
+                        # Final failure or non-retryable error
+                        if "429" in error_str or "rate limit" in error_str:
+                            raise Exception("OpenAI API rate limit exceeded. Please wait a few minutes and try again.")
+                        elif any(term in error_str for term in ["ssl", "connection", "handshake"]):
+                            raise Exception("Connection issue with AI service. This may be temporary - please try again in a moment.")
+                        else:
+                            raise Exception(f"AI service error: {str(e)}")
+                        
+            # Ensure response is defined before using it
+            if response is None:
+                raise Exception("Failed to get response from AI service after all retry attempts")
             
             # Log successful API connection - HTTP 200 status confirmed
             logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
@@ -751,6 +786,222 @@ Respond in JSON format with this structure:
                 logging.error(f"Maximum Brain prompt length: {len(prompt) if 'prompt' in locals() else 'unknown'}")
                 logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
             return None, f"Error analyzing stock data: {str(e)}"
+    
+    def analyze_with_chunked_calls(self, summary, income_focus=False, income_metrics=None):
+        """Fallback method: Split Maximum Brain analysis into multiple smaller API calls"""
+        try:
+            logging.info(f"Starting chunked analysis fallback for {summary.get('ticker', 'unknown')}")
+            
+            # Split indicators into logical groups to reduce payload size
+            core_indicators, volume_indicators = self.split_indicators_for_chunked_analysis(summary.get('indicator_values', {}))
+            
+            # Prepare basic stock info for each call
+            basic_info = {
+                'ticker': summary['ticker'],
+                'company_name': summary['company_name'],
+                'current_price': summary['current_price'],
+                'price_change_30d': summary['price_change_30d'],
+                'volume_avg_30d': summary['volume_avg_30d'],
+                'volatility_30d': summary['volatility_30d']
+            }
+            
+            analyses = []
+            
+            # Call 1: Core trend/momentum indicators (smaller payload)
+            logging.info("Chunked analysis: Processing core trend indicators...")
+            core_analysis = self.analyze_indicator_chunk(basic_info, core_indicators, "core_trend", 1, 2)
+            if core_analysis:
+                analyses.append(core_analysis)
+            
+            # Call 2: Volume/volatility indicators (smaller payload)
+            logging.info("Chunked analysis: Processing volume indicators...")
+            volume_analysis = self.analyze_indicator_chunk(basic_info, volume_indicators, "volume_momentum", 2, 2)
+            if volume_analysis:
+                analyses.append(volume_analysis)
+            
+            # Synthesis call: Combine the partial analyses
+            if len(analyses) >= 1:  # At least one successful chunk
+                logging.info("Chunked analysis: Synthesizing results...")
+                final_analysis = self.synthesize_chunked_analyses(basic_info, analyses, income_focus, income_metrics)
+                if final_analysis:
+                    return final_analysis, None
+            
+            # If chunked analysis also fails
+            return None, "Analysis temporarily unavailable due to connection issues. Please try again in a moment."
+            
+        except Exception as e:
+            logging.error(f"Error in chunked analysis fallback: {str(e)}")
+            return None, "Analysis temporarily unavailable. Please try again later."
+    
+    def split_indicators_for_chunked_analysis(self, indicator_values):
+        """Split indicators into logical groups for chunked analysis"""
+        
+        # Core trend/momentum indicators (most critical)
+        core_trend_keys = [
+            'RSI', 'MACD', 'MACD_signal', 'MACD_histogram',
+            'SMA_20', 'SMA_50', 'SMA_200', 'EMA_12', 'EMA_26',
+            'BB_upper', 'BB_middle', 'BB_lower', 'BB_width', 'BB_percent',
+            '%K', '%D', 'ADX', 'DI_plus', 'DI_minus',
+            'CCI', 'Williams_R', 'Ultimate_Oscillator'
+        ]
+        
+        # Volume/volatility indicators 
+        volume_momentum_keys = [
+            'OBV', 'ATR', 'MFI', 'CMF', 'Force_Index',
+            'VWAP', 'Momentum', 'ROC', 'TRIX',
+            'Aroon_up', 'Aroon_down', 'Aroon_oscillator',
+            'Supertrend', 'Supertrend_direction', 'PSAR',
+            'Keltner_upper', 'Keltner_middle', 'Keltner_lower',
+            'Donchian_upper', 'Donchian_middle', 'Donchian_lower'
+        ]
+        
+        # Split indicators based on availability
+        core_indicators = {k: v for k, v in indicator_values.items() if k in core_trend_keys}
+        volume_indicators = {k: v for k, v in indicator_values.items() if k in volume_momentum_keys}
+        
+        logging.info(f"Split indicators: {len(core_indicators)} core, {len(volume_indicators)} volume")
+        return core_indicators, volume_indicators
+    
+    def analyze_indicator_chunk(self, basic_info, indicators, chunk_type, chunk_num, total_chunks):
+        """Analyze a specific chunk of indicators"""
+        try:
+            # Create focused prompt for this indicator group
+            indicators_json = json.dumps(indicators, indent=2)
+            
+            chunk_descriptions = {
+                'core_trend': 'core trend and momentum indicators including RSI, MACD, Moving Averages, Bollinger Bands, Stochastic, ADX, CCI, Williams %R, and Ultimate Oscillator',
+                'volume_momentum': 'volume and momentum indicators including OBV, ATR, MFI, VWAP, Force Index, Aroon, TRIX, Supertrend, and Keltner Channels'
+            }
+            
+            prompt = f"""You are performing focused technical analysis on {chunk_descriptions.get(chunk_type, 'technical indicators')} for {basic_info['ticker']} ({basic_info['company_name']}).
+
+Current Price: ${basic_info['current_price']:.2f}
+30-day Change: {basic_info['price_change_30d']:.2f}%
+
+INDICATOR VALUES FOR {chunk_type.upper()} ANALYSIS:
+{indicators_json}
+
+Analyze ONLY these {chunk_type} indicators and provide:
+1. A brief analysis of what these specific indicators suggest
+2. Whether this group of indicators suggests 'Buy' or 'No Buy'
+3. Confidence level for this specific analysis (high/medium/low)
+4. Key signals from these indicators
+
+Respond in JSON format:
+{{
+    "chunk_type": "{chunk_type}",
+    "recommendation": "Buy" or "No Buy",
+    "confidence": "high/medium/low", 
+    "analysis": "Brief analysis of these {chunk_type} indicators",
+    "key_signals": ["signal1", "signal2", "signal3"]
+}}"""
+
+            # Use smaller parameters for chunk analysis
+            api_params = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2,
+                "max_tokens": 1500  # Smaller than full Maximum Brain
+            }
+            
+            logging.info(f"Chunked analysis call {chunk_num}/{total_chunks}: {chunk_type} ({len(indicators)} indicators)")
+            response = self.openai_client.chat.completions.create(**api_params)
+            
+            content = response.choices[0].message.content
+            if content:
+                analysis = json.loads(content)
+                logging.info(f"Chunk {chunk_num} analysis successful: {analysis.get('recommendation')} ({analysis.get('confidence')})")
+                return analysis
+                
+        except Exception as e:
+            logging.error(f"Error in chunk {chunk_num} analysis ({chunk_type}): {str(e)}")
+            
+        return None
+    
+    def synthesize_chunked_analyses(self, basic_info, chunk_analyses, income_focus=False, income_metrics=None):
+        """Combine multiple chunk analyses into final recommendation"""
+        try:
+            # Prepare synthesis data
+            analyses_summary = []
+            for chunk in chunk_analyses:
+                analyses_summary.append({
+                    'type': chunk.get('chunk_type', 'unknown'),
+                    'recommendation': chunk.get('recommendation'),
+                    'confidence': chunk.get('confidence'),
+                    'analysis': chunk.get('analysis'),
+                    'signals': chunk.get('key_signals', [])
+                })
+            
+            analyses_json = json.dumps(analyses_summary, indent=2)
+            
+            prompt = f"""You are synthesizing multiple focused technical analyses for {basic_info['ticker']} ({basic_info['company_name']}).
+
+Current Price: ${basic_info['current_price']:.2f}
+30-day Change: {basic_info['price_change_30d']:.2f}%
+
+PARTIAL ANALYSES TO SYNTHESIZE:
+{analyses_json}
+
+Based on these focused analyses, provide a final comprehensive recommendation. Weight the different indicator groups appropriately and consider the confidence levels.
+
+Respond in the standard analysis JSON format:
+{{
+    "recommendation": "Yes, buy!" or "No, don't buy!",
+    "confidence": "high/medium/low",
+    "explanation": "Overall synthesis explanation combining all indicator groups",
+    "key_factors": ["factor1", "factor2", "factor3"],
+    "risks": ["risk1", "risk2"],
+    "analysis_method": "Multi-call Maximum Brain Analysis (Chunked)",
+    "technical_summary": "Summary of combined technical indicators"
+}}"""
+
+            # Add income analysis if requested
+            if income_focus and income_metrics:
+                prompt += f"""
+
+Also include income analysis based on these metrics:
+Effective Income Return: {income_metrics['effective_return']:.2f}%
+Add an "income_analysis" section to your response."""
+
+            api_params = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.1,
+                "max_tokens": 2048
+            }
+            
+            logging.info("Synthesizing chunked analyses into final recommendation...")
+            response = self.openai_client.chat.completions.create(**api_params)
+            
+            content = response.choices[0].message.content
+            if content:
+                final_analysis = json.loads(content)
+                
+                # Add income analysis if requested but not included
+                if income_focus and income_metrics and 'income_analysis' not in final_analysis:
+                    final_analysis['income_analysis'] = {
+                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics['buy_threshold'] else "No Buy",
+                        'income_confidence': 'medium',
+                        'income_explanation': f"Based on effective income return of {income_metrics['effective_return']:.2f}%",
+                        'key_income_risks': income_metrics.get('risks', []),
+                        'effective_income_return': income_metrics['effective_return']
+                    }
+                
+                logging.info(f"Chunked analysis synthesis complete: {final_analysis.get('recommendation')} ({final_analysis.get('confidence')})")
+                return final_analysis
+                
+        except Exception as e:
+            logging.error(f"Error in synthesis: {str(e)}")
+            
+        return None
     
     def analyze_stock(self, ticker, maximum_brain=False, income_focus=False):
         """Main method to analyze a stock with optional income-focused analysis"""

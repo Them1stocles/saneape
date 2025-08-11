@@ -57,13 +57,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 11, 2025 - Maximum Brain SSL Issues, Enhanced Debugging & API Resilience
-- **Maximum Brain SSL Connection Issue Partially Resolved**: Replaced `scipy.signal.find_peaks` with pure pandas/numpy peak detection to eliminate external network dependencies during indicator calculation. However, SSL connection errors still persist during OpenAI API calls
+### August 11, 2025 - SSL Retry Logic & Multi-Call Fallback System
+- **SSL Connection Retry Logic Implemented**: Extended retry system beyond rate limiting (HTTP 429) to handle SSL connection failures, timeouts, network errors, and handshake issues. Now retries up to 3 times with exponential backoff for all connection-related errors
+- **Multi-Call Fallback System for Maximum Brain**: When Maximum Brain analysis fails twice due to connection issues, system automatically splits analysis into smaller chunks: core trend indicators (RSI, MACD, SMA, etc.) and volume indicators (OBV, ATR, MFI, etc.), then synthesizes results. Reduces payload size and connection time
+- **Enhanced User Messaging**: Frontend now shows retry-aware progress messages like "If connection issues occur, automatic retries will be attempted..." and specific error messages mentioning retry attempts and fallback methods
+- **Chunked Analysis Architecture**: Implements focused analysis on indicator groups (core_trend and volume_momentum), followed by synthesis call that combines partial analyses into final recommendation. Each chunk uses smaller payloads (1500 vs 4096 tokens) to reduce SSL failure risk
+- **Connection Error Classification**: Detects and handles SSL, connection, timeout, network, handshake, broken pipe, and connection reset errors with appropriate retry logic and user messaging
+- **Maximum Brain SSL Connection Issue Partially Resolved**: Replaced `scipy.signal.find_peaks` with pure pandas/numpy peak detection to eliminate external network dependencies during indicator calculation. However, SSL connection errors still persist during OpenAI API calls - now mitigated with retry and fallback systems
 - **Graceful Indicator Handling Implemented**: Added production-grade resilience system with priority-based indicator processing (10 critical + 25 optional indicators), individual error isolation, payload size optimization, and comprehensive success/failure tracking
 - **Enhanced Debugging System**: Implemented comprehensive indicator analysis logging that categorizes the 12 failed indicators into: zero values, missing columns, optional limit reached, and calculation errors. System now provides detailed breakdowns showing which 23 of 35 indicators succeeded and exactly why others failed
 - **GPT-5 Model Upgrade Attempted**: GPT-5 not yet available in OpenAI API - falls back to optimized GPT-4o with enhanced parameters for Maximum Brain (temperature=0.1, max_tokens=4096) vs standard analysis (temperature=0.3, max_tokens=2048)
 - **API Retry Logic**: Implemented exponential backoff retry system for OpenAI rate limiting (HTTP 429) with 3 automatic retries and 1s/2s/4s delays
 - **Payload Optimization**: Smart filtering system excludes zero values and limits optional indicators to prevent API timeouts, with detailed payload size monitoring
-- **Rate Limiting Issues**: Encountered OpenAI API rate limiting (HTTP 429) and intermittent SSL connection failures that cause worker crashes
-- **Outstanding Issues**: SSL connection errors during OpenAI API calls still cause analysis failures and worker restarts. Root cause appears to be network-level SSL handshake failures rather than application code issues
 - **Income Analysis Override Bug Fixed**: System now respects user choice - if income analysis checkbox is not checked, traditional analysis is performed regardless of ticker type
