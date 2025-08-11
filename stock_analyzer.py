@@ -117,6 +117,19 @@ class StockAnalyzer:
             # Start with original dataframe for fallback calculations
             stock_df = df.copy()
             
+            # Detailed logging initialization
+            logging.info("=== STARTING COMPREHENSIVE INDICATOR CALCULATION ===")
+            logging.info(f"Input dataframe shape: {df.shape}")
+            logging.info(f"Input columns: {list(df.columns)}")
+            
+            # Track indicator calculation success/failure
+            indicator_calculation_log = {
+                'successful': [],
+                'failed': [],
+                'zero_values': [],
+                'missing_prerequisites': []
+            }
+            
             # Try to use stockstats, but fall back to pure pandas if it fails
             try:
                 # Ensure proper column names for stockstats
@@ -126,105 +139,309 @@ class StockAnalyzer:
                 # Convert to StockDataFrame for enhanced functionality
                 stockstats_df = stockstats.StockDataFrame.retype(df_clean)
                 use_stockstats = True
+                logging.info("✅ Stockstats conversion successful")
             except Exception as stockstats_error:
-                logging.warning(f"Stockstats conversion failed: {stockstats_error}. Using pure pandas calculations.")
+                logging.warning(f"❌ Stockstats conversion failed: {stockstats_error}. Using pure pandas calculations.")
                 use_stockstats = False
                 stockstats_df = None
             
             # === CORE INDICATORS (pandas_ta alternatives using stockstats and custom) ===
             
             # 1. RSI (Relative Strength Index)
-            if use_stockstats:
-                try:
-                    stock_df['rsi_14'] = stockstats_df['rsi']
-                except:
-                    use_stockstats = False
-            
-            if not use_stockstats:
-                # Pure pandas RSI calculation
-                delta = df['Close'].diff()
-                gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-                rs = gain / loss
-                stock_df['rsi_14'] = 100 - (100 / (1 + rs))
+            logging.info("📊 Calculating RSI (Relative Strength Index)...")
+            try:
+                if use_stockstats:
+                    try:
+                        stock_df['rsi_14'] = stockstats_df['rsi']
+                        logging.info("✅ RSI calculated using stockstats")
+                    except Exception as e:
+                        logging.warning(f"⚠️ Stockstats RSI failed: {e}, falling back to pandas")
+                        use_stockstats = False
+                
+                if not use_stockstats:
+                    # Pure pandas RSI calculation
+                    delta = df['Close'].diff()
+                    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+                    rs = gain / loss
+                    stock_df['rsi_14'] = 100 - (100 / (1 + rs))
+                    logging.info("✅ RSI calculated using pure pandas")
+                
+                # Validate RSI values
+                latest_rsi = stock_df['rsi_14'].iloc[-1]
+                if pd.isna(latest_rsi) or latest_rsi == 0:
+                    indicator_calculation_log['zero_values'].append(f"RSI = {latest_rsi}")
+                    logging.warning(f"⚠️ RSI has problematic value: {latest_rsi}")
+                else:
+                    indicator_calculation_log['successful'].append("RSI")
+                    logging.info(f"✅ RSI final value: {latest_rsi:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"RSI: {str(e)}")
+                logging.error(f"❌ RSI calculation failed: {e}")
+                stock_df['rsi_14'] = 0
             
             # 2. MACD (Moving Average Convergence Divergence)
-            if use_stockstats:
-                try:
-                    stock_df['macd'] = stockstats_df['macd']
-                    stock_df['macd_signal'] = stockstats_df['macds']
-                    stock_df['macd_histogram'] = stockstats_df['macdh']
-                except:
-                    use_stockstats = False
+            logging.info("📊 Calculating MACD (Moving Average Convergence Divergence)...")
+            try:
+                if use_stockstats:
+                    try:
+                        stock_df['macd'] = stockstats_df['macd']
+                        stock_df['macd_signal'] = stockstats_df['macds']
+                        stock_df['macd_histogram'] = stockstats_df['macdh']
+                        logging.info("✅ MACD calculated using stockstats")
+                    except Exception as e:
+                        logging.warning(f"⚠️ Stockstats MACD failed: {e}, falling back to pandas")
+                        use_stockstats = False
+                        
+                if not use_stockstats:
+                    # Pure pandas MACD calculation
+                    exp1 = df['Close'].ewm(span=12).mean()
+                    exp2 = df['Close'].ewm(span=26).mean()
+                    stock_df['macd'] = exp1 - exp2
+                    stock_df['macd_signal'] = stock_df['macd'].ewm(span=9).mean()
+                    stock_df['macd_histogram'] = stock_df['macd'] - stock_df['macd_signal']
+                    logging.info("✅ MACD calculated using pure pandas")
+                
+                # Validate MACD values
+                latest_macd = stock_df['macd'].iloc[-1]
+                latest_signal = stock_df['macd_signal'].iloc[-1]
+                latest_hist = stock_df['macd_histogram'].iloc[-1]
+                
+                macd_issues = []
+                if pd.isna(latest_macd) or latest_macd == 0:
+                    macd_issues.append(f"MACD = {latest_macd}")
+                if pd.isna(latest_signal) or latest_signal == 0:
+                    macd_issues.append(f"Signal = {latest_signal}")
+                if pd.isna(latest_hist) or latest_hist == 0:
+                    macd_issues.append(f"Histogram = {latest_hist}")
+                
+                if macd_issues:
+                    indicator_calculation_log['zero_values'].extend(macd_issues)
+                    logging.warning(f"⚠️ MACD has problematic values: {', '.join(macd_issues)}")
+                else:
+                    indicator_calculation_log['successful'].extend(["MACD", "MACD_Signal", "MACD_Histogram"])
+                    logging.info(f"✅ MACD values - MACD: {latest_macd:.4f}, Signal: {latest_signal:.4f}, Histogram: {latest_hist:.4f}")
                     
-            if not use_stockstats:
-                # Pure pandas MACD calculation
-                exp1 = df['Close'].ewm(span=12).mean()
-                exp2 = df['Close'].ewm(span=26).mean()
-                stock_df['macd'] = exp1 - exp2
-                stock_df['macd_signal'] = stock_df['macd'].ewm(span=9).mean()
-                stock_df['macd_histogram'] = stock_df['macd'] - stock_df['macd_signal']
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"MACD: {str(e)}")
+                logging.error(f"❌ MACD calculation failed: {e}")
+                stock_df['macd'] = 0
+                stock_df['macd_signal'] = 0
+                stock_df['macd_histogram'] = 0
             
             # 3-5. Moving Averages
-            if use_stockstats:
-                try:
-                    stock_df['sma_20'] = stockstats_df['close_20_sma']
-                    stock_df['sma_50'] = stockstats_df['close_50_sma'] 
-                    stock_df['sma_200'] = stockstats_df['close_200_sma']
-                    stock_df['ema_12'] = stockstats_df['close_12_ema']
-                    stock_df['ema_26'] = stockstats_df['close_26_ema']
-                except:
-                    use_stockstats = False
+            logging.info("📊 Calculating Moving Averages (SMA 20/50/200, EMA 12/26)...")
+            try:
+                if use_stockstats:
+                    try:
+                        stock_df['sma_20'] = stockstats_df['close_20_sma']
+                        stock_df['sma_50'] = stockstats_df['close_50_sma'] 
+                        stock_df['sma_200'] = stockstats_df['close_200_sma']
+                        stock_df['ema_12'] = stockstats_df['close_12_ema']
+                        stock_df['ema_26'] = stockstats_df['close_26_ema']
+                        logging.info("✅ Moving Averages calculated using stockstats")
+                    except Exception as e:
+                        logging.warning(f"⚠️ Stockstats Moving Averages failed: {e}, falling back to pandas")
+                        use_stockstats = False
+                        
+                if not use_stockstats:
+                    # Pure pandas calculation
+                    stock_df['sma_20'] = df['Close'].rolling(20).mean()
+                    stock_df['sma_50'] = df['Close'].rolling(50).mean()
+                    stock_df['sma_200'] = df['Close'].rolling(200).mean()
+                    stock_df['ema_12'] = df['Close'].ewm(span=12).mean()
+                    stock_df['ema_26'] = df['Close'].ewm(span=26).mean()
+                    logging.info("✅ Moving Averages calculated using pure pandas")
+                
+                # Validate Moving Average values
+                ma_values = {
+                    'SMA_20': stock_df['sma_20'].iloc[-1],
+                    'SMA_50': stock_df['sma_50'].iloc[-1],
+                    'SMA_200': stock_df['sma_200'].iloc[-1],
+                    'EMA_12': stock_df['ema_12'].iloc[-1],
+                    'EMA_26': stock_df['ema_26'].iloc[-1]
+                }
+                
+                ma_issues = []
+                ma_successful = []
+                for name, value in ma_values.items():
+                    if pd.isna(value) or value == 0:
+                        ma_issues.append(f"{name} = {value}")
+                    else:
+                        ma_successful.append(name)
+                        logging.info(f"✅ {name}: {value:.2f}")
+                
+                if ma_issues:
+                    indicator_calculation_log['zero_values'].extend(ma_issues)
+                    logging.warning(f"⚠️ Moving Averages with issues: {', '.join(ma_issues)}")
+                
+                if ma_successful:
+                    indicator_calculation_log['successful'].extend(ma_successful)
+                    logging.info(f"✅ Successful Moving Averages: {', '.join(ma_successful)}")
                     
-            if not use_stockstats:
-                # Pure pandas calculation
-                stock_df['sma_20'] = df['Close'].rolling(20).mean()
-                stock_df['sma_50'] = df['Close'].rolling(50).mean()
-                stock_df['sma_200'] = df['Close'].rolling(200).mean()
-                stock_df['ema_12'] = df['Close'].ewm(span=12).mean()
-                stock_df['ema_26'] = df['Close'].ewm(span=26).mean()
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Moving Averages: {str(e)}")
+                logging.error(f"❌ Moving Averages calculation failed: {e}")
+                stock_df['sma_20'] = 0
+                stock_df['sma_50'] = 0
+                stock_df['sma_200'] = 0
+                stock_df['ema_12'] = 0
+                stock_df['ema_26'] = 0
             
             # 6. Bollinger Bands
-            if use_stockstats:
-                try:
-                    stock_df['bb_upper'] = stockstats_df['boll_ub']
-                    stock_df['bb_middle'] = stockstats_df['boll']
-                    stock_df['bb_lower'] = stockstats_df['boll_lb']
-                except:
-                    use_stockstats = False
+            logging.info("📊 Calculating Bollinger Bands...")
+            try:
+                if use_stockstats:
+                    try:
+                        stock_df['bb_upper'] = stockstats_df['boll_ub']
+                        stock_df['bb_middle'] = stockstats_df['boll']
+                        stock_df['bb_lower'] = stockstats_df['boll_lb']
+                        logging.info("✅ Bollinger Bands calculated using stockstats")
+                    except Exception as e:
+                        logging.warning(f"⚠️ Stockstats Bollinger Bands failed: {e}, falling back to pandas")
+                        use_stockstats = False
+                        
+                if not use_stockstats:
+                    # Pure pandas Bollinger Bands
+                    sma_20 = df['Close'].rolling(20).mean()
+                    std_20 = df['Close'].rolling(20).std()
+                    stock_df['bb_upper'] = sma_20 + (std_20 * 2)
+                    stock_df['bb_middle'] = sma_20
+                    stock_df['bb_lower'] = sma_20 - (std_20 * 2)
+                    logging.info("✅ Bollinger Bands calculated using pure pandas")
+                
+                # Validate Bollinger Band values
+                bb_values = {
+                    'BB_Upper': stock_df['bb_upper'].iloc[-1],
+                    'BB_Middle': stock_df['bb_middle'].iloc[-1],
+                    'BB_Lower': stock_df['bb_lower'].iloc[-1]
+                }
+                
+                bb_issues = []
+                bb_successful = []
+                for name, value in bb_values.items():
+                    if pd.isna(value) or value == 0:
+                        bb_issues.append(f"{name} = {value}")
+                    else:
+                        bb_successful.append(name)
+                        logging.info(f"✅ {name}: {value:.2f}")
+                
+                if bb_issues:
+                    indicator_calculation_log['zero_values'].extend(bb_issues)
+                    logging.warning(f"⚠️ Bollinger Bands with issues: {', '.join(bb_issues)}")
+                
+                if bb_successful:
+                    indicator_calculation_log['successful'].extend(bb_successful)
                     
-            if not use_stockstats:
-                # Pure pandas Bollinger Bands
-                sma_20 = df['Close'].rolling(20).mean()
-                std_20 = df['Close'].rolling(20).std()
-                stock_df['bb_upper'] = sma_20 + (std_20 * 2)
-                stock_df['bb_middle'] = sma_20
-                stock_df['bb_lower'] = sma_20 - (std_20 * 2)
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Bollinger Bands: {str(e)}")
+                logging.error(f"❌ Bollinger Bands calculation failed: {e}")
+                stock_df['bb_upper'] = 0
+                stock_df['bb_middle'] = 0
+                stock_df['bb_lower'] = 0
             
             # 7. Stochastic Oscillator - Always use pure pandas (more reliable)
-            low_14 = df['Low'].rolling(14).min()
-            high_14 = df['High'].rolling(14).max()
-            stock_df['stoch_k'] = 100 * ((df['Close'] - low_14) / (high_14 - low_14))
-            stock_df['stoch_d'] = stock_df['stoch_k'].rolling(3).mean()
+            logging.info("📊 Calculating Stochastic Oscillator...")
+            try:
+                low_14 = df['Low'].rolling(14).min()
+                high_14 = df['High'].rolling(14).max()
+                stock_df['stoch_k'] = 100 * ((df['Close'] - low_14) / (high_14 - low_14))
+                stock_df['stoch_d'] = stock_df['stoch_k'].rolling(3).mean()
+                
+                # Validate Stochastic values
+                stoch_k_val = stock_df['stoch_k'].iloc[-1]
+                stoch_d_val = stock_df['stoch_d'].iloc[-1]
+                
+                stoch_issues = []
+                stoch_successful = []
+                
+                for name, value in [('Stochastic_K', stoch_k_val), ('Stochastic_D', stoch_d_val)]:
+                    if pd.isna(value) or value == 0:
+                        stoch_issues.append(f"{name} = {value}")
+                    else:
+                        stoch_successful.append(name)
+                        logging.info(f"✅ {name}: {value:.2f}")
+                
+                if stoch_issues:
+                    indicator_calculation_log['zero_values'].extend(stoch_issues)
+                    logging.warning(f"⚠️ Stochastic with issues: {', '.join(stoch_issues)}")
+                
+                if stoch_successful:
+                    indicator_calculation_log['successful'].extend(stoch_successful)
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Stochastic Oscillator: {str(e)}")
+                logging.error(f"❌ Stochastic Oscillator calculation failed: {e}")
+                stock_df['stoch_k'] = 0
+                stock_df['stoch_d'] = 0
             
             # 8. ADX (Average Directional Index) - Always use simplified calculation
-            high_low = df['High'] - df['Low']
-            high_close = np.abs(df['High'] - df['Close'].shift())
-            low_close = np.abs(df['Low'] - df['Close'].shift())
-            tr = np.maximum(high_low, np.maximum(high_close, low_close))
-            atr = tr.rolling(14).mean()
-            stock_df['adx'] = atr * 5  # Simplified ADX proxy
+            logging.info("📊 Calculating ADX (Average Directional Index)...")
+            try:
+                high_low = df['High'] - df['Low']
+                high_close = np.abs(df['High'] - df['Close'].shift())
+                low_close = np.abs(df['Low'] - df['Close'].shift())
+                tr = np.maximum(high_low, np.maximum(high_close, low_close))
+                atr = tr.rolling(14).mean()
+                stock_df['adx'] = atr * 5  # Simplified ADX proxy
+                
+                # Validate ADX value
+                adx_val = stock_df['adx'].iloc[-1]
+                if pd.isna(adx_val) or adx_val == 0:
+                    indicator_calculation_log['zero_values'].append(f"ADX = {adx_val}")
+                    logging.warning(f"⚠️ ADX has problematic value: {adx_val}")
+                else:
+                    indicator_calculation_log['successful'].append("ADX")
+                    logging.info(f"✅ ADX: {adx_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"ADX: {str(e)}")
+                logging.error(f"❌ ADX calculation failed: {e}")
+                stock_df['adx'] = 0
             
             # 9. CCI (Commodity Channel Index) - Always use pure pandas
-            tp = (df['High'] + df['Low'] + df['Close']) / 3
-            sma_tp = tp.rolling(20).mean()
-            mad = tp.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean())
-            stock_df['cci'] = (tp - sma_tp) / (0.015 * mad)
+            logging.info("📊 Calculating CCI (Commodity Channel Index)...")
+            try:
+                tp = (df['High'] + df['Low'] + df['Close']) / 3
+                sma_tp = tp.rolling(20).mean()
+                mad = tp.rolling(20).apply(lambda x: np.abs(x - x.mean()).mean())
+                stock_df['cci'] = (tp - sma_tp) / (0.015 * mad)
+                
+                # Validate CCI value
+                cci_val = stock_df['cci'].iloc[-1]
+                if pd.isna(cci_val) or cci_val == 0:
+                    indicator_calculation_log['zero_values'].append(f"CCI = {cci_val}")
+                    logging.warning(f"⚠️ CCI has problematic value: {cci_val}")
+                else:
+                    indicator_calculation_log['successful'].append("CCI")
+                    logging.info(f"✅ CCI: {cci_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"CCI: {str(e)}")
+                logging.error(f"❌ CCI calculation failed: {e}")
+                stock_df['cci'] = 0
             
             # 10. Williams %R - Always use pure pandas
-            high_14 = df['High'].rolling(14).max()
-            low_14 = df['Low'].rolling(14).min()
-            stock_df['williams_r'] = -100 * ((high_14 - df['Close']) / (high_14 - low_14))
+            logging.info("📊 Calculating Williams %R...")
+            try:
+                high_14 = df['High'].rolling(14).max()
+                low_14 = df['Low'].rolling(14).min()
+                stock_df['williams_r'] = -100 * ((high_14 - df['Close']) / (high_14 - low_14))
+                
+                # Validate Williams %R value
+                williams_val = stock_df['williams_r'].iloc[-1]
+                if pd.isna(williams_val) or williams_val == 0:
+                    indicator_calculation_log['zero_values'].append(f"Williams_R = {williams_val}")
+                    logging.warning(f"⚠️ Williams %R has problematic value: {williams_val}")
+                else:
+                    indicator_calculation_log['successful'].append("Williams_R")
+                    logging.info(f"✅ Williams %R: {williams_val:.2f}")
+                    
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Williams %R: {str(e)}")
+                logging.error(f"❌ Williams %R calculation failed: {e}")
+                stock_df['williams_r'] = 0
             
             # 11. Money Flow Index (MFI) - Custom calculation
             typical_price = (df['High'] + df['Low'] + df['Close']) / 3
@@ -389,12 +606,72 @@ class StockAnalyzer:
             stock_df['supertrend'] = stock_df['supertrend'].ffill()
             
             # 30-35. Pattern Detection Flags
-            stock_df['trend_strength'] = abs(stock_df['adx'])
-            stock_df['volume_trend'] = np.where(df['Volume'] > df['Volume'].rolling(20).mean(), 1, 0)
-            stock_df['price_momentum'] = np.where(df['Close'] > df['Close'].shift(5), 1, 0)
-            stock_df['volatility'] = df['Close'].rolling(20).std()
-            stock_df['rsi_divergence'] = np.where((stock_df['rsi_14'] > 70) | (stock_df['rsi_14'] < 30), 1, 0)
-            stock_df['macd_crossover'] = np.where(stock_df['macd'] > stock_df['macd_signal'], 1, 0)
+            logging.info("📊 Calculating Pattern Detection Flags (6 indicators)...")
+            try:
+                stock_df['trend_strength'] = abs(stock_df['adx'])
+                stock_df['volume_trend'] = np.where(df['Volume'] > df['Volume'].rolling(20).mean(), 1, 0)
+                stock_df['price_momentum'] = np.where(df['Close'] > df['Close'].shift(5), 1, 0)
+                stock_df['volatility'] = df['Close'].rolling(20).std()
+                stock_df['rsi_divergence'] = np.where((stock_df['rsi_14'] > 70) | (stock_df['rsi_14'] < 30), 1, 0)
+                stock_df['macd_crossover'] = np.where(stock_df['macd'] > stock_df['macd_signal'], 1, 0)
+                
+                # Validate pattern detection flags
+                pattern_flags = ['Trend_Strength', 'Volume_Trend', 'Price_Momentum', 'Volatility', 'RSI_Divergence_Flag', 'MACD_Crossover_Flag']
+                indicator_calculation_log['successful'].extend(pattern_flags)
+                logging.info("✅ Pattern Detection Flags calculated successfully")
+                
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Pattern Detection Flags: {str(e)}")
+                logging.error(f"❌ Pattern Detection Flags calculation failed: {e}")
+            
+            # ===== COMPREHENSIVE INDICATOR CALCULATION SUMMARY =====
+            logging.info("=" * 80)
+            logging.info("🎯 COMPREHENSIVE INDICATOR CALCULATION COMPLETE")
+            logging.info("=" * 80)
+            
+            total_successful = len(indicator_calculation_log['successful'])
+            total_failed = len(indicator_calculation_log['failed'])
+            total_zero_values = len(indicator_calculation_log['zero_values'])
+            total_missing = len(indicator_calculation_log['missing_prerequisites'])
+            total_calculated = total_successful + total_failed + total_zero_values + total_missing
+            
+            logging.info(f"📊 CALCULATION PHASE RESULTS:")
+            logging.info(f"   ✅ Successfully calculated: {total_successful} indicators")
+            logging.info(f"   ❌ Failed calculations: {total_failed} indicators")
+            logging.info(f"   ⚪ Zero/NaN values: {total_zero_values} indicators")
+            logging.info(f"   🚫 Missing prerequisites: {total_missing} indicators")
+            logging.info(f"   📈 Total attempted: {total_calculated} indicators")
+            
+            if indicator_calculation_log['successful']:
+                logging.info(f"✅ SUCCESSFUL INDICATORS ({len(indicator_calculation_log['successful'])}):")
+                logging.info(f"   {', '.join(indicator_calculation_log['successful'])}")
+            
+            if indicator_calculation_log['failed']:
+                logging.info(f"❌ FAILED INDICATORS ({len(indicator_calculation_log['failed'])}):")
+                logging.info(f"   {', '.join(indicator_calculation_log['failed'])}")
+            
+            if indicator_calculation_log['zero_values']:
+                logging.info(f"⚪ ZERO/NaN VALUE INDICATORS ({len(indicator_calculation_log['zero_values'])}):")
+                logging.info(f"   {', '.join(indicator_calculation_log['zero_values'])}")
+            
+            if indicator_calculation_log['missing_prerequisites']:
+                logging.info(f"🚫 MISSING PREREQUISITE INDICATORS ({len(indicator_calculation_log['missing_prerequisites'])}):")
+                logging.info(f"   {', '.join(indicator_calculation_log['missing_prerequisites'])}")
+            
+            # Show final dataframe column count for verification
+            final_columns = len(stock_df.columns)
+            original_columns = len(df.columns)
+            new_columns = final_columns - original_columns
+            
+            logging.info(f"📋 DATAFRAME SUMMARY:")
+            logging.info(f"   Original columns: {original_columns}")
+            logging.info(f"   New indicator columns: {new_columns}")
+            logging.info(f"   Total final columns: {final_columns}")
+            logging.info(f"   Final dataframe shape: {stock_df.shape}")
+            
+            logging.info("=" * 80)
+            logging.info("🎯 MOVING TO DATA SUMMARIZATION PHASE")
+            logging.info("=" * 80)
             
             return stock_df
             
