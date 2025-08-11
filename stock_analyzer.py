@@ -7,88 +7,14 @@ import os
 from openai import OpenAI
 import logging
 
-# Production-grade HTTP client configuration
-import httpx
-from httpx import Timeout, Limits
-import ssl
-import time
-
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
 from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
     def __init__(self):
-        # Production-grade HTTP client configuration for OpenAI API
-        self.openai_client = self._create_production_openai_client()
+        self.openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         self.income_analyzer = IncomeAnalyzer()
-    
-    def _create_production_openai_client(self):
-        """Create production-grade OpenAI client with robust HTTP transport configuration"""
-        try:
-            logging.info("Initializing production-grade OpenAI client with custom HTTP transport...")
-            
-            # SSL Context Configuration - Production Grade
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = True
-            ssl_context.verify_mode = ssl.CERT_REQUIRED
-            
-            # More aggressive SSL settings to fail fast on connection issues
-            ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
-            ssl_context.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20:!aNULL:!MD5:!DSS')
-            
-            # Production HTTP Transport Configuration
-            transport = httpx.HTTPTransport(
-                # Connection limits for optimal performance
-                limits=Limits(
-                    max_keepalive_connections=10,  # Maintain persistent connections
-                    max_connections=20,            # Maximum concurrent connections
-                    keepalive_expiry=30.0          # Keep connections alive for 30 seconds
-                ),
-                # SSL and socket configuration
-                verify=ssl_context,
-                trust_env=True,                    # Respect proxy environment variables
-                socket_options=[]                  # Default socket options
-            )
-            
-            # Aggressive Timeout Configuration - Fail fast on SSL issues
-            timeout_config = Timeout(
-                connect=5.0,     # 5 seconds to establish connection
-                read=15.0,       # 15 seconds to read response (critical for SSL issues)
-                write=10.0,      # 10 seconds to send request
-                pool=30.0        # 30 seconds total including retries
-            )
-            
-            # Custom HTTP Client with production configuration
-            http_client = httpx.Client(
-                transport=transport,
-                timeout=timeout_config,
-                follow_redirects=True,
-                headers={
-                    'Connection': 'keep-alive',
-                    'Keep-Alive': 'timeout=30, max=100'
-                }
-            )
-            
-            # OpenAI Client with custom HTTP transport
-            client = OpenAI(
-                api_key=os.environ.get("OPENAI_API_KEY"),
-                http_client=http_client,
-                max_retries=0  # Disable OpenAI's internal retries - we handle our own
-            )
-            
-            logging.info("✅ Production-grade OpenAI client initialized successfully")
-            logging.info(f"   - SSL: TLS 1.2+ with modern ciphers")
-            logging.info(f"   - Timeouts: Connect=5s, Read=15s, Write=10s, Pool=30s")
-            logging.info(f"   - Connections: Max=20, KeepAlive=10, Expiry=30s")
-            
-            return client
-            
-        except Exception as e:
-            logging.error(f"❌ Failed to create production OpenAI client: {e}")
-            logging.warning("🔄 Falling back to standard OpenAI client...")
-            # Fallback to standard client if custom configuration fails
-            return OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     
     def fetch_stock_data(self, ticker):
         """Fetch historical stock data using yfinance"""
@@ -224,7 +150,7 @@ class StockAnalyzer:
             # 1. RSI (Relative Strength Index)
             logging.info("📊 Calculating RSI (Relative Strength Index)...")
             try:
-                if use_stockstats and stockstats_df is not None:
+                if use_stockstats:
                     try:
                         stock_df['rsi_14'] = stockstats_df['rsi']
                         logging.info("✅ RSI calculated using stockstats")
@@ -258,7 +184,7 @@ class StockAnalyzer:
             # 2. MACD (Moving Average Convergence Divergence)
             logging.info("📊 Calculating MACD (Moving Average Convergence Divergence)...")
             try:
-                if use_stockstats and stockstats_df is not None:
+                if use_stockstats:
                     try:
                         stock_df['macd'] = stockstats_df['macd']
                         stock_df['macd_signal'] = stockstats_df['macds']
@@ -307,7 +233,7 @@ class StockAnalyzer:
             # 3-5. Moving Averages
             logging.info("📊 Calculating Moving Averages (SMA 20/50/200, EMA 12/26)...")
             try:
-                if use_stockstats and stockstats_df is not None:
+                if use_stockstats:
                     try:
                         stock_df['sma_20'] = stockstats_df['close_20_sma']
                         stock_df['sma_50'] = stockstats_df['close_50_sma'] 
@@ -366,7 +292,7 @@ class StockAnalyzer:
             # 6. Bollinger Bands
             logging.info("📊 Calculating Bollinger Bands...")
             try:
-                if use_stockstats and stockstats_df is not None:
+                if use_stockstats:
                     try:
                         stock_df['bb_upper'] = stockstats_df['boll_ub']
                         stock_df['bb_middle'] = stockstats_df['boll']
@@ -450,16 +376,14 @@ class StockAnalyzer:
                 stock_df['stoch_k'] = 0
                 stock_df['stoch_d'] = 0
             
-            # Initialize ATR early to ensure it's always available for other indicators
-            high_low = df['High'] - df['Low']
-            high_close = np.abs(df['High'] - df['Close'].shift())
-            low_close = np.abs(df['Low'] - df['Close'].shift())
-            tr = np.maximum(high_low, np.maximum(high_close, low_close))
-            atr = tr.rolling(14).mean()  # Ensure ATR is always available
-            
             # 8. ADX (Average Directional Index) - Always use simplified calculation
             logging.info("📊 Calculating ADX (Average Directional Index)...")
             try:
+                high_low = df['High'] - df['Low']
+                high_close = np.abs(df['High'] - df['Close'].shift())
+                low_close = np.abs(df['Low'] - df['Close'].shift())
+                tr = np.maximum(high_low, np.maximum(high_close, low_close))
+                atr = tr.rolling(14).mean()
                 stock_df['adx'] = atr * 5  # Simplified ADX proxy
                 
                 # Validate ADX value
@@ -607,48 +531,13 @@ class StockAnalyzer:
             stock_df['r1'] = (2 * stock_df['pivot']) - df['Low']
             stock_df['s1'] = (2 * stock_df['pivot']) - df['High']
             
-            # 26. Fibonacci Retracements - Enhanced with validation
-            logging.info("📊 Calculating Fibonacci Retracements...")
-            try:
-                recent_high = df['High'].rolling(50).max()
-                recent_low = df['Low'].rolling(50).min()
-                diff = recent_high - recent_low
-                
-                # Only calculate if meaningful price range exists (avoid division issues)
-                meaningful_range = diff > (recent_high * 0.001)  # At least 0.1% range
-                
-                stock_df['fib_23.6'] = np.where(meaningful_range, 
-                                               recent_high - (diff * 0.236), 
-                                               recent_high * 0.9924)  # Fallback: 0.76% below high
-                stock_df['fib_38.2'] = np.where(meaningful_range, 
-                                               recent_high - (diff * 0.382),
-                                               recent_high * 0.9881)  # Fallback: 1.19% below high  
-                stock_df['fib_61.8'] = np.where(meaningful_range, 
-                                               recent_high - (diff * 0.618),
-                                               recent_high * 0.9809)  # Fallback: 1.91% below high
-                                               
-                # Validate Fibonacci calculations
-                fib_values = {
-                    'Fibonacci_23.6': stock_df['fib_23.6'].iloc[-1],
-                    'Fibonacci_38.2': stock_df['fib_38.2'].iloc[-1], 
-                    'Fibonacci_61.8': stock_df['fib_61.8'].iloc[-1]
-                }
-                
-                for name, value in fib_values.items():
-                    if pd.isna(value):
-                        indicator_calculation_log['failed'].append(f"{name}: NaN value")
-                        logging.warning(f"⚠️ {name} calculation failed: NaN")
-                    else:
-                        indicator_calculation_log['successful'].append(name)
-                        logging.info(f"✅ {name}: {value:.2f}")
-                        
-            except Exception as e:
-                indicator_calculation_log['failed'].append(f"Fibonacci Retracements: {str(e)}")
-                logging.error(f"❌ Fibonacci Retracements calculation failed: {e}")
-                # Safe fallback values
-                stock_df['fib_23.6'] = df['Close'] * 0.99
-                stock_df['fib_38.2'] = df['Close'] * 0.98  
-                stock_df['fib_61.8'] = df['Close'] * 0.97
+            # 26. Fibonacci Retracements - Basic levels
+            recent_high = df['High'].rolling(50).max()
+            recent_low = df['Low'].rolling(50).min()
+            diff = recent_high - recent_low
+            stock_df['fib_23.6'] = recent_high - (diff * 0.236)
+            stock_df['fib_38.2'] = recent_high - (diff * 0.382)
+            stock_df['fib_61.8'] = recent_high - (diff * 0.618)
             
             # 27. Support/Resistance Levels using local pandas/numpy peak detection
             try:
@@ -700,179 +589,40 @@ class StockAnalyzer:
                 stock_df['resistance_level'] = df['High'].rolling(20).max()
                 stock_df['support_level'] = df['Low'].rolling(20).min()
             
-            # 28. RMI (Relative Momentum Index) - Enhanced with division-by-zero protection
-            logging.info("📊 Calculating RMI (Relative Momentum Index)...")
-            try:
-                momentum_changes = df['Close'].diff(1).diff(1)  # Second-order momentum
-                gain_rmi = momentum_changes.where(momentum_changes > 0, 0).rolling(14).mean()
-                loss_rmi = (-momentum_changes.where(momentum_changes < 0, 0)).rolling(14).mean()
-                
-                # Protect against division by zero with minimum threshold
-                loss_rmi_safe = np.where(loss_rmi <= 0.0001, 0.0001, loss_rmi)
-                rs_rmi = gain_rmi / loss_rmi_safe
-                
-                # Additional validation for infinite or extreme values
-                rs_rmi_clipped = np.clip(rs_rmi, 0.001, 1000)  # Reasonable bounds
-                stock_df['rmi'] = 100 - (100 / (1 + rs_rmi_clipped))
-                
-                # Validate RMI value  
-                rmi_val = stock_df['rmi'].iloc[-1]
-                if pd.isna(rmi_val) or np.isinf(rmi_val):
-                    indicator_calculation_log['failed'].append(f"RMI: invalid value {rmi_val}")
-                    logging.warning(f"⚠️ RMI calculation produced invalid value: {rmi_val}")
-                    # Fallback to standard RSI calculation
-                    delta = df['Close'].diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-                    rs = gain / np.where(loss <= 0.0001, 0.0001, loss)
-                    stock_df['rmi'] = 100 - (100 / (1 + rs))
-                    logging.info("✅ RMI fallback to RSI calculation successful")
-                else:
-                    indicator_calculation_log['successful'].append("RMI")
-                    logging.info(f"✅ RMI: {rmi_val:.2f}")
-                    
-            except Exception as e:
-                indicator_calculation_log['failed'].append(f"RMI: {str(e)}")
-                logging.error(f"❌ RMI calculation failed: {e}")
-                # Final fallback - use RSI as RMI
-                try:
-                    delta = df['Close'].diff()
-                    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-                    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-                    rs = gain / np.where(loss <= 0.0001, 0.0001, loss)
-                    stock_df['rmi'] = 100 - (100 / (1 + rs))
-                    logging.info("✅ RMI fallback to RSI calculation successful")
-                except Exception as fallback_error:
-                    logging.error(f"❌ RMI fallback also failed: {fallback_error}")
-                    stock_df['rmi'] = 50  # Neutral RSI value
+            # 28. RMI (Relative Momentum Index) - Custom RSI variant
+            momentum_changes = df['Close'].diff(1).diff(1)  # Second-order momentum
+            gain_rmi = momentum_changes.where(momentum_changes > 0, 0).rolling(14).mean()
+            loss_rmi = (-momentum_changes.where(momentum_changes < 0, 0)).rolling(14).mean()
+            rs_rmi = gain_rmi / loss_rmi
+            stock_df['rmi'] = 100 - (100 / (1 + rs_rmi))
             
-            # 29. Supertrend - Enhanced with ATR validation  
-            logging.info("📊 Calculating Supertrend...")
-            try:
-                hl2 = (df['High'] + df['Low']) / 2
-                
-                # Validate ATR before using (ensure it's properly calculated and not NaN/infinite)
-                atr_validated = np.where(pd.isna(atr) | np.isinf(atr) | (atr <= 0), 
-                                       df['Close'] * 0.02,  # Fallback: 2% of price as volatility
-                                       atr)
-                
-                atr_mult = atr_validated * 3
-                upper_band = hl2 + atr_mult
-                lower_band = hl2 - atr_mult
-                
-                # Enhanced Supertrend calculation with trend persistence
-                close_prices = df['Close'].values
-                supertrend_values = np.full(len(close_prices), np.nan)
-                trend = 1  # 1 for uptrend, -1 for downtrend
-                
-                for i in range(1, len(close_prices)):
-                    if close_prices[i] <= lower_band.iloc[i]:
-                        supertrend_values[i] = lower_band.iloc[i]
-                        trend = 1
-                    elif close_prices[i] >= upper_band.iloc[i]:
-                        supertrend_values[i] = upper_band.iloc[i] 
-                        trend = -1
-                    else:
-                        # Maintain trend direction
-                        if trend == 1:
-                            supertrend_values[i] = lower_band.iloc[i]
-                        else:
-                            supertrend_values[i] = upper_band.iloc[i]
-                
-                stock_df['supertrend'] = pd.Series(supertrend_values, index=df.index)
-                stock_df['supertrend'] = stock_df['supertrend'].ffill()
-                
-                # Validate Supertrend result
-                supertrend_val = stock_df['supertrend'].iloc[-1]
-                if pd.isna(supertrend_val):
-                    indicator_calculation_log['failed'].append("Supertrend: NaN result")
-                    logging.warning("⚠️ Supertrend calculation produced NaN")
-                    # Fallback: simple moving average
-                    stock_df['supertrend'] = df['Close'].rolling(20).mean()
-                    logging.info("✅ Supertrend fallback to SMA successful") 
-                else:
-                    indicator_calculation_log['successful'].append("Supertrend")
-                    logging.info(f"✅ Supertrend: {supertrend_val:.2f}")
-                    
-            except Exception as e:
-                indicator_calculation_log['failed'].append(f"Supertrend: {str(e)}")
-                logging.error(f"❌ Supertrend calculation failed: {e}")
-                # Final fallback
-                stock_df['supertrend'] = df['Close'].rolling(20).mean()
-                logging.info("✅ Supertrend fallback to SMA successful")
+            # 29. Supertrend - Use calculated ATR
+            hl2 = (df['High'] + df['Low']) / 2
+            atr_mult = atr * 3
+            upper_band = hl2 + atr_mult
+            lower_band = hl2 - atr_mult
+            stock_df['supertrend'] = np.where(df['Close'] <= lower_band, lower_band, 
+                                            np.where(df['Close'] >= upper_band, upper_band, np.nan))
+            stock_df['supertrend'] = stock_df['supertrend'].ffill()
             
-            # 30-35. Pattern Detection Flags - Enhanced with validation
+            # 30-35. Pattern Detection Flags
             logging.info("📊 Calculating Pattern Detection Flags (6 indicators)...")
             try:
-                # Enhanced trend strength calculation with validation
-                adx_values = stock_df.get('adx', pd.Series([0] * len(df)))
-                stock_df['trend_strength'] = np.where(pd.isna(adx_values), 
-                                                    df['Close'].rolling(14).std() / df['Close'].rolling(14).mean() * 100,
-                                                    abs(adx_values))
+                stock_df['trend_strength'] = abs(stock_df['adx'])
+                stock_df['volume_trend'] = np.where(df['Volume'] > df['Volume'].rolling(20).mean(), 1, 0)
+                stock_df['price_momentum'] = np.where(df['Close'] > df['Close'].shift(5), 1, 0)
+                stock_df['volatility'] = df['Close'].rolling(20).std()
+                stock_df['rsi_divergence'] = np.where((stock_df['rsi_14'] > 70) | (stock_df['rsi_14'] < 30), 1, 0)
+                stock_df['macd_crossover'] = np.where(stock_df['macd'] > stock_df['macd_signal'], 1, 0)
                 
-                # Volume trend with rolling window validation
-                volume_mean = df['Volume'].rolling(20).mean()
-                stock_df['volume_trend'] = np.where(pd.isna(volume_mean) | (volume_mean == 0), 0,
-                                                   np.where(df['Volume'] > volume_mean, 1, 0))
-                
-                # Price momentum with validation
-                price_shift = df['Close'].shift(5)
-                stock_df['price_momentum'] = np.where(pd.isna(price_shift), 0,
-                                                     np.where(df['Close'] > price_shift, 1, 0))
-                
-                # Volatility with minimum threshold
-                volatility_raw = df['Close'].rolling(20).std()
-                stock_df['volatility'] = np.where(pd.isna(volatility_raw), df['Close'] * 0.01, volatility_raw)
-                
-                # RSI divergence with RSI validation  
-                rsi_values = stock_df.get('rsi_14', pd.Series([50] * len(df)))
-                stock_df['rsi_divergence'] = np.where(pd.isna(rsi_values), 0,
-                                                     np.where((rsi_values > 70) | (rsi_values < 30), 1, 0))
-                
-                # MACD crossover with MACD validation
-                macd_values = stock_df.get('macd', pd.Series([0] * len(df)))
-                macd_signal_values = stock_df.get('macd_signal', pd.Series([0] * len(df)))
-                stock_df['macd_crossover'] = np.where(pd.isna(macd_values) | pd.isna(macd_signal_values), 0,
-                                                     np.where(macd_values > macd_signal_values, 1, 0))
-                
-                # Validate each pattern flag
-                pattern_calculations = {
-                    'Trend_Strength': stock_df['trend_strength'].iloc[-1],
-                    'Volume_Trend': stock_df['volume_trend'].iloc[-1],
-                    'Price_Momentum': stock_df['price_momentum'].iloc[-1],
-                    'Volatility': stock_df['volatility'].iloc[-1],
-                    'RSI_Divergence_Flag': stock_df['rsi_divergence'].iloc[-1],
-                    'MACD_Crossover_Flag': stock_df['macd_crossover'].iloc[-1]
-                }
-                
-                pattern_successful = []
-                pattern_failed = []
-                
-                for flag_name, value in pattern_calculations.items():
-                    if pd.isna(value) or np.isinf(value):
-                        pattern_failed.append(f"{flag_name}: invalid value {value}")
-                        logging.warning(f"⚠️ {flag_name} has invalid value: {value}")
-                    else:
-                        pattern_successful.append(flag_name)
-                        logging.info(f"✅ {flag_name}: {value}")
-                
-                if pattern_successful:
-                    indicator_calculation_log['successful'].extend(pattern_successful)
-                if pattern_failed:
-                    indicator_calculation_log['failed'].extend(pattern_failed)
-                    
-                logging.info("✅ Pattern Detection Flags calculation completed")
+                # Validate pattern detection flags
+                pattern_flags = ['Trend_Strength', 'Volume_Trend', 'Price_Momentum', 'Volatility', 'RSI_Divergence_Flag', 'MACD_Crossover_Flag']
+                indicator_calculation_log['successful'].extend(pattern_flags)
+                logging.info("✅ Pattern Detection Flags calculated successfully")
                 
             except Exception as e:
                 indicator_calculation_log['failed'].append(f"Pattern Detection Flags: {str(e)}")
                 logging.error(f"❌ Pattern Detection Flags calculation failed: {e}")
-                # Fallback: set all flags to neutral values
-                stock_df['trend_strength'] = 25  # Neutral trend strength
-                stock_df['volume_trend'] = 0     # No volume trend
-                stock_df['price_momentum'] = 0   # No momentum
-                stock_df['volatility'] = df['Close'].std()  # Basic volatility
-                stock_df['rsi_divergence'] = 0   # No divergence
-                stock_df['macd_crossover'] = 0   # No crossover
             
             # ===== COMPREHENSIVE INDICATOR CALCULATION SUMMARY =====
             logging.info("=" * 80)
@@ -986,7 +736,7 @@ class StockAnalyzer:
                 zero_value_indicators = []
                 missing_column_indicators = []
                 
-                # Process critical indicators first - PRODUCTION-GRADE FILTERING
+                # Process critical indicators first
                 for display_name, column_name in critical_indicators:
                     try:
                         if column_name not in latest_row.index:
@@ -995,16 +745,11 @@ class StockAnalyzer:
                             continue
                             
                         value = self.safe_get_value(latest_row, column_name)
-                        # Intelligent filtering: Only exclude truly invalid values, not legitimate zeros
-                        if pd.isna(value) or value is None or (isinstance(value, float) and np.isinf(value)):
-                            zero_value_indicators.append(f"{display_name} = {value} (invalid)")
-                            logging.debug(f"Critical indicator {display_name} filtered: invalid value {value}")
+                        if value == 0:  # Track zero values separately
+                            zero_value_indicators.append(f"{display_name} = 0")
                         else:
-                            # Include ALL valid values, including legitimate technical zeros (MACD crossovers, momentum signals, etc.)
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
-                            if value == 0:
-                                logging.debug(f"Critical indicator {display_name} included with zero value (valid technical signal)")
                     except Exception as e:
                         failed_indicators.append(f"{display_name} (critical)")
                         logging.warning(f"Critical indicator {display_name} failed: {e}")
@@ -1026,17 +771,12 @@ class StockAnalyzer:
                             continue
                             
                         value = self.safe_get_value(latest_row, column_name)
-                        # Intelligent filtering: Only exclude truly invalid values, not legitimate zeros
-                        if pd.isna(value) or value is None or (isinstance(value, float) and np.isinf(value)):
-                            zero_value_indicators.append(f"{display_name} = {value} (invalid)")
-                            logging.debug(f"Optional indicator {display_name} filtered: invalid value {value}")
+                        if value == 0:  # Track zero values separately
+                            zero_value_indicators.append(f"{display_name} = 0")
                         else:
-                            # Include ALL valid values, including legitimate technical zeros
                             indicator_values[display_name] = value
                             successful_indicators.append(display_name)
                             optional_count += 1
-                            if value == 0:
-                                logging.debug(f"Optional indicator {display_name} included with zero value (valid technical signal)")
                     except Exception as e:
                         failed_indicators.append(f"{display_name} (optional)")
                         logging.warning(f"Optional indicator {display_name} failed: {e}")
@@ -1047,9 +787,8 @@ class StockAnalyzer:
                 logging.info(f"   {', '.join(successful_indicators)}")
                 
                 if zero_value_indicators:
-                    logging.info(f"❌ Invalid value indicators (filtered): {len(zero_value_indicators)}")
+                    logging.info(f"⚪ Zero value indicators (filtered): {len(zero_value_indicators)}")
                     logging.info(f"   {', '.join(zero_value_indicators)}")
-                    logging.info("   Note: Valid zero values (MACD crossovers, momentum signals) are now INCLUDED")
                 
                 if missing_column_indicators:
                     logging.info(f"❌ Missing column indicators: {len(missing_column_indicators)}")
@@ -1242,43 +981,18 @@ Respond in JSON format with this structure:
             for attempt in range(max_retries + 1):
                 try:
                     logging.info(f"OpenAI API attempt {attempt + 1}/{max_retries + 1} for {summary.get('ticker', 'unknown')} ({'Maximum Brain' if maximum_brain else 'Standard'} mode)")
-                    
-                    # Production-grade API call with connection monitoring
-                    start_time = time.time()
-                    
-                    # Log connection attempt details
-                    payload_size = len(str(api_params).encode('utf-8'))
-                    logging.info(f"API call starting - Payload size: {payload_size:,} bytes, Timeout config active")
-                    
                     response = self.openai_client.chat.completions.create(**api_params)
-                    
-                    # Log successful connection
-                    connection_time = time.time() - start_time
-                    logging.info(f"✅ API call successful in {connection_time:.2f}s (including SSL handshake and response read)")
                     break  # Success - exit retry loop
                 except Exception as e:
                     failed_attempts += 1
                     error_str = str(e).lower()
                     
-                    # Production-grade retryable error detection with httpx-specific errors
+                    # Check for retryable errors: rate limits, SSL, connection, timeout issues
                     retryable_errors = [
-                        # OpenAI API errors
-                        "429", "rate limit", "rate_limit_exceeded",
-                        # SSL and TLS errors
-                        "ssl", "tls", "handshake", "certificate", "cert",
-                        "sslcontext", "ssl_context", "sslobj", "_sslobj",
-                        # Connection errors  
-                        "connection", "connect", "connection_error", "connectionerror",
-                        "connection reset", "connection aborted", "connection refused",
-                        "broken pipe", "pipe", "socket", "network",
-                        # Timeout errors
-                        "timeout", "timed out", "read timeout", "connect timeout",
-                        "readtimeout", "connecttimeout", "response timeout",
-                        # httpx/httpcore specific errors
-                        "httpx", "httpcore", "pool", "transport",
-                        "recv", "read", "send", "write",
-                        # System-level errors
-                        "errno", "oserror", "systemexit", "worker exit"
+                        "429", "rate limit", 
+                        "ssl", "connection", "timeout", 
+                        "network", "handshake", "broken pipe",
+                        "connection reset", "connection aborted"
                     ]
                     
                     is_retryable = any(err in error_str for err in retryable_errors)
@@ -1287,33 +1001,20 @@ Respond in JSON format with this structure:
                         # Determine error type for user messaging
                         if "429" in error_str or "rate limit" in error_str:
                             error_type = "rate limiting"
-                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network", "recv", "read", "sslobj", "httpx", "httpcore", "timeout"]):
+                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network"]):
                             error_type = "connection"
                         else:
                             error_type = "network"
                             
-                        logging.warning(f"🔄 OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
-                        logging.warning(f"   Error type: {type(e).__name__}")
-                        logging.warning(f"   Error details: {str(e)}")
-                        
-                        # Additional connection diagnosis for SSL/connection errors
-                        if any(term in error_str for term in ["ssl", "connection", "handshake", "recv", "read"]):
-                            logging.info(f"🔍 Connection diagnosis: This appears to be an SSL/connection issue during response reading")
-                            logging.info(f"   - Payload size: ~{len(str(api_params).encode('utf-8')):,} bytes")
-                            logging.info(f"   - Next attempt will use fresh connection pool")
-                        
+                        logging.warning(f"OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
+                        logging.warning(f"Error details: {str(e)}")
                         time.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                         continue
-                    elif maximum_brain and failed_attempts >= 1:
-                        # Maximum Brain multi-call fallback after 1 SSL failure (faster recovery)
-                        if any(term in error_str for term in ["ssl", "connection", "timeout", "recv", "read"]):
-                            logging.warning(f"Maximum Brain analysis failed due to SSL/connection issue, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
-                            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
-                        elif failed_attempts >= 2:
-                            # Other errors require 2 failures
-                            logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
-                            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+                    elif maximum_brain and failed_attempts >= 2:
+                        # Maximum Brain multi-call fallback after 2 failures
+                        logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
+                        return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
                     else:
                         # Final failure or non-retryable error
                         if "429" in error_str or "rate limit" in error_str:
@@ -1359,12 +1060,8 @@ Respond in JSON format with this structure:
             logging.error(f"Maximum Brain mode: {maximum_brain}")
             logging.error(f"AI Analysis Error Traceback: {error_details}")
             if maximum_brain:
-                try:
-                    prompt_length = len(locals().get('prompt', '')) if 'prompt' in locals() else 'unknown'
-                    logging.error(f"Maximum Brain prompt length: {prompt_length}")
-                    logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
-                except Exception as logging_error:
-                    logging.error(f"Error in error logging: {logging_error}")
+                logging.error(f"Maximum Brain prompt length: {len(prompt) if 'prompt' in locals() else 'unknown'}")
+                logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
             return None, f"Error analyzing stock data: {str(e)}"
     
     def analyze_with_chunked_calls(self, summary, income_focus=False, income_metrics=None):

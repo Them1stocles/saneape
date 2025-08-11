@@ -15,7 +15,7 @@ class RateLimiter:
     and IP-based (anonymous users) rate limiting with comprehensive protection layers.
     """
     
-    def __init__(self, max_requests_per_day=15, max_brain_requests_per_day=8):
+    def __init__(self, max_requests_per_day=6, max_brain_requests_per_day=2):
         self.max_requests_per_day = max_requests_per_day
         self.max_brain_requests_per_day = max_brain_requests_per_day
         self.logger = logging.getLogger(__name__)
