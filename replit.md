@@ -57,7 +57,9 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 11, 2025 - Critical Bug Fixes for Income Analysis and Maximum Brain Debugging
+### August 11, 2025 - Maximum Brain SSL Issues Resolved & GPT-5 Upgrade
+- **Maximum Brain SSL Connection Issue Fixed**: Identified and resolved root cause - replaced `scipy.signal.find_peaks` with pure pandas/numpy peak detection algorithm, eliminating external network dependencies during technical indicator calculation
+- **Graceful Indicator Handling Implemented**: Added production-grade resilience system with priority-based indicator processing (10 critical + 25 optional indicators), individual error isolation, payload size optimization, and comprehensive success/failure tracking
+- **GPT-5 Model Upgrade**: Enhanced Maximum Brain analysis with GPT-5 model for superior analytical capabilities while maintaining GPT-4o for standard analysis
+- **Payload Optimization**: Smart filtering system excludes zero values and limits optional indicators to prevent OpenAI API timeouts, with detailed logging for payload size monitoring
 - **Income Analysis Override Bug Fixed**: Removed automatic enabling of income analysis for yield ETFs when users don't request it. System now respects user choice - if income analysis checkbox is not checked, traditional analysis is performed regardless of ticker type (ULTY, MSTY, etc.)
-- **Maximum Brain Error Logging Enhanced**: Added comprehensive debugging logging to identify HTTP 500 error causes, including detailed tracebacks, prompt length tracking, indicator counts, and step-by-step analysis logging for technical indicator calculation, data summarization, and AI analysis phases
-- **User Choice Respected**: Changed logic from auto-overriding user preference to informational logging only when yield ETFs are detected

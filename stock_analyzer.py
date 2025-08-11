@@ -626,10 +626,12 @@ Respond in JSON format with this structure:
 
 
 
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
+            # Model selection: GPT-5 for Maximum Brain analysis, GPT-4o for standard analysis
+            # Updated August 11, 2025 per user request for Maximum Brain enhancement
+            model_to_use = "gpt-5" if maximum_brain else "gpt-4o"
+            
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model=model_to_use,
                 messages=[
                     {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
                     {"role": "user", "content": prompt}
@@ -640,7 +642,7 @@ Respond in JSON format with this structure:
             
             # Log successful API connection - HTTP 200 status confirmed
             logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
-            logging.info(f"Maximum Brain mode: {maximum_brain}")
+            logging.info(f"Maximum Brain mode: {maximum_brain}, Model used: {model_to_use}")
             logging.info(f"Response status confirmed, processing content...")
             
             content = response.choices[0].message.content
