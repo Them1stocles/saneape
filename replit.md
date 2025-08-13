@@ -57,17 +57,6 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
-### August 13, 2025 - Optimized GPT-5 Single-Call Maximum Brain Analysis
-- **Refactored to Single-Call Architecture**: Replaced 3-tier system with single comprehensive API call to stay within 30,000 TPM GPT-5 limit
-- **Token Optimization**: Reduced from ~30,000 tokens (3 calls) to ~10,000 tokens (1 call) while maintaining all analytical capabilities
-- **Comprehensive Single Prompt**: All 35+ indicators analyzed in one request with institutional-grade requirements
-- **GPT-5 Specific Features**: Verbosity controls (high), Context-Free Grammar for structured output, reasoning_effort (max) for complex analysis
-- **Extended Timeout Handling**: 180-second timeouts for GPT-5, 90-second for GPT-4o fallback, exponential backoff with up to 5 retries
-- **Dual Client Architecture**: Separate OpenAI clients for GPT-5 (primary) and GPT-4o (fallback) with optimized parameters
-- **Production-Grade Error Handling**: Graceful fallback from GPT-5 to GPT-4o when unavailable, chunked analysis as final fallback
-- **Validation System**: Comprehensive response validation ensuring all required fields present before accepting analysis
-- **Zero Functionality Removal**: All features maintained, backwards compatible, more efficient within API limits
-
 ### August 11, 2025 - SSL Retry Logic & Multi-Call Fallback System
 - **SSL Connection Retry Logic Implemented**: Extended retry system beyond rate limiting (HTTP 429) to handle SSL connection failures, timeouts, network errors, and handshake issues. Now retries up to 3 times with exponential backoff for all connection-related errors
 - **Multi-Call Fallback System for Maximum Brain**: When Maximum Brain analysis fails twice due to connection issues, system automatically splits analysis into smaller chunks: core trend indicators (RSI, MACD, SMA, etc.) and volume indicators (OBV, ATR, MFI, etc.), then synthesizes results. Reduces payload size and connection time
