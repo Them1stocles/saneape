@@ -13,12 +13,155 @@ from income_analyzer import IncomeAnalyzer
 
 class StockAnalyzer:
     def __init__(self):
-        # Configure OpenAI client with timeout settings to prevent SSL hangs
-        self.openai_client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
-            timeout=60.0  # 60 second timeout for all operations
+        # Configure dual OpenAI clients for GPT-5 and GPT-4 with enhanced timeout settings
+        api_key = os.environ.get("OPENAI_API_KEY")
+        
+        # Primary GPT-5 client with extended timeout for comprehensive analysis
+        self.gpt5_client = OpenAI(
+            api_key=api_key,
+            timeout=180.0,  # 3 minute timeout for GPT-5 comprehensive analysis
+            max_retries=5   # Increased retries for GPT-5
         )
+        
+        # Fallback GPT-4 client with standard timeout
+        self.gpt4_client = OpenAI(
+            api_key=api_key,
+            timeout=90.0,   # 90 second timeout for GPT-4 operations
+            max_retries=3   # Standard retries
+        )
+        
+        # Legacy client reference for backward compatibility
+        self.openai_client = self.gpt4_client
+        
+        # Initialize GPT-5 availability flag (will be checked dynamically)
+        self.gpt5_available = None
+        
         self.income_analyzer = IncomeAnalyzer()
+    
+    def check_gpt5_availability(self):
+        """Check if GPT-5 models are available in the API"""
+        if self.gpt5_available is not None:
+            return self.gpt5_available
+            
+        try:
+            # Test GPT-5 availability with a minimal call
+            test_params = {
+                "model": "gpt-5",
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 1,
+                "verbosity": "low"  # GPT-5 specific parameter
+            }
+            
+            # Use shorter timeout for availability check
+            original_timeout = self.gpt5_client.timeout
+            self.gpt5_client.timeout = 10.0
+            
+            try:
+                response = self.gpt5_client.chat.completions.create(**test_params)
+                self.gpt5_available = True
+                logging.info("✅ GPT-5 model confirmed available")
+            except Exception as e:
+                error_str = str(e).lower()
+                if "model" in error_str or "404" in error_str or "not found" in error_str:
+                    self.gpt5_available = False
+                    logging.info("⚠️ GPT-5 not yet available, using enhanced GPT-4o")
+                else:
+                    # Other errors don't mean GPT-5 isn't available
+                    self.gpt5_available = False
+                    logging.warning(f"GPT-5 availability check failed: {e}")
+            finally:
+                self.gpt5_client.timeout = original_timeout
+                
+        except Exception as e:
+            self.gpt5_available = False
+            logging.warning(f"Error checking GPT-5 availability: {e}")
+            
+        return self.gpt5_available
+    
+    def get_gpt5_context_grammar(self):
+        """Define Context-Free Grammar for structured GPT-5 output"""
+        # Production-grade CFG for consistent JSON structure
+        cfg_grammar = {
+            "type": "json_schema",
+            "json_schema": {
+                "type": "object",
+                "required": ["recommendation", "confidence", "overall_explanation", "technical_analysis"],
+                "properties": {
+                    "recommendation": {
+                        "type": "string",
+                        "enum": ["Yes, buy!", "No, don't buy!"]
+                    },
+                    "confidence": {
+                        "type": "string",
+                        "enum": ["high", "medium", "low"]
+                    },
+                    "overall_explanation": {
+                        "type": "string",
+                        "minLength": 50,
+                        "maxLength": 500
+                    },
+                    "risk_score": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "signal_strength": {
+                        "type": "number", 
+                        "minimum": 0,
+                        "maximum": 100
+                    },
+                    "market_regime": {
+                        "type": "string",
+                        "enum": ["trending_up", "trending_down", "ranging", "volatile"]
+                    },
+                    "technical_analysis": {
+                        "type": "array",
+                        "minItems": 10,
+                        "items": {
+                            "type": "object",
+                            "required": ["method", "explanation", "signal", "strength", "weight"],
+                            "properties": {
+                                "method": {"type": "string"},
+                                "explanation": {"type": "string"},
+                                "signal": {
+                                    "type": "string",
+                                    "enum": ["Buy", "No Buy", "Neutral"]
+                                },
+                                "strength": {
+                                    "type": "string",
+                                    "enum": ["Strong", "Moderate", "Weak"]
+                                },
+                                "weight": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                }
+                            }
+                        }
+                    },
+                    "key_levels": {
+                        "type": "object",
+                        "properties": {
+                            "stop_loss": {"type": "number"},
+                            "target_1": {"type": "number"},
+                            "target_2": {"type": "number"},
+                            "strong_support": {"type": "number"},
+                            "strong_resistance": {"type": "number"}
+                        }
+                    },
+                    "income_analysis": {
+                        "type": "object",
+                        "properties": {
+                            "income_recommendation": {"type": "string"},
+                            "income_confidence": {"type": "string"},
+                            "income_explanation": {"type": "string"},
+                            "effective_income_return": {"type": "number"}
+                        }
+                    }
+                }
+            }
+        }
+        return cfg_grammar
     
     def fetch_stock_data(self, ticker):
         """Fetch historical stock data using yfinance with robust error handling"""
@@ -184,7 +327,7 @@ class StockAnalyzer:
             # 1. RSI (Relative Strength Index)
             logging.info("📊 Calculating RSI (Relative Strength Index)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['rsi_14'] = stockstats_df['rsi']
                         logging.info("✅ RSI calculated using stockstats")
@@ -218,7 +361,7 @@ class StockAnalyzer:
             # 2. MACD (Moving Average Convergence Divergence)
             logging.info("📊 Calculating MACD (Moving Average Convergence Divergence)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['macd'] = stockstats_df['macd']
                         stock_df['macd_signal'] = stockstats_df['macds']
@@ -267,7 +410,7 @@ class StockAnalyzer:
             # 3-5. Moving Averages
             logging.info("📊 Calculating Moving Averages (SMA 20/50/200, EMA 12/26)...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['sma_20'] = stockstats_df['close_20_sma']
                         stock_df['sma_50'] = stockstats_df['close_50_sma'] 
@@ -412,6 +555,7 @@ class StockAnalyzer:
             
             # 8. ADX (Average Directional Index) - Always use simplified calculation
             logging.info("📊 Calculating ADX (Average Directional Index)...")
+            atr = pd.Series(0, index=df.index)  # Initialize atr to avoid unbound variable
             try:
                 high_low = df['High'] - df['Low']
                 high_close = np.abs(df['High'] - df['Close'].shift())
@@ -885,219 +1029,533 @@ class StockAnalyzer:
             return 0
     
     def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None):
-        """Send data to OpenAI for technical analysis with optional income analysis"""
+        """Enhanced GPT-5 analysis with full production-grade features and comprehensive timeout handling"""
         try:
+            # Check GPT-5 availability for Maximum Brain mode
+            use_gpt5 = False
             if maximum_brain:
-                # Maximum Brain mode with comprehensive indicator list
-                indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns"""
-                analysis_mode = "MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities"
-            else:
-                # Standard mode with basic indicators
-                indicators_list = "Wyckoff Method (accumulation/distribution phases), Bollinger Bands, Moving Averages (SMA and EMA), MACD, RSI, Stochastic Oscillator, On-Balance Volume (OBV), Average Directional Index (ADX), and price action patterns"
-                analysis_mode = "Standard Analysis"
-
+                use_gpt5 = self.check_gpt5_availability()
+                logging.info(f"Maximum Brain Analysis: GPT-5 {'ENABLED' if use_gpt5 else 'NOT AVAILABLE - Using Enhanced GPT-4o'}")
+            
             if maximum_brain:
-                # Enhanced prompt with comprehensive indicator values
-                indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
-                prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
-
-Current Price: ${summary['current_price']:.2f}
-30-day Price Change: {summary['price_change_30d']:.2f}%
-30-day Average Volume: {summary['volume_avg_30d']:,.0f}
-30-day Volatility (StdDev): {summary['volatility_30d']:.2f}
-
-PRE-COMPUTED TECHNICAL INDICATOR VALUES:
-{indicator_json}
-
-Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
-
-Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.
-
-For each method/indicator:
-- Briefly explain the method and how it applies to this data
-- State whether it suggests a 'Buy' signal (positive outlook) or 'No Buy' signal (negative or neutral outlook)
-
-Then, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly 'Yes, buy!' if the consensus is positive, or 'No, don't buy!' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.
-
-Do not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the pre-computed indicator values provided.
-
-Respond in JSON format with this structure:
-{{
-    "recommendation": "Yes, buy!" or "No, don't buy!",
-    "confidence": "high" or "medium" or "low",
-    "overall_explanation": "Brief explanation of the overall decision",
-    "technical_analysis": [
-        {{
-            "method": "Method name",
-            "explanation": "How this method applies to the data",
-            "signal": "Buy" or "No Buy",
-            "strength": "Strong" or "Moderate" or "Weak"
-        }}
-    ]
-}}"""
+                # Use multi-tier GPT-5 analysis for Maximum Brain
+                return self.analyze_with_gpt5_maximum_brain(summary, income_focus, income_metrics)
             else:
-                # Standard prompt for regular analysis
-                prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following historical data for stock ticker {summary['ticker']} ({summary['company_name']}):
-
-Current Price: ${summary['current_price']:.2f}
-30-day Price Change: {summary['price_change_30d']:.2f}%
-30-day Average Volume: {summary['volume_avg_30d']:,.0f}
-30-day Volatility (StdDev): {summary['volatility_30d']:.2f}
-Current RSI: {summary['rsi_current']:.2f}
-Current MACD: {summary['macd_current']:.4f}
-Bollinger Band Position: {summary['bb_position']}
-Price vs SMA-20: {summary['sma_20_trend']}
-Price vs SMA-50: {summary['sma_50_trend']}
-Price vs SMA-200: {summary['sma_200_trend']}
-Stochastic %K: {summary['stoch_k']:.2f}
-Stochastic %D: {summary['stoch_d']:.2f}
-OBV Trend: {summary['obv_trend']}
-
-Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
-
-For each method/indicator:
-- Briefly explain the method and how it applies to this data
-- State whether it suggests a 'Buy' signal (positive outlook) or 'No Buy' signal (negative or neutral outlook)
-
-Then, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly 'Yes, buy!' if the consensus is positive, or 'No, don't buy!' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.
-
-Do not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the historical price and volume data provided.
-
-Respond in JSON format with this structure:
-{{
-    "recommendation": "Yes, buy!" or "No, don't buy!",
-    "confidence": "high" or "medium" or "low",
-    "overall_explanation": "Brief explanation of the overall decision",
-    "technical_analysis": [
-        {{
-            "method": "Method name",
-            "explanation": "How this method applies to the data",
-            "signal": "Buy" or "No Buy",
-            "strength": "Strong" or "Moderate" or "Weak"
-        }}
-    ]
-}}"""
-
-
-
-            # Model selection: Enhanced model for Maximum Brain analysis
-            # GPT-5 not yet available, using GPT-4o with optimized parameters for Maximum Brain
-            # Updated August 11, 2025 per user request for Maximum Brain enhancement
-            model_to_use = "gpt-4o" if maximum_brain else "gpt-4o"
-            
-            # API parameters optimized for Maximum Brain vs Standard analysis
-            api_params = {
-                "model": model_to_use,
-                "messages": [
-                    {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON format."},
-                    {"role": "user", "content": prompt}
-                ],
-                "response_format": {"type": "json_object"},
-                "timeout": 45  # 45 second timeout to prevent SSL hangs
-            }
-            
-            # Optimized parameters for Maximum Brain analysis
-            if maximum_brain:
-                api_params["temperature"] = 0.1  # Lower temperature for more focused analysis
-                api_params["max_tokens"] = 4096  # Higher token limit for comprehensive analysis
-            else:
-                api_params["temperature"] = 0.3  # Standard temperature
-                api_params["max_tokens"] = 2048  # Standard token limit
-            
-            # Enhanced retry logic for OpenAI API errors (rate limits, SSL, connection issues)
-            import time
-            max_retries = 3
-            retry_delay = 1  # Start with 1 second delay
-            response = None
-            
-            # Track if this is a Maximum Brain analysis for potential multi-call fallback
-            failed_attempts = 0
-            
-            for attempt in range(max_retries + 1):
-                try:
-                    logging.info(f"OpenAI API attempt {attempt + 1}/{max_retries + 1} for {summary.get('ticker', 'unknown')} ({'Maximum Brain' if maximum_brain else 'Standard'} mode)")
-                    response = self.openai_client.chat.completions.create(**api_params)
-                    break  # Success - exit retry loop
-                except Exception as e:
-                    failed_attempts += 1
-                    error_str = str(e).lower()
-                    
-                    # Check for retryable errors: rate limits, SSL, connection, timeout issues
-                    retryable_errors = [
-                        "429", "rate limit", 
-                        "ssl", "connection", "timeout", 
-                        "network", "handshake", "broken pipe",
-                        "connection reset", "connection aborted",
-                        "worker timeout", "systemexit"
-                    ]
-                    
-                    is_retryable = any(err in error_str for err in retryable_errors)
-                    
-                    if is_retryable and attempt < max_retries:
-                        # Determine error type for user messaging
-                        if "429" in error_str or "rate limit" in error_str:
-                            error_type = "rate limiting"
-                        elif any(term in error_str for term in ["ssl", "connection", "handshake", "network"]):
-                            error_type = "connection"
-                        else:
-                            error_type = "network"
-                            
-                        logging.warning(f"OpenAI {error_type} issue (attempt {attempt + 1}/{max_retries + 1}), retrying in {retry_delay}s...")
-                        logging.warning(f"Error details: {str(e)}")
-                        time.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
-                        continue
-                    elif maximum_brain and failed_attempts >= 2:
-                        # Maximum Brain multi-call fallback after 2 failures
-                        logging.warning(f"Maximum Brain analysis failed twice, attempting multi-call fallback for {summary.get('ticker', 'unknown')}")
-                        return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
-                    else:
-                        # Final failure or non-retryable error
-                        if "429" in error_str or "rate limit" in error_str:
-                            raise Exception("OpenAI API rate limit exceeded. Please wait a few minutes and try again.")
-                        elif any(term in error_str for term in ["ssl", "connection", "handshake"]):
-                            raise Exception("Connection issue with AI service. This may be temporary - please try again in a moment.")
-                        else:
-                            raise Exception(f"AI service error: {str(e)}")
-                        
-            # Ensure response is defined before using it
-            if response is None:
-                raise Exception("Failed to get response from AI service after all retry attempts")
-            
-            # Log successful API connection - HTTP 200 status confirmed
-            logging.info(f"OpenAI API connection successful - HTTP 200 response received for {summary.get('ticker', 'unknown')}")
-            logging.info(f"Maximum Brain mode: {maximum_brain}, Model used: {model_to_use}")
-            logging.info(f"Response status confirmed, processing content...")
-            
-            content = response.choices[0].message.content
-            if content:
-                logging.info(f"OpenAI Response: {content}")
-                analysis = json.loads(content)
-                logging.info(f"Parsed Analysis: {analysis}")
+                # Standard analysis with GPT-4o
+                return self.analyze_with_standard_mode(summary, income_focus, income_metrics)
                 
-                # If income analysis was requested but not included in OpenAI response, add it
-                if income_focus and income_metrics and 'income_analysis' not in analysis:
-                    analysis['income_analysis'] = {
-                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics['buy_threshold'] else "No Buy",
-                        'income_confidence': 'medium',
-                        'income_explanation': f"Based on effective income return of {income_metrics['effective_return']:.2f}%",
-                        'key_income_risks': income_metrics.get('risks', []),
-                        'effective_income_return': income_metrics['effective_return']
-                    }
-                
-                return analysis, None
-            else:
-                return None, "Empty response from AI analysis"
-            
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
             logging.error(f"Error in AI analysis for {summary.get('ticker', 'unknown')}: {str(e)}")
             logging.error(f"Maximum Brain mode: {maximum_brain}")
             logging.error(f"AI Analysis Error Traceback: {error_details}")
-            if maximum_brain:
-                logging.error(f"Maximum Brain prompt length: {len(prompt) if 'prompt' in locals() else 'unknown'}")
-                logging.error(f"Indicator values count: {len(summary.get('indicator_values', {}))}")
+            return None, f"Error analyzing stock data: {str(e)}"
+    
+    def analyze_with_gpt5_maximum_brain(self, summary, income_focus=False, income_metrics=None):
+        """GPT-5 enhanced Maximum Brain analysis with multi-tier processing"""
+        try:
+            use_gpt5 = self.gpt5_available if self.gpt5_available is not None else False
+            
+            # Prepare comprehensive indicator data
+            indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
+            ticker = summary['ticker']
+            company = summary['company_name']
+            
+            # Tier 1: Foundation Analysis with high verbosity
+            logging.info(f"Starting Tier 1 Foundation Analysis for {ticker}")
+            tier1_analysis = self.execute_gpt5_tier1_analysis(summary, indicator_json, use_gpt5)
+            
+            if not tier1_analysis:
+                # Fallback to chunked analysis if Tier 1 fails
+                logging.warning("Tier 1 analysis failed, attempting chunked fallback")
+                return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+            
+            # Tier 2: Advanced Pattern Recognition
+            logging.info(f"Starting Tier 2 Pattern Recognition for {ticker}")
+            tier2_analysis = self.execute_gpt5_tier2_analysis(summary, indicator_json, tier1_analysis, use_gpt5)
+            
+            # Tier 3: Final Synthesis and Risk Assessment
+            logging.info(f"Starting Tier 3 Synthesis for {ticker}")
+            final_analysis = self.execute_gpt5_tier3_synthesis(
+                summary, tier1_analysis, tier2_analysis, income_focus, income_metrics, use_gpt5
+            )
+            
+            if final_analysis:
+                return final_analysis, None
+            else:
+                # Final fallback to chunked analysis
+                logging.warning("Multi-tier analysis incomplete, using chunked fallback")
+                return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+                
+        except Exception as e:
+            logging.error(f"Error in GPT-5 Maximum Brain analysis: {str(e)}")
+            # Fallback to chunked analysis on any error
+            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+    
+    def execute_gpt5_tier1_analysis(self, summary, indicator_json, use_gpt5=False):
+        """Tier 1: Foundation Analysis with core indicators"""
+        try:
+            # Enhanced system prompt for institutional-grade analysis
+            system_prompt = """You are a world-class quantitative analyst with 20+ years of experience at top-tier investment firms.
+You possess expert knowledge in technical analysis, risk management, and market psychology.
+Your analysis combines mathematical precision with institutional-grade investment judgment.
+You are performing MAXIMUM BRAIN ANALYSIS - use your most advanced analytical capabilities."""
+            
+            # Comprehensive indicator list for reference
+            indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Support and Resistance Levels, Elliott Wave Principle, Wyckoff Method"""
+            
+            user_prompt = f"""TIER 1 FOUNDATION ANALYSIS for {summary['ticker']} ({summary['company_name']})
+
+Current Market Data:
+- Price: ${summary['current_price']:.2f}
+- 30-day Change: {summary['price_change_30d']:.2f}%
+- 30-day Volume: {summary['volume_avg_30d']:,.0f}
+- 30-day Volatility: {summary['volatility_30d']:.2f}
+
+PRE-COMPUTED TECHNICAL INDICATORS:
+{indicator_json}
+
+Perform comprehensive foundation analysis focusing on:
+1. Core trend indicators (RSI, MACD, Moving Averages)
+2. Momentum and volatility assessment
+3. Volume analysis and accumulation/distribution
+4. Initial support/resistance identification
+5. Market regime classification
+
+Analyze using these methods: {indicators_list}
+
+Provide detailed analysis with signal strength weighting for each indicator.
+Focus on precision and depth - this is institutional-grade analysis."""
+            
+            # Configure API parameters based on model availability
+            if use_gpt5:
+                client = self.gpt5_client
+                model = "gpt-5"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "verbosity": "high",  # GPT-5 specific: Maximum detail
+                    "temperature": 0.1,
+                    "max_tokens": 6000,
+                    "response_format": {"type": "json_object"}
+                }
+                
+                # Add Context-Free Grammar for GPT-5
+                cfg = self.get_gpt5_context_grammar()
+                api_params["response_format"] = cfg
+                
+            else:
+                client = self.gpt4_client
+                model = "gpt-4o"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 4096,
+                    "response_format": {"type": "json_object"}
+                }
+            
+            # Execute with comprehensive timeout handling
+            import time
+            max_retries = 5 if use_gpt5 else 3
+            base_delay = 2
+            
+            for attempt in range(max_retries):
+                try:
+                    logging.info(f"Tier 1 API call attempt {attempt + 1}/{max_retries} using {model}")
+                    
+                    # Set extended timeout for this specific call
+                    original_timeout = client.timeout
+                    client.timeout = 180.0 if use_gpt5 else 90.0
+                    
+                    try:
+                        response = client.chat.completions.create(**api_params)
+                        
+                        # Process response
+                        if response and response.choices:
+                            content = response.choices[0].message.content
+                            if content:
+                                analysis = json.loads(content)
+                                logging.info(f"Tier 1 analysis successful with {model}")
+                                return analysis
+                    finally:
+                        client.timeout = original_timeout
+                        
+                except Exception as e:
+                    error_str = str(e).lower()
+                    
+                    # Comprehensive error handling
+                    retryable_errors = [
+                        "timeout", "ssl", "connection", "network", 
+                        "429", "rate limit", "handshake", "broken pipe",
+                        "connection reset", "worker timeout"
+                    ]
+                    
+                    is_retryable = any(err in error_str for err in retryable_errors)
+                    
+                    if is_retryable and attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)  # Exponential backoff
+                        logging.warning(f"Tier 1 {model} attempt {attempt + 1} failed (retryable), waiting {delay}s...")
+                        time.sleep(delay)
+                        continue
+                    elif not is_retryable:
+                        logging.error(f"Tier 1 non-retryable error: {str(e)}")
+                        break
+                        
+            logging.warning("Tier 1 analysis failed after all attempts")
+            return None
+            
+        except Exception as e:
+            logging.error(f"Error in Tier 1 analysis: {str(e)}")
+            return None
+    
+    def execute_gpt5_tier2_analysis(self, summary, indicator_json, tier1_analysis, use_gpt5=False):
+        """Tier 2: Advanced Pattern Recognition and Complex Analysis"""
+        try:
+            # Extract key insights from Tier 1
+            tier1_summary = {
+                "recommendation": tier1_analysis.get("recommendation", "Unknown"),
+                "confidence": tier1_analysis.get("confidence", "low"),
+                "market_regime": tier1_analysis.get("market_regime", "unknown")
+            }
+            
+            system_prompt = """You are analyzing complex market patterns and advanced technical formations.
+Focus on pattern recognition, Elliott Wave analysis, Wyckoff accumulation/distribution, and market structure.
+Your analysis should identify hidden patterns that basic indicators might miss."""
+            
+            user_prompt = f"""TIER 2 ADVANCED PATTERN ANALYSIS for {summary['ticker']}
+
+Tier 1 Analysis Summary:
+- Initial Recommendation: {tier1_summary['recommendation']}
+- Confidence: {tier1_summary['confidence']}
+- Market Regime: {tier1_summary['market_regime']}
+
+Technical Indicators:
+{indicator_json}
+
+Perform advanced pattern recognition:
+1. Elliott Wave count and projection
+2. Wyckoff phase identification
+3. Harmonic patterns (Gartley, Butterfly, Crab)
+4. Head and shoulders, double tops/bottoms
+5. Flag, pennant, wedge formations
+6. Fibonacci confluence zones
+7. Volume pattern analysis
+8. Ichimoku cloud interpretation
+9. Market structure breaks
+10. Hidden divergences
+
+Identify patterns that could override or confirm the Tier 1 analysis."""
+            
+            # Configure API parameters
+            if use_gpt5:
+                client = self.gpt5_client
+                model = "gpt-5"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "verbosity": "medium",  # GPT-5: Balanced detail for patterns
+                    "reasoning_effort": "high",  # GPT-5: Complex pattern recognition
+                    "temperature": 0.2,
+                    "max_tokens": 4000
+                }
+            else:
+                client = self.gpt4_client
+                model = "gpt-4o"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 3000
+                }
+            
+            # Execute with timeout handling
+            original_timeout = client.timeout
+            client.timeout = 150.0 if use_gpt5 else 75.0
+            
+            try:
+                logging.info(f"Tier 2 pattern analysis using {model}")
+                response = client.chat.completions.create(**api_params)
+                
+                if response and response.choices:
+                    content = response.choices[0].message.content
+                    if content:
+                        # Handle both JSON and text responses
+                        try:
+                            analysis = json.loads(content)
+                        except json.JSONDecodeError:
+                            # Convert text response to structured format
+                            analysis = {
+                                "patterns_identified": content,
+                                "pattern_signals": "Complex analysis completed"
+                            }
+                        logging.info(f"Tier 2 pattern analysis successful")
+                        return analysis
+            finally:
+                client.timeout = original_timeout
+                
+        except Exception as e:
+            logging.warning(f"Tier 2 analysis error (non-critical): {str(e)}")
+            # Tier 2 is enhancement, not critical - return None to continue
+            return None
+    
+    def execute_gpt5_tier3_synthesis(self, summary, tier1, tier2, income_focus, income_metrics, use_gpt5=False):
+        """Tier 3: Final Synthesis with Risk Assessment and Position Sizing"""
+        try:
+            # Prepare synthesis data
+            ticker = summary['ticker']
+            current_price = summary['current_price']
+            
+            # Compile all analysis results
+            synthesis_data = {
+                "ticker": ticker,
+                "price": current_price,
+                "tier1_analysis": tier1 if tier1 else {"status": "unavailable"},
+                "tier2_patterns": tier2 if tier2 else {"status": "no_patterns_detected"}
+            }
+            
+            system_prompt = """You are finalizing an institutional-grade investment recommendation.
+Synthesize all technical analysis, assess risks, and provide actionable trading parameters.
+Your final output must be precise, actionable, and include risk management guidelines."""
+            
+            user_prompt = f"""FINAL SYNTHESIS AND RISK ASSESSMENT for {ticker}
+
+Current Price: ${current_price:.2f}
+
+TIER 1 FOUNDATION ANALYSIS:
+{json.dumps(tier1, indent=2) if tier1 else 'Foundation analysis unavailable'}
+
+TIER 2 PATTERN ANALYSIS:
+{json.dumps(tier2, indent=2) if tier2 else 'No advanced patterns detected'}
+
+Create final comprehensive recommendation including:
+1. Weighted consensus from all indicators and patterns
+2. Risk-adjusted position sizing recommendation
+3. Specific entry, stop-loss, and target levels
+4. Confidence score with justification
+5. Key risk factors and mitigation strategies
+6. Time horizon for the trade
+7. Alternative scenarios and invalidation levels
+
+Provide institutional-quality final recommendation."""
+            
+            # Add income analysis request if applicable
+            if income_focus and income_metrics:
+                user_prompt += f"""
+
+INCOME ANALYSIS REQUIRED:
+Effective Income Return: {income_metrics['effective_return']:.2f}%
+Income Buy Threshold: {income_metrics.get('buy_threshold', 5.0)}%
+Include comprehensive income investment assessment."""
+            
+            # Configure final synthesis parameters
+            if use_gpt5:
+                client = self.gpt5_client
+                model = "gpt-5"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "verbosity": "high",  # GPT-5: Comprehensive final output
+                    "temperature": 0.1,
+                    "max_tokens": 5000,
+                    "response_format": self.get_gpt5_context_grammar()  # Structured output
+                }
+            else:
+                client = self.gpt4_client
+                model = "gpt-4o"
+                api_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 4096,
+                    "response_format": {"type": "json_object"}
+                }
+            
+            # Execute with maximum timeout tolerance
+            import time
+            max_retries = 5
+            base_delay = 3
+            
+            for attempt in range(max_retries):
+                try:
+                    logging.info(f"Tier 3 synthesis attempt {attempt + 1}/{max_retries} using {model}")
+                    
+                    original_timeout = client.timeout
+                    client.timeout = 200.0 if use_gpt5 else 100.0
+                    
+                    try:
+                        response = client.chat.completions.create(**api_params)
+                        
+                        if response and response.choices:
+                            content = response.choices[0].message.content
+                            if content:
+                                final_analysis = json.loads(content)
+                                
+                                # Ensure all required fields are present
+                                final_analysis["analysis_method"] = "GPT-5 Maximum Brain Multi-Tier" if use_gpt5 else "Enhanced GPT-4o Multi-Tier"
+                                final_analysis["tiers_completed"] = {
+                                    "tier1": tier1 is not None,
+                                    "tier2": tier2 is not None,
+                                    "tier3": True
+                                }
+                                
+                                # Add income analysis if not included
+                                if income_focus and income_metrics and 'income_analysis' not in final_analysis:
+                                    final_analysis['income_analysis'] = {
+                                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics.get('buy_threshold', 5.0) else "No Buy",
+                                        'income_confidence': 'high' if income_metrics['effective_return'] > 8 else 'medium',
+                                        'income_explanation': f"Effective income return of {income_metrics['effective_return']:.2f}% with comprehensive risk assessment",
+                                        'key_income_risks': income_metrics.get('risks', []),
+                                        'effective_income_return': income_metrics['effective_return']
+                                    }
+                                
+                                logging.info(f"Tier 3 synthesis complete: {final_analysis.get('recommendation')} with {final_analysis.get('confidence')} confidence")
+                                return final_analysis
+                                
+                    finally:
+                        client.timeout = original_timeout
+                        
+                except Exception as e:
+                    error_str = str(e).lower()
+                    
+                    if "timeout" in error_str or "connection" in error_str:
+                        if attempt < max_retries - 1:
+                            delay = base_delay * (2 ** attempt)
+                            logging.warning(f"Tier 3 timeout/connection issue, retry {attempt + 1} in {delay}s")
+                            time.sleep(delay)
+                            continue
+                    
+                    logging.error(f"Tier 3 synthesis error: {str(e)}")
+                    
+            # If synthesis fails, create basic response from Tier 1
+            if tier1:
+                return {
+                    "recommendation": tier1.get("recommendation", "No, don't buy!"),
+                    "confidence": tier1.get("confidence", "low"),
+                    "overall_explanation": "Analysis based on foundation indicators due to synthesis limitations",
+                    "technical_analysis": tier1.get("technical_analysis", []),
+                    "analysis_method": "Tier 1 Foundation Only",
+                    "synthesis_status": "partial"
+                }
+                
+        except Exception as e:
+            logging.error(f"Critical error in Tier 3 synthesis: {str(e)}")
+            return None
+    
+    def analyze_with_standard_mode(self, summary, income_focus=False, income_metrics=None):
+        """Standard analysis mode using GPT-4o with optimized parameters"""
+        try:
+            # Standard prompt for regular analysis
+            prompt = f"""You are an expert stock technical analyst. Given the following data for {summary['ticker']} ({summary['company_name']}):
+
+Current Price: ${summary['current_price']:.2f}
+30-day Price Change: {summary['price_change_30d']:.2f}%
+30-day Average Volume: {summary['volume_avg_30d']:,.0f}
+30-day Volatility: {summary['volatility_30d']:.2f}
+Current RSI: {summary.get('rsi_current', 0):.2f}
+Current MACD: {summary.get('macd_current', 0):.4f}
+Bollinger Band Position: {summary.get('bb_position', 'N/A')}
+Price vs SMA-20: {summary.get('sma_20_trend', 'N/A')}
+Price vs SMA-50: {summary.get('sma_50_trend', 'N/A')}
+Price vs SMA-200: {summary.get('sma_200_trend', 'N/A')}
+Stochastic %K: {summary.get('stoch_k', 0):.2f}
+Stochastic %D: {summary.get('stoch_d', 0):.2f}
+OBV Trend: {summary.get('obv_trend', 'N/A')}
+
+Analyze using: Wyckoff Method, Bollinger Bands, Moving Averages (SMA/EMA), MACD, RSI, Stochastic, OBV, ADX, and price action.
+
+Provide a recommendation: 'Yes, buy!' or 'No, don't buy!' with confidence level and explanation.
+
+Respond in JSON format:
+{{
+    "recommendation": "Yes, buy!" or "No, don't buy!",
+    "confidence": "high/medium/low",
+    "overall_explanation": "explanation",
+    "technical_analysis": [
+        {{
+            "method": "name",
+            "explanation": "analysis",
+            "signal": "Buy/No Buy",
+            "strength": "Strong/Moderate/Weak"
+        }}
+    ]
+}}"""
+            
+            # API parameters for standard analysis
+            api_params = {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "You are an expert technical analyst. Always respond with valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.3,
+                "max_tokens": 2048
+            }
+            
+            # Execute with retry logic
+            import time
+            max_retries = 3
+            
+            for attempt in range(max_retries):
+                try:
+                    logging.info(f"Standard analysis attempt {attempt + 1}/{max_retries}")
+                    
+                    # Set appropriate timeout
+                    original_timeout = self.gpt4_client.timeout
+                    self.gpt4_client.timeout = 60.0
+                    
+                    try:
+                        response = self.gpt4_client.chat.completions.create(**api_params)
+                        
+                        if response and response.choices:
+                            content = response.choices[0].message.content
+                            if content:
+                                analysis = json.loads(content)
+                                
+                                # Add income analysis if requested
+                                if income_focus and income_metrics:
+                                    analysis['income_analysis'] = {
+                                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics.get('buy_threshold', 5.0) else "No Buy",
+                                        'income_confidence': 'medium',
+                                        'income_explanation': f"Based on effective income return of {income_metrics['effective_return']:.2f}%",
+                                        'key_income_risks': income_metrics.get('risks', []),
+                                        'effective_income_return': income_metrics['effective_return']
+                                    }
+                                
+                                logging.info(f"Standard analysis successful: {analysis.get('recommendation')}")
+                                return analysis, None
+                                
+                    finally:
+                        self.gpt4_client.timeout = original_timeout
+                        
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    raise
+                    
+        except Exception as e:
+            logging.error(f"Error in standard analysis: {str(e)}")
             return None, f"Error analyzing stock data: {str(e)}"
     
     def analyze_with_chunked_calls(self, summary, income_focus=False, income_metrics=None):
