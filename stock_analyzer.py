@@ -1583,11 +1583,32 @@ Respond in the standard analysis JSON format:
 {{
     "recommendation": "Yes, buy!" or "No, don't buy!",
     "confidence": "high/medium/low",
-    "explanation": "Overall synthesis explanation combining all indicator groups",
+    "overall_explanation": "Comprehensive synthesis explanation combining all indicator groups. Include specific indicator values and what they mean.",
+    "technical_analysis": [
+        {{
+            "indicator": "Core Trend Analysis",
+            "signal": "Details about RSI, MACD, Moving Averages and their implications"
+        }},
+        {{
+            "indicator": "Volume Analysis", 
+            "signal": "Details about OBV, MFI, volume patterns and what they indicate"
+        }},
+        {{
+            "indicator": "Momentum Indicators",
+            "signal": "Details about momentum oscillators and trend strength"
+        }},
+        {{
+            "indicator": "Support/Resistance",
+            "signal": "Key price levels and channel analysis"
+        }},
+        {{
+            "indicator": "Risk Assessment",
+            "signal": "Volatility analysis and risk factors"
+        }}
+    ],
     "key_factors": ["factor1", "factor2", "factor3"],
     "risks": ["risk1", "risk2"],
-    "analysis_method": "Multi-call Maximum Brain Analysis (Chunked)",
-    "technical_summary": "Summary of combined technical indicators"
+    "analysis_method": "Multi-call Maximum Brain Analysis (Chunked)"
 }}"""
 
             # Add income analysis if requested
