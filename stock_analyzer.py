@@ -469,7 +469,7 @@ class StockAnalyzer:
             # 6. Bollinger Bands
             logging.info("📊 Calculating Bollinger Bands...")
             try:
-                if use_stockstats:
+                if use_stockstats and stockstats_df is not None:
                     try:
                         stock_df['bb_upper'] = stockstats_df['boll_ub']
                         stock_df['bb_middle'] = stockstats_df['boll']
@@ -1053,104 +1053,131 @@ class StockAnalyzer:
             return None, f"Error analyzing stock data: {str(e)}"
     
     def analyze_with_gpt5_maximum_brain(self, summary, income_focus=False, income_metrics=None):
-        """GPT-5 enhanced Maximum Brain analysis with multi-tier processing"""
+        """Production-grade single-call GPT-5 Maximum Brain analysis with optimized token usage"""
         try:
-            use_gpt5 = self.gpt5_available if self.gpt5_available is not None else False
-            
-            # Prepare comprehensive indicator data
-            indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
+            # Check GPT-5 availability
+            use_gpt5 = self.check_gpt5_availability()
             ticker = summary['ticker']
             company = summary['company_name']
             
-            # Tier 1: Foundation Analysis with high verbosity
-            logging.info(f"Starting Tier 1 Foundation Analysis for {ticker}")
-            tier1_analysis = self.execute_gpt5_tier1_analysis(summary, indicator_json, use_gpt5)
+            # Log analysis start and token estimation
+            indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
+            estimated_tokens = len(indicator_json) // 4  # Rough token estimate
+            logging.info(f"Starting Maximum Brain Analysis for {ticker}")
+            logging.info(f"Model: {'GPT-5' if use_gpt5 else 'GPT-4o (Enhanced)'}")
+            logging.info(f"Estimated input tokens: ~{estimated_tokens}")
             
-            if not tier1_analysis:
-                # Fallback to chunked analysis if Tier 1 fails
-                logging.warning("Tier 1 analysis failed, attempting chunked fallback")
-                return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
-            
-            # Tier 2: Advanced Pattern Recognition
-            logging.info(f"Starting Tier 2 Pattern Recognition for {ticker}")
-            tier2_analysis = self.execute_gpt5_tier2_analysis(summary, indicator_json, tier1_analysis, use_gpt5)
-            
-            # Tier 3: Final Synthesis and Risk Assessment
-            logging.info(f"Starting Tier 3 Synthesis for {ticker}")
-            final_analysis = self.execute_gpt5_tier3_synthesis(
-                summary, tier1_analysis, tier2_analysis, income_focus, income_metrics, use_gpt5
+            # Execute single comprehensive analysis
+            analysis = self.execute_single_comprehensive_analysis(
+                summary, indicator_json, use_gpt5, income_focus, income_metrics
             )
             
-            if final_analysis:
-                return final_analysis, None
-            else:
-                # Final fallback to chunked analysis
-                logging.warning("Multi-tier analysis incomplete, using chunked fallback")
-                return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+            if analysis:
+                # Validate analysis structure
+                if self.validate_analysis_structure(analysis):
+                    logging.info(f"Maximum Brain analysis successful: {analysis.get('recommendation')} with {analysis.get('confidence')} confidence")
+                    return analysis, None
+                else:
+                    logging.warning("Analysis structure validation failed, attempting fallback")
+            
+            # Fallback to chunked analysis if comprehensive fails
+            logging.warning("Single comprehensive analysis failed, using chunked fallback")
+            return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
                 
         except Exception as e:
-            logging.error(f"Error in GPT-5 Maximum Brain analysis: {str(e)}")
+            logging.error(f"Error in Maximum Brain analysis: {str(e)}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
             # Fallback to chunked analysis on any error
             return self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
     
-    def execute_gpt5_tier1_analysis(self, summary, indicator_json, use_gpt5=False):
-        """Tier 1: Foundation Analysis with core indicators"""
+    def execute_single_comprehensive_analysis(self, summary, indicator_json, use_gpt5, income_focus, income_metrics):
+        """Execute single comprehensive GPT-5/GPT-4o analysis with all indicators"""
         try:
-            # Enhanced system prompt for institutional-grade analysis
+            ticker = summary['ticker']
+            company = summary['company_name']
+            
+            # Build comprehensive system prompt for institutional-grade analysis
             system_prompt = """You are a world-class quantitative analyst with 20+ years of experience at top-tier investment firms.
-You possess expert knowledge in technical analysis, risk management, and market psychology.
+You possess expert knowledge in technical analysis, pattern recognition, risk management, and market psychology.
 Your analysis combines mathematical precision with institutional-grade investment judgment.
-You are performing MAXIMUM BRAIN ANALYSIS - use your most advanced analytical capabilities."""
+You are performing MAXIMUM BRAIN ANALYSIS - use your most advanced analytical capabilities to provide a comprehensive investment recommendation."""
             
-            # Comprehensive indicator list for reference
-            indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Support and Resistance Levels, Elliott Wave Principle, Wyckoff Method"""
-            
-            user_prompt = f"""TIER 1 FOUNDATION ANALYSIS for {summary['ticker']} ({summary['company_name']})
+            # Build comprehensive user prompt with all data
+            user_prompt = f"""COMPREHENSIVE MAXIMUM BRAIN ANALYSIS for {ticker} ({company})
 
-Current Market Data:
+CURRENT MARKET DATA:
 - Price: ${summary['current_price']:.2f}
 - 30-day Change: {summary['price_change_30d']:.2f}%
 - 30-day Volume: {summary['volume_avg_30d']:,.0f}
 - 30-day Volatility: {summary['volatility_30d']:.2f}
 
-PRE-COMPUTED TECHNICAL INDICATORS:
+COMPLETE TECHNICAL INDICATOR VALUES (35+ indicators pre-calculated):
 {indicator_json}
 
-Perform comprehensive foundation analysis focusing on:
-1. Core trend indicators (RSI, MACD, Moving Averages)
-2. Momentum and volatility assessment
-3. Volume analysis and accumulation/distribution
-4. Initial support/resistance identification
-5. Market regime classification
+ANALYTICAL REQUIREMENTS:
+1. Analyze ALL provided indicators comprehensively
+2. Identify key patterns and confluences across indicators
+3. Detect Elliott Wave patterns, Wyckoff accumulation/distribution phases
+4. Identify harmonic patterns, divergences, and market structure
+5. Provide weighted consensus from all technical signals
+6. Calculate risk-adjusted position sizing recommendations
+7. Specify concrete entry, stop-loss, and target levels
+8. Assess market regime and trend strength
+9. Identify key support/resistance levels
+10. Provide time horizon for the trade
 
-Analyze using these methods: {indicators_list}
+DECISION CRITERIA:
+- Weight each indicator based on its reliability and current market conditions
+- Consider indicator confluences and divergences
+- Factor in volume patterns and momentum shifts
+- Identify any contrarian signals or warnings
+- Provide institutional-quality risk assessment
 
-Provide detailed analysis with signal strength weighting for each indicator.
-Focus on precision and depth - this is institutional-grade analysis."""
+OUTPUT REQUIREMENTS:
+Provide a definitive recommendation: "Yes, buy!" or "No, don't buy!" with confidence level (high/medium/low).
+Include detailed technical analysis of at least 15 key indicators/patterns.
+Specify exact price levels for trading decisions.
+Identify top 3 risk factors and mitigation strategies."""
+            
+            # Add income analysis requirements if applicable
+            if income_focus and income_metrics:
+                user_prompt += f"""
+
+INCOME INVESTMENT ANALYSIS:
+Effective Income Return: {income_metrics['effective_return']:.2f}%
+Yield Threshold: {income_metrics.get('buy_threshold', 5.0)}%
+Evaluate this as an income investment with focus on:
+- Sustainability of distributions
+- Risk-adjusted income returns
+- Income stability metrics
+- Total return potential including distributions"""
             
             # Configure API parameters based on model availability
             if use_gpt5:
                 client = self.gpt5_client
                 model = "gpt-5"
+                
+                # Use Context-Free Grammar for structured output
+                cfg = self.get_gpt5_context_grammar()
+                
                 api_params = {
                     "model": model,
                     "messages": [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "verbosity": "high",  # GPT-5 specific: Maximum detail
+                    "verbosity": "high",  # GPT-5: Maximum detail for comprehensive analysis
+                    "reasoning_effort": "max",  # GPT-5: Maximum reasoning for complex analysis
                     "temperature": 0.1,
-                    "max_tokens": 6000,
-                    "response_format": {"type": "json_object"}
+                    "max_tokens": 8000,  # Increased for comprehensive single response
+                    "response_format": cfg
                 }
-                
-                # Add Context-Free Grammar for GPT-5
-                cfg = self.get_gpt5_context_grammar()
-                api_params["response_format"] = cfg
-                
             else:
+                # GPT-4o enhanced parameters for Maximum Brain
                 client = self.gpt4_client
                 model = "gpt-4o"
+                
                 api_params = {
                     "model": model,
                     "messages": [
@@ -1158,278 +1185,60 @@ Focus on precision and depth - this is institutional-grade analysis."""
                         {"role": "user", "content": user_prompt}
                     ],
                     "temperature": 0.1,
-                    "max_tokens": 4096,
+                    "max_tokens": 6000,  # Increased for comprehensive analysis
+                    "top_p": 0.95,
+                    "presence_penalty": 0.1,
+                    "frequency_penalty": 0.1,
                     "response_format": {"type": "json_object"}
                 }
             
-            # Execute with comprehensive timeout handling
+            # Execute with comprehensive retry logic and timeout handling
             import time
             max_retries = 5 if use_gpt5 else 3
             base_delay = 2
             
             for attempt in range(max_retries):
                 try:
-                    logging.info(f"Tier 1 API call attempt {attempt + 1}/{max_retries} using {model}")
+                    logging.info(f"Maximum Brain API call attempt {attempt + 1}/{max_retries} using {model}")
                     
-                    # Set extended timeout for this specific call
+                    # Set appropriate timeout based on model
                     original_timeout = client.timeout
                     client.timeout = 180.0 if use_gpt5 else 90.0
                     
                     try:
+                        # Make the API call
+                        start_time = time.time()
                         response = client.chat.completions.create(**api_params)
+                        elapsed_time = time.time() - start_time
+                        logging.info(f"API call completed in {elapsed_time:.2f} seconds")
                         
                         # Process response
                         if response and response.choices:
                             content = response.choices[0].message.content
                             if content:
                                 analysis = json.loads(content)
-                                logging.info(f"Tier 1 analysis successful with {model}")
-                                return analysis
-                    finally:
-                        client.timeout = original_timeout
-                        
-                except Exception as e:
-                    error_str = str(e).lower()
-                    
-                    # Comprehensive error handling
-                    retryable_errors = [
-                        "timeout", "ssl", "connection", "network", 
-                        "429", "rate limit", "handshake", "broken pipe",
-                        "connection reset", "worker timeout"
-                    ]
-                    
-                    is_retryable = any(err in error_str for err in retryable_errors)
-                    
-                    if is_retryable and attempt < max_retries - 1:
-                        delay = base_delay * (2 ** attempt)  # Exponential backoff
-                        logging.warning(f"Tier 1 {model} attempt {attempt + 1} failed (retryable), waiting {delay}s...")
-                        time.sleep(delay)
-                        continue
-                    elif not is_retryable:
-                        logging.error(f"Tier 1 non-retryable error: {str(e)}")
-                        break
-                        
-            logging.warning("Tier 1 analysis failed after all attempts")
-            return None
-            
-        except Exception as e:
-            logging.error(f"Error in Tier 1 analysis: {str(e)}")
-            return None
-    
-    def execute_gpt5_tier2_analysis(self, summary, indicator_json, tier1_analysis, use_gpt5=False):
-        """Tier 2: Advanced Pattern Recognition and Complex Analysis"""
-        try:
-            # Extract key insights from Tier 1
-            tier1_summary = {
-                "recommendation": tier1_analysis.get("recommendation", "Unknown"),
-                "confidence": tier1_analysis.get("confidence", "low"),
-                "market_regime": tier1_analysis.get("market_regime", "unknown")
-            }
-            
-            system_prompt = """You are analyzing complex market patterns and advanced technical formations.
-Focus on pattern recognition, Elliott Wave analysis, Wyckoff accumulation/distribution, and market structure.
-Your analysis should identify hidden patterns that basic indicators might miss."""
-            
-            user_prompt = f"""TIER 2 ADVANCED PATTERN ANALYSIS for {summary['ticker']}
-
-Tier 1 Analysis Summary:
-- Initial Recommendation: {tier1_summary['recommendation']}
-- Confidence: {tier1_summary['confidence']}
-- Market Regime: {tier1_summary['market_regime']}
-
-Technical Indicators:
-{indicator_json}
-
-Perform advanced pattern recognition:
-1. Elliott Wave count and projection
-2. Wyckoff phase identification
-3. Harmonic patterns (Gartley, Butterfly, Crab)
-4. Head and shoulders, double tops/bottoms
-5. Flag, pennant, wedge formations
-6. Fibonacci confluence zones
-7. Volume pattern analysis
-8. Ichimoku cloud interpretation
-9. Market structure breaks
-10. Hidden divergences
-
-Identify patterns that could override or confirm the Tier 1 analysis."""
-            
-            # Configure API parameters
-            if use_gpt5:
-                client = self.gpt5_client
-                model = "gpt-5"
-                api_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "verbosity": "medium",  # GPT-5: Balanced detail for patterns
-                    "reasoning_effort": "high",  # GPT-5: Complex pattern recognition
-                    "temperature": 0.2,
-                    "max_tokens": 4000
-                }
-            else:
-                client = self.gpt4_client
-                model = "gpt-4o"
-                api_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 3000
-                }
-            
-            # Execute with timeout handling
-            original_timeout = client.timeout
-            client.timeout = 150.0 if use_gpt5 else 75.0
-            
-            try:
-                logging.info(f"Tier 2 pattern analysis using {model}")
-                response = client.chat.completions.create(**api_params)
-                
-                if response and response.choices:
-                    content = response.choices[0].message.content
-                    if content:
-                        # Handle both JSON and text responses
-                        try:
-                            analysis = json.loads(content)
-                        except json.JSONDecodeError:
-                            # Convert text response to structured format
-                            analysis = {
-                                "patterns_identified": content,
-                                "pattern_signals": "Complex analysis completed"
-                            }
-                        logging.info(f"Tier 2 pattern analysis successful")
-                        return analysis
-            finally:
-                client.timeout = original_timeout
-                
-        except Exception as e:
-            logging.warning(f"Tier 2 analysis error (non-critical): {str(e)}")
-            # Tier 2 is enhancement, not critical - return None to continue
-            return None
-    
-    def execute_gpt5_tier3_synthesis(self, summary, tier1, tier2, income_focus, income_metrics, use_gpt5=False):
-        """Tier 3: Final Synthesis with Risk Assessment and Position Sizing"""
-        try:
-            # Prepare synthesis data
-            ticker = summary['ticker']
-            current_price = summary['current_price']
-            
-            # Compile all analysis results
-            synthesis_data = {
-                "ticker": ticker,
-                "price": current_price,
-                "tier1_analysis": tier1 if tier1 else {"status": "unavailable"},
-                "tier2_patterns": tier2 if tier2 else {"status": "no_patterns_detected"}
-            }
-            
-            system_prompt = """You are finalizing an institutional-grade investment recommendation.
-Synthesize all technical analysis, assess risks, and provide actionable trading parameters.
-Your final output must be precise, actionable, and include risk management guidelines."""
-            
-            user_prompt = f"""FINAL SYNTHESIS AND RISK ASSESSMENT for {ticker}
-
-Current Price: ${current_price:.2f}
-
-TIER 1 FOUNDATION ANALYSIS:
-{json.dumps(tier1, indent=2) if tier1 else 'Foundation analysis unavailable'}
-
-TIER 2 PATTERN ANALYSIS:
-{json.dumps(tier2, indent=2) if tier2 else 'No advanced patterns detected'}
-
-Create final comprehensive recommendation including:
-1. Weighted consensus from all indicators and patterns
-2. Risk-adjusted position sizing recommendation
-3. Specific entry, stop-loss, and target levels
-4. Confidence score with justification
-5. Key risk factors and mitigation strategies
-6. Time horizon for the trade
-7. Alternative scenarios and invalidation levels
-
-Provide institutional-quality final recommendation."""
-            
-            # Add income analysis request if applicable
-            if income_focus and income_metrics:
-                user_prompt += f"""
-
-INCOME ANALYSIS REQUIRED:
-Effective Income Return: {income_metrics['effective_return']:.2f}%
-Income Buy Threshold: {income_metrics.get('buy_threshold', 5.0)}%
-Include comprehensive income investment assessment."""
-            
-            # Configure final synthesis parameters
-            if use_gpt5:
-                client = self.gpt5_client
-                model = "gpt-5"
-                api_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "verbosity": "high",  # GPT-5: Comprehensive final output
-                    "temperature": 0.1,
-                    "max_tokens": 5000,
-                    "response_format": self.get_gpt5_context_grammar()  # Structured output
-                }
-            else:
-                client = self.gpt4_client
-                model = "gpt-4o"
-                api_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 4096,
-                    "response_format": {"type": "json_object"}
-                }
-            
-            # Execute with maximum timeout tolerance
-            import time
-            max_retries = 5
-            base_delay = 3
-            
-            for attempt in range(max_retries):
-                try:
-                    logging.info(f"Tier 3 synthesis attempt {attempt + 1}/{max_retries} using {model}")
-                    
-                    original_timeout = client.timeout
-                    client.timeout = 200.0 if use_gpt5 else 100.0
-                    
-                    try:
-                        response = client.chat.completions.create(**api_params)
-                        
-                        if response and response.choices:
-                            content = response.choices[0].message.content
-                            if content:
-                                final_analysis = json.loads(content)
+                                
+                                # Log token usage if available
+                                if hasattr(response, 'usage'):
+                                    logging.info(f"Token usage - Prompt: {response.usage.prompt_tokens}, Completion: {response.usage.completion_tokens}, Total: {response.usage.total_tokens}")
                                 
                                 # Ensure all required fields are present
-                                final_analysis["analysis_method"] = "GPT-5 Maximum Brain Multi-Tier" if use_gpt5 else "Enhanced GPT-4o Multi-Tier"
-                                final_analysis["tiers_completed"] = {
-                                    "tier1": tier1 is not None,
-                                    "tier2": tier2 is not None,
-                                    "tier3": True
-                                }
+                                analysis["analysis_method"] = f"Single-Call {'GPT-5' if use_gpt5 else 'GPT-4o'} Maximum Brain Analysis"
+                                analysis["model_used"] = model
+                                analysis["analysis_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
                                 
-                                # Add income analysis if not included
-                                if income_focus and income_metrics and 'income_analysis' not in final_analysis:
-                                    final_analysis['income_analysis'] = {
+                                # Add income analysis if not included but was requested
+                                if income_focus and income_metrics and 'income_analysis' not in analysis:
+                                    analysis['income_analysis'] = {
                                         'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics.get('buy_threshold', 5.0) else "No Buy",
                                         'income_confidence': 'high' if income_metrics['effective_return'] > 8 else 'medium',
-                                        'income_explanation': f"Effective income return of {income_metrics['effective_return']:.2f}% with comprehensive risk assessment",
+                                        'income_explanation': f"Comprehensive income analysis shows {income_metrics['effective_return']:.2f}% effective return",
                                         'key_income_risks': income_metrics.get('risks', []),
                                         'effective_income_return': income_metrics['effective_return']
                                     }
                                 
-                                logging.info(f"Tier 3 synthesis complete: {final_analysis.get('recommendation')} with {final_analysis.get('confidence')} confidence")
-                                return final_analysis
+                                logging.info(f"Comprehensive analysis successful: {analysis.get('recommendation')} with {analysis.get('confidence')} confidence")
+                                return analysis
                                 
                     finally:
                         client.timeout = original_timeout
@@ -1437,29 +1246,80 @@ Include comprehensive income investment assessment."""
                 except Exception as e:
                     error_str = str(e).lower()
                     
-                    if "timeout" in error_str or "connection" in error_str:
+                    # Comprehensive error classification
+                    retryable_errors = [
+                        "timeout", "ssl", "connection", "network",
+                        "429", "rate limit", "handshake", "broken pipe",
+                        "connection reset", "worker timeout", "502", "503", "504"
+                    ]
+                    
+                    is_retryable = any(err in error_str for err in retryable_errors)
+                    
+                    if is_retryable:
                         if attempt < max_retries - 1:
-                            delay = base_delay * (2 ** attempt)
-                            logging.warning(f"Tier 3 timeout/connection issue, retry {attempt + 1} in {delay}s")
+                            delay = base_delay * (2 ** attempt)  # Exponential backoff
+                            logging.warning(f"{model} attempt {attempt + 1} failed (retryable), waiting {delay}s before retry...")
+                            logging.warning(f"Error: {str(e)}")
                             time.sleep(delay)
                             continue
-                    
-                    logging.error(f"Tier 3 synthesis error: {str(e)}")
-                    
-            # If synthesis fails, create basic response from Tier 1
-            if tier1:
-                return {
-                    "recommendation": tier1.get("recommendation", "No, don't buy!"),
-                    "confidence": tier1.get("confidence", "low"),
-                    "overall_explanation": "Analysis based on foundation indicators due to synthesis limitations",
-                    "technical_analysis": tier1.get("technical_analysis", []),
-                    "analysis_method": "Tier 1 Foundation Only",
-                    "synthesis_status": "partial"
-                }
-                
-        except Exception as e:
-            logging.error(f"Critical error in Tier 3 synthesis: {str(e)}")
+                        else:
+                            logging.error(f"All {max_retries} attempts failed for {model}")
+                    else:
+                        # Non-retryable error
+                        logging.error(f"Non-retryable error in {model}: {str(e)}")
+                        break
+                        
+            logging.warning("Comprehensive single-call analysis failed after all attempts")
             return None
+            
+        except Exception as e:
+            logging.error(f"Critical error in comprehensive analysis: {str(e)}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
+            return None
+    
+    def validate_analysis_structure(self, analysis):
+        """Validate that the analysis response has all required fields"""
+        try:
+            required_fields = ['recommendation', 'confidence', 'overall_explanation']
+            
+            # Check for required top-level fields
+            for field in required_fields:
+                if field not in analysis:
+                    logging.warning(f"Missing required field: {field}")
+                    return False
+            
+            # Validate recommendation value
+            valid_recommendations = ["Yes, buy!", "No, don't buy!", "Buy", "No Buy"]
+            if analysis['recommendation'] not in valid_recommendations:
+                logging.warning(f"Invalid recommendation value: {analysis['recommendation']}")
+                return False
+            
+            # Validate confidence value
+            valid_confidence = ["high", "medium", "low"]
+            if analysis['confidence'] not in valid_confidence:
+                logging.warning(f"Invalid confidence value: {analysis['confidence']}")
+                return False
+            
+            # Check for technical analysis details
+            if 'technical_analysis' in analysis:
+                if not isinstance(analysis['technical_analysis'], list):
+                    logging.warning("technical_analysis should be a list")
+                    return False
+                if len(analysis['technical_analysis']) < 5:
+                    logging.warning(f"Insufficient technical analysis details: {len(analysis['technical_analysis'])} items")
+                    # Don't fail, just warn
+            
+            logging.info("Analysis structure validation passed")
+            return True
+            
+        except Exception as e:
+            logging.error(f"Error validating analysis structure: {str(e)}")
+            return False
+    
+    # Old tier methods are preserved for backward compatibility but no longer used
+    # The new single-call approach is more efficient and stays within API limits
+    # These methods can be removed in a future cleanup if confirmed not needed elsewhere
     
     def analyze_with_standard_mode(self, summary, income_focus=False, income_metrics=None):
         """Standard analysis mode using GPT-4o with optimized parameters"""
