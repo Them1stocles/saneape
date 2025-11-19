@@ -3,7 +3,7 @@ Security Monitoring System for tracking suspicious activity and rate limit viola
 Production-grade implementation with comprehensive logging and threat detection.
 """
 
-from app import db
+from extensions import db
 from models import SecurityLog
 from datetime import datetime, date, timedelta
 import logging
@@ -26,46 +26,36 @@ class SecurityMonitor:
         self.logger = logging.getLogger(__name__)
     
     def log_security_event(self, ip_address, event_type, details=None):
-        """Log a security event and update counters"""
+        """Log a security event"""
         try:
             today = date.today()
             
-            # Get existing log for this IP and event type today
-            security_log = SecurityLog.query.filter_by(
+            # Check if we already have a log for this IP/event today
+            stmt = db.select(SecurityLog).filter_by(
                 ip_address=ip_address,
                 event_type=event_type,
                 date_created=today
-            ).first()
+            )
+            security_log = db.session.execute(stmt).scalars().first()
             
             if security_log:
-                # Update existing log
                 security_log.event_count += 1
                 security_log.last_attempt = datetime.utcnow()
                 if details:
-                    security_log.event_details = details
+                    security_log.event_details = f"{security_log.event_details}; {details}"[-1000:] # Keep last 1000 chars
             else:
-                # Create new security log
-                security_log = SecurityLog()
-                security_log.ip_address = ip_address
-                security_log.event_type = event_type
-                security_log.event_count = 1
-                security_log.event_details = details
-                security_log.last_attempt = datetime.utcnow()
-                security_log.date_created = today
+                security_log = SecurityLog(
+                    ip_address=ip_address,
+                    event_type=event_type,
+                    event_details=details,
+                    date_created=today
+                )
                 db.session.add(security_log)
             
             db.session.commit()
-            
-            self.logger.warning(f"Security event: {event_type} from {ip_address} (count: {security_log.event_count})")
-            
-            # Check for suspicious patterns
-            self._check_suspicious_activity(ip_address, event_type, security_log.event_count)
-            
             return True
-            
         except Exception as e:
-            self.logger.error(f"Error logging security event: {str(e)}")
-            db.session.rollback()
+            self.logger.error(f"Error logging security event: {e}")
             return False
     
     def _check_suspicious_activity(self, ip_address, event_type, count):
@@ -95,22 +85,16 @@ class SecurityMonitor:
             self.logger.error(f"Error checking suspicious activity: {str(e)}")
     
     def is_ip_suspicious(self, ip_address):
-        """Check if an IP address shows suspicious patterns"""
+        """Check if IP has too many recent security events"""
         try:
-            today = date.today()
+            cutoff_time = datetime.utcnow() - timedelta(hours=24)
             
-            # Get total events for this IP today
-            total_events = db.session.query(db.func.sum(SecurityLog.event_count)).filter_by(
-                ip_address=ip_address,
-                date_created=today
-            ).scalar() or 0
-            
-            # Check for repeated attempts in the last hour
-            one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-            recent_events = SecurityLog.query.filter(
+            # Count recent events
+            stmt = db.select(db.func.count(SecurityLog.id)).where(
                 SecurityLog.ip_address == ip_address,
-                SecurityLog.last_attempt >= one_hour_ago
-            ).count()
+                SecurityLog.last_attempt >= cutoff_time
+            )
+            recent_events = db.session.execute(stmt).scalar() or 0
             
             is_suspicious = (
                 total_events >= self.MAX_ATTEMPTS_PER_DAY or 

@@ -1,5 +1,9 @@
 import os
 import logging
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 from datetime import timedelta
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -9,10 +13,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
+from extensions import db
 
 # Create the app
 app = Flask(__name__)
@@ -30,21 +31,15 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize the app with the extension
 db.init_app(app)
 
-with app.app_context():
-    # Import models to ensure tables are created
-    import models
-    db.create_all()
+# Import models to ensure they are registered with SQLAlchemy
+import models
+from extensions import Base
 
 # Import routes after app initialization
 from routes import *
 
-# Register payment blueprint
-try:
-    from payment_routes import payment_bp
-    if hasattr(app, 'register_blueprint'):
-        app.register_blueprint(payment_bp)
-        logging.info("Payment blueprint registered successfully")
-    else:
-        logging.error("Flask app does not have register_blueprint method")
-except Exception as e:
-    logging.error(f"Failed to register payment blueprint: {e}")
+if __name__ == "__main__":
+    with app.app_context():
+        # Create tables using Base.metadata which holds the model definitions
+        Base.metadata.create_all(bind=db.engine)
+    app.run(host='0.0.0.0', port=5002, debug=False, use_reloader=False)

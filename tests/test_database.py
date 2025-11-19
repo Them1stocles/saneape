@@ -5,7 +5,7 @@ Tests existing models and prepares for new user account models.
 
 import pytest
 from datetime import datetime, timedelta
-from app import db
+from extensions import db
 from models import RateLimit, StockAnalysis, SystemLimits, AnalysisCache, SecurityLog
 
 class TestExistingModels:

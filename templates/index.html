@@ -1,481 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaneApe.com - AI Stock Analysis</title>
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
-    <link rel="alternate icon" href="{{ url_for('static', filename='images/brain-favicon.svg') }}">
-    
-    <!-- Open Graph / Social Media Meta Tags -->
-    <meta property="og:title" content="SaneApe.com - AI-Powered Stock Analysis">
-    <meta property="og:description" content="Get AI-powered stock recommendations with comprehensive technical analysis. Enter any ticker symbol for instant insights and buy/sell recommendations.">
-    <meta property="og:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="SaneApe.com">
-    
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SaneApe.com - AI-Powered Stock Analysis">
-    <meta name="twitter:description" content="Get AI-powered stock recommendations with comprehensive technical analysis. Enter any ticker symbol for instant insights.">
-    <meta name="twitter:image" content="{{ url_for('static', filename='images/hero-ape.png', _external=True) }}">
-    
-    <!-- Additional Meta Tags -->
-    <meta name="description" content="AI-powered stock analysis platform providing technical analysis and buy/sell recommendations for any stock ticker symbol.">
-    <meta name="keywords" content="stock analysis, AI, technical analysis, stock recommendations, trading, investment">
-    
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons"></script>
-    
-    <!-- Custom CSS -->
+    <title>SaneApe - AI Stock Analysis</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-3M1MP9NSGT"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-3M1MP9NSGT');
-    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
-    <div class="container-fluid">
-        <!-- Mobile Navigation (Blue dropdown like dashboard) -->
-        <nav class="navbar navbar-expand-lg navbar-dark bg-transparent position-absolute w-100 py-2" style="z-index: 1000; top: 0;">
-            <div class="container-fluid">
-                <!-- Empty brand space to push hamburger to the right -->
-                <div class="navbar-brand"></div>
-                
-                <button class="navbar-toggler border-0 p-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" style="margin-top: -5px;">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    <div class="navbar-nav ms-auto">
-                        {% if show_auth %}
-                            {% if current_user.is_authenticated %}
-                                <div class="nav-item px-3 py-2 text-white">
-                                    <div class="d-flex align-items-center">
-                                        {% if current_user.profile_image_url %}
-                                            <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-                                        {% endif %}
-                                        <div>
-                                            <div class="fw-semibold">{{ current_user.display_name }}</div>
-                                            <small class="text-light" id="nav-credits">Loading credits...</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <hr class="my-2 border-light opacity-25">
-                                <a class="nav-link" href="{{ url_for('account_dashboard') }}">
-                                    <i data-feather="user" class="me-1"></i> Account
-                                </a>
-                                <a class="nav-link" href="{{ url_for('subscription_plans') }}">
-                                    <i data-feather="star" class="me-1"></i> Plans
-                                </a>
-                                <a class="nav-link" href="{{ url_for('replit_auth.logout') }}">
-                                    <i data-feather="log-out" class="me-1"></i> Logout
-                                </a>
-                            {% else %}
-                                <a class="nav-link btn btn-primary text-white px-3 rounded me-2" href="{{ url_for('replit_auth.login') }}">
-                                    <i data-feather="log-in" class="me-1"></i> Sign In / Register
-                                </a>
-                            {% endif %}
-                        {% endif %}
-                    </div>
+    <header>
+        <div class="container nav-wrapper">
+            <div class="logo">SaneApe 🦍</div>
+            <nav>
+                <!-- Admin link hidden in plain sight or just subtle -->
+                <a href="{{ url_for('admin_login') }}"
+                    style="color: var(--text-secondary); text-decoration: none; font-size: 0.8rem; opacity: 0.5;">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="hero">
+            <h1>AI-Powered<br><span style="color: var(--accent-primary)">Technical Analysis</span></h1>
+            <p>Institutional-grade stock analysis powered by Gemini 1.5 Pro. <br>No noise, just data-driven signals.</p>
+
+            <div class="search-container">
+                <input type="text" id="tickerInput" class="search-box"
+                    placeholder="Enter Stock Ticker (e.g. AAPL, NVDA)..." autocomplete="off">
+                <button id="analyzeBtn" class="search-btn">Analyze</button>
+            </div>
+
+            <div class="options-grid">
+                <div class="option-card selected" data-mode="standard" onclick="selectMode(this, 'standard')">
+                    <h3>Standard Analysis</h3>
+                    <p>Quick technical overview using core indicators (RSI, MACD, BB).</p>
+                </div>
+                <div class="option-card" data-mode="maximum_brain" onclick="selectMode(this, 'maximum_brain')">
+                    <h3>Maximum Brain 🧠</h3>
+                    <p>Deep dive using 35+ indicators and Gemini 1.5 Pro.</p>
+                </div>
+                <div class="option-card" data-mode="income" onclick="selectMode(this, 'income')">
+                    <h3>Income Focus 💰</h3>
+                    <p>Specialized analysis for YieldMax/Defiance ETFs and dividend stocks.</p>
                 </div>
             </div>
-        </nav>
+        </section>
 
-        <!-- Header -->
-        <header class="hero-header">
-            <div class="hero-content">
-                <div class="hero-text">
-                    <h1 class="hero-title">SaneApe.com</h1>
-                    <p class="hero-tagline">AI-POWERED<br>SANITY CHECK</p>
-                </div>
-                
-                <!-- Removed large user info box - credits now shown in dropdown menu -->
-            </div>
-        </header>
+        <div id="loader" class="loader">
+            <div class="spinner"></div>
+            <p id="loadingText">Initializing AI models...</p>
+        </div>
 
-        <!-- Main Content -->
-        <main class="row justify-content-center">
-            <div class="col-12 col-md-8 col-lg-6">
-                <!-- Stock Analysis Form -->
-                <div class="card shadow-lg border-0 mb-4">
-                    <div class="card-body p-4">
-                        <form id="stockForm">
-                            <div class="mb-3">
-                                <label for="ticker" class="form-label fw-semibold">Stock Ticker Symbol</label>
-                                <div class="input-group input-group-lg">
-                                    <span class="input-group-text bg-primary text-white">
-                                        <i data-feather="trending-up"></i>
-                                    </span>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           id="ticker" 
-                                           name="ticker" 
-                                           placeholder="e.g., AAPL, TSLA, MSFT"
-                                           maxlength="5"
-                                           required>
-                                </div>
-                                <div class="form-text">Enter a valid stock ticker symbol (1-5 letters)</div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div class="form-check maximum-brain-option">
-                                    <input class="form-check-input" type="checkbox" id="maximumBrain" name="maximum_brain">
-                                    <label class="form-check-label fw-semibold" for="maximumBrain">
-                                        <i data-feather="cpu" class="me-2"></i>
-                                        Maximum Brain Analysis
-                                    </label>
-                                </div>
-                                <div class="form-text text-warning ms-4">
-                                    <i data-feather="alert-triangle" class="me-1"></i>
-                                    Comprehensive analysis with 35+ indicators (2 analyses per day limit)
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <div class="form-check income-focus-option">
-                                    <input class="form-check-input" type="checkbox" id="incomeFocus" name="income_focus">
-                                    <label class="form-check-label fw-semibold" for="incomeFocus">
-                                        <i data-feather="dollar-sign" class="me-2"></i>
-                                        Income-Focused Analysis
-                                    </label>
-                                </div>
-                                <div class="form-text text-info ms-4">
-                                    <i data-feather="info" class="me-1"></i>
-                                    Specialized analysis for yield ETFs (YieldMax, dividend funds) focusing on income generation
-                                </div>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary btn-lg w-100" id="analyzeBtn">
-                                <i data-feather="search" class="me-2"></i>
-                                Analyze Stock
-                            </button>
-                        </form>
-                        
-                        <!-- Loading State -->
-                        <div id="loadingState" class="d-none mt-3">
-                            <div class="text-center">
-                                <div class="spinner-border text-primary me-2" role="status">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                                <span class="fw-semibold">Analyzing your stock...</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <section id="resultsSection" class="results-section">
+            <!-- Results injected here via JS -->
+        </section>
+    </main>
 
-                <!-- Alert Messages -->
-                <div id="alertContainer"></div>
-
-                <!-- Recently Analyzed Box -->
-                <div class="card border-info mb-4" id="recentAnalysesCard">
-                    <div class="card-body">
-                        <h6 class="card-title text-info">
-                            <i data-feather="clock" class="me-2"></i>
-                            Recently Analyzed (Cached Results)
-                        </h6>
-                        <p class="card-text small text-muted mb-3">
-                            Click any ticker below to view cached analysis results without using your daily limits.
-                        </p>
-                        <div id="recentAnalysesList" class="d-flex flex-wrap gap-2">
-                            <div class="spinner-border spinner-border-sm text-info me-2" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <span class="text-muted">Loading recent analyses...</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Results Section -->
-                <div id="resultsSection" class="d-none">
-                    <div class="card shadow-lg border-0 mb-4">
-                        <div class="card-body p-4">
-                            <!-- Stock Info -->
-                            <div class="text-center mb-4">
-                                <h3 id="stockTitle" class="mb-2"></h3>
-                                <h4 id="stockPrice" class="text-muted mb-3"></h4>
-                            </div>
-
-                            <!-- Recommendation -->
-                            <div class="text-center mb-4">
-                                <div id="recommendationBadge" class="badge fs-4 p-3 mb-3"></div>
-                                <div class="d-flex justify-content-center align-items-center mb-2">
-                                    <span class="me-2">Confidence:</span>
-                                    <span id="confidenceBadge" class="badge"></span>
-                                </div>
-                                <p id="overallExplanation" class="text-muted"></p>
-                            </div>
-
-                            <!-- Share Options -->
-                            <div class="text-center mb-4">
-                                <h6 class="text-muted mb-3">
-                                    <i data-feather="share-2" class="me-1"></i>
-                                    Share This Analysis
-                                </h6>
-                                <div class="d-flex justify-content-center flex-wrap gap-2">
-                                    <button id="shareTwitterBtn" class="btn btn-outline-primary btn-sm">
-                                        <i data-feather="twitter" class="me-1"></i>
-                                        Twitter
-                                    </button>
-                                    <button id="shareFacebookBtn" class="btn btn-outline-primary btn-sm">
-                                        <i data-feather="facebook" class="me-1"></i>
-                                        Facebook
-                                    </button>
-                                    <button id="shareLinkBtn" class="btn btn-outline-secondary btn-sm">
-                                        <i data-feather="link" class="me-1"></i>
-                                        Copy Link
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Income Analysis Details (shown for income-focused analysis) -->
-                            <div class="accordion mb-3" id="incomeAnalysisAccordion" style="display: none;">
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button" type="button" 
-                                                data-bs-toggle="collapse" data-bs-target="#incomeDetails">
-                                            <i data-feather="dollar-sign" class="me-2"></i>
-                                            Income Analysis Details
-                                            <span class="badge bg-success ms-2">Income ETF</span>
-                                        </button>
-                                    </h2>
-                                    <div id="incomeDetails" class="accordion-collapse collapse show" 
-                                         data-bs-parent="#incomeAnalysisAccordion">
-                                        <div class="accordion-body">
-                                            <div id="incomeAnalysisList"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Technical Analysis Details -->
-                            <div class="accordion" id="analysisAccordion">
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button collapsed" type="button" 
-                                                data-bs-toggle="collapse" data-bs-target="#technicalDetails">
-                                            <i data-feather="bar-chart-2" class="me-2"></i>
-                                            Technical Analysis Details
-                                        </button>
-                                    </h2>
-                                    <div id="technicalDetails" class="accordion-collapse collapse" 
-                                         data-bs-parent="#analysisAccordion">
-                                        <div class="accordion-body">
-                                            <div id="technicalAnalysisList"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Disclaimer -->
-                <div class="card border-warning mb-4">
-                    <div class="card-body">
-                        <h6 class="card-title text-warning">
-                            <i data-feather="alert-triangle" class="me-2"></i>
-                            Important Disclaimer
-                        </h6>
-                        <p class="card-text small mb-0">
-                            This is not financial advice. All recommendations are AI-generated based on historical data only. 
-                            Please consult with a qualified financial advisor before making investment decisions. 
-                            Past performance does not guarantee future results.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Enhanced Rate Limit Info -->
-                <div class="card bg-light mb-4" id="rateLimitCard">
-                    <div class="card-body">
-                        {% if show_credits and current_user.is_authenticated and user_credits %}
-                            <!-- Credit-based display for authenticated users -->
-                            <div class="text-center">
-                                <h6 class="card-title mb-3">
-                                    <i data-feather="zap" class="me-2 text-primary"></i>
-                                    Your Credits
-                                </h6>
-                                <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="h4 text-primary">{{ user_credits.total_credits }}</div>
-                                        <small class="text-muted">Total Credits</small>
-                                    </div>
-                                    {% if user_credits.subscription_credits > 0 %}
-                                    <div class="col-md-4">
-                                        <div class="h5 text-success">{{ user_credits.subscription_credits }}</div>
-                                        <small class="text-muted">Subscription</small>
-                                    </div>
-                                    {% endif %}
-                                    {% if user_credits.topup_credits > 0 %}
-                                    <div class="col-md-4">
-                                        <div class="h5 text-warning">{{ user_credits.topup_credits }}</div>
-                                        <small class="text-muted">Top-up</small>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                <div class="mt-3">
-                                    <small class="text-muted">
-                                        Standard: 1 credit • Maximum Brain: 2 credits
-                                    </small>
-                                </div>
-                                {% if user_credits.has_active_subscription %}
-                                    <div class="mt-2">
-                                        <span class="badge bg-success">
-                                            <i data-feather="star" class="me-1"></i>
-                                            {{ user_credits.subscription_plan|title }} Subscriber
-                                        </span>
-                                    </div>
-                                {% elif user_credits.total_credits < 5 %}
-                                    <div class="mt-3">
-                                        <a href="{{ url_for('subscription_plans') }}" class="btn btn-primary btn-sm">
-                                            <i data-feather="plus" class="me-1"></i>
-                                            Get More Credits
-                                        </a>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% else %}
-                            <!-- IP-based rate limiting for anonymous users -->
-                            <div class="row text-center">
-                                <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i data-feather="zap" class="me-2 text-primary"></i>
-                                        <strong>Standard Analysis</strong>
-                                    </div>
-                                    <div id="standardRemaining" class="h5 mb-1">{{ remaining_requests.standard_remaining if remaining_requests else 6 }}</div>
-                                    <small class="text-muted">of 6 daily analyses</small>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="d-flex align-items-center justify-content-center mb-2">
-                                        <i data-feather="cpu" class="me-2 text-warning"></i>
-                                        <strong>Maximum Brain</strong>
-                                    </div>
-                                    <div id="brainRemaining" class="h5 mb-1">{{ remaining_requests.brain_remaining if remaining_requests else 2 }}</div>
-                                    <small class="text-muted">of 2 daily analyses</small>
-                                </div>
-                            </div>
-                            <div class="text-center mt-3">
-                                <small class="text-muted">
-                                    <i data-feather="refresh-cw" class="me-1"></i>
-                                    Limits reset daily at midnight UTC
-                                </small>
-                                {% if show_auth %}
-                                    <div class="mt-2">
-                                        <small class="text-primary">
-                                            <i data-feather="star" class="me-1"></i>
-                                            <a href="{{ url_for('replit_auth.login') }}" class="text-primary text-decoration-none">
-                                                Sign in for unlimited analyses with subscription
-                                            </a>
-                                        </small>
-                                    </div>
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-
-                <!-- Future Features -->
-                <div class="card border-success mb-4">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-success">
-                            <i data-feather="zap" class="me-2"></i>
-                            Coming Soon If We Go Viral
-                        </h6>
-                        <p class="card-text small">
-                            With enough traffic and user interest, we'll add <strong>crypto ticker support</strong> (BTC, ETH, XRP, etc.), 
-                            <strong>user accounts with unlimited analysis</strong>, <strong>X ticker sentiment via Grok</strong>, 
-                            <strong>Telegram bot requests</strong>, <strong>daily ticker updates</strong>, and <strong>emergency notifications</strong>. 
-                            Help us reach that goal by sharing SaneApe.com!
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Sponsorship Note -->
-                <div class="card border-info">
-                    <div class="card-body text-center">
-                        <h6 class="card-title text-info">
-                            <i data-feather="heart" class="me-2"></i>
-                            Support Free Analysis
-                        </h6>
-                        <p class="card-text small">
-                            Sponsor this free sanity check for the public by emailing 
-                            <a href="mailto:themistocles@covertwars.com" class="text-info">themistocles@covertwars.com</a>. 
-                            Not ready to sponsor, but want to buy a Redbull for me? You can here: 
-                            <a href="https://covertwars.com" target="_blank" class="text-info">covertwars.com</a>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    
-    <!-- Initialize Feather Icons -->
     <script>
-        feather.replace();
-        
-        // Load user credits if authenticated
-        {% if show_auth and current_user.is_authenticated %}
-        async function loadCreditBalance() {
+        let currentMode = 'standard';
+
+        function selectMode(element, mode) {
+            document.querySelectorAll('.option-card').forEach(card => card.classList.remove('selected'));
+            element.classList.add('selected');
+            currentMode = mode;
+        }
+
+        document.getElementById('analyzeBtn').addEventListener('click', performAnalysis);
+        document.getElementById('tickerInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') performAnalysis();
+        });
+
+        async function performAnalysis() {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase().trim();
+            if (!ticker) return;
+
+            // UI State
+            const loader = document.getElementById('loader');
+            const resultsSection = document.getElementById('resultsSection');
+            const loadingText = document.getElementById('loadingText');
+
+            resultsSection.style.display = 'none';
+            loader.classList.add('active');
+
+            if (currentMode === 'maximum_brain') {
+                loadingText.innerText = "Engaging Maximum Brain (Gemini 1.5 Pro)... This may take 30-60s.";
+            } else {
+                loadingText.innerText = "Analyzing market data...";
+            }
+
             try {
-                const response = await fetch('/payment/credit-balance', {
-                    method: 'GET',
-                    credentials: 'same-origin',
+                const response = await fetch('/analyze', {
+                    method: 'POST',
                     headers: {
-                        'Accept': 'application/json',
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                    },
+                    body: JSON.stringify({
+                        ticker: ticker,
+                        mode: currentMode
+                    })
                 });
-                
-                if (!response.ok) {
-                    console.error('Failed to load credits:', response.status);
-                    const navCredits = document.getElementById('nav-credits');
-                    if (navCredits) {
-                        navCredits.textContent = '0 credits';
-                    }
-                    return;
-                }
-                
+
                 const data = await response.json();
-                
-                // Update navigation credits
-                const navCredits = document.getElementById('nav-credits');
-                if (navCredits) {
-                    navCredits.textContent = `${data.total_credits} credits`;
+
+                console.log('Response status:', response.status);
+                console.log('Response data:', data);
+
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    renderResults(data);
                 }
             } catch (error) {
-                console.error('Error loading credit balance:', error);
-                const navCredits = document.getElementById('nav-credits');
-                if (navCredits) {
-                    navCredits.textContent = '0 credits';
-                }
+                console.error('Fetch error:', error);
+                console.error('Error details:', error.message, error.stack);
+                showError("Connection error. Please try again.");
+            } finally {
+                loader.classList.remove('active');
             }
         }
-        
-        // Load credits on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCreditBalance();
-        });
-        {% endif %}
+
+        function showError(message) {
+            const resultsSection = document.getElementById('resultsSection');
+            resultsSection.innerHTML = `
+                <div class="result-card" style="border-color: var(--accent-danger)">
+                    <h2 style="color: var(--accent-danger)">Analysis Failed</h2>
+                    <p>${message}</p>
+                </div>
+            `;
+            resultsSection.style.display = 'block';
+        }
+
+        function renderResults(data) {
+            const resultsSection = document.getElementById('resultsSection');
+            const isBuy = data.recommendation.toLowerCase().includes('yes') || data.recommendation.toLowerCase().includes('buy');
+            const recClass = isBuy ? 'rec-buy' : 'rec-sell';
+
+            // Handle missing price_change_30d gracefully
+            const priceChange = data.price_change_30d || 0;
+            const priceChangeClass = priceChange >= 0 ? 'positive' : 'negative';
+
+            let html = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <div>
+                            <span class="ticker-badge">${data.ticker}</span>
+                            <h2 style="margin-top: 0.5rem; font-size: 1.5rem;">${data.company_name}</h2>
+                        </div>
+                        <div class="price-display">
+                            <div class="current-price">$${data.current_price.toFixed(2)}</div>
+                            <div class="price-change ${priceChangeClass}">
+                                ${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}% (30d)
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="text-align: center;">
+                        <div class="recommendation-badge ${recClass}">
+                            ${data.recommendation}
+                        </div>
+                        <p style="font-size: 1.1rem; max-width: 700px; margin: 0 auto; color: var(--text-secondary);">
+                            ${data.overall_explanation}
+                        </p>
+                        <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                            Confidence: <span style="color: var(--text-primary); font-weight: 600;">${data.confidence.toUpperCase()}</span>
+                        </div>
+                    </div>
+            `;
+
+            // Income Analysis Section
+            if (data.income_analysis && !data.income_analysis.error) {
+                const ia = data.income_analysis;
+                const incRecClass = ia.recommendation.toLowerCase().includes('buy') ? 'rec-buy' : 'rec-sell';
+
+                html += `
+                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <h3 style="margin-bottom: 1rem; color: var(--accent-warning);">💰 Income Analysis</h3>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                            <div class="indicator-card" style="flex: 1; min-width: 200px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Effective Return</div>
+                                <div style="font-size: 1.5rem; font-weight: 700; color: ${ia.effective_return > 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">
+                                    ${ia.effective_return.toFixed(2)}%
+                                </div>
+                            </div>
+                            <div class="indicator-card" style="flex: 1; min-width: 200px;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Recommendation</div>
+                                <div style="font-size: 1.2rem; font-weight: 700;">${ia.recommendation}</div>
+                            </div>
+                        </div>
+                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">${ia.explanation}</p>
+                        ${ia.key_risks.length > 0 ? `
+                            <div style="background: rgba(248, 113, 113, 0.1); padding: 1rem; border-radius: 0.5rem;">
+                                <strong style="color: var(--accent-danger);">Key Risks:</strong>
+                                <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-secondary);">
+                                    ${ia.key_risks.map(risk => `<li>${risk}</li>`).join('')}
+                                </ul>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            // Technical Indicators Grid
+            html += `<div class="analysis-grid">`;
+
+            data.analysis_details.forEach(item => {
+                const signalClass = item.signal.toLowerCase().includes('no') ? 'signal-sell' : 'signal-buy';
+                const signalText = item.signal.toLowerCase().includes('no') ? 'SELL / NEUTRAL' : 'BUY';
+
+                html += `
+                    <div class="indicator-card">
+                        <div class="indicator-header">
+                            <strong style="color: var(--accent-primary)">${item.method}</strong>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                                <span class="signal-dot ${signalClass}"></span>
+                                ${signalText}
+                            </div>
+                        </div>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
+                            ${item.explanation}
+                        </p>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+
+            resultsSection.innerHTML = html;
+            resultsSection.style.display = 'block';
+
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     </script>
 </body>
+
 </html>

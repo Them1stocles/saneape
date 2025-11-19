@@ -3,7 +3,7 @@ Analysis Cache Management System with 6-hour TTL.
 Production-grade implementation for reducing duplicate OpenAI API calls.
 """
 
-from app import db
+from extensions import db
 from models import AnalysisCache
 from datetime import datetime, timedelta
 import json
@@ -27,11 +27,12 @@ class CacheManager:
             cache_key = self._generate_cache_key(ticker, maximum_brain)
             
             # Find non-expired cache entry
-            cached = AnalysisCache.query.filter(
+            stmt = db.select(AnalysisCache).filter(
                 AnalysisCache.ticker_symbol == ticker.upper(),
                 AnalysisCache.maximum_brain.is_(maximum_brain),
                 AnalysisCache.cache_expiry > datetime.utcnow()
-            ).first()
+            )
+            cached = db.session.execute(stmt).scalars().first()
             
             if cached:
                 self.logger.info(f"Cache hit for {cache_key}")
@@ -60,10 +61,11 @@ class CacheManager:
                 return False
             
             # Remove any existing cache for this ticker/type combination
-            existing = AnalysisCache.query.filter(
+            stmt = db.select(AnalysisCache).filter(
                 AnalysisCache.ticker_symbol == ticker.upper(),
                 AnalysisCache.maximum_brain.is_(maximum_brain)
-            ).all()
+            )
+            existing = db.session.execute(stmt).scalars().all()
             
             for cache_entry in existing:
                 db.session.delete(cache_entry)
@@ -84,18 +86,19 @@ class CacheManager:
             return True
             
         except Exception as e:
-            self.logger.error(f"Error storing analysis in cache: {str(e)}")
+            self.logger.error(f"Error storing cache for {ticker}: {e}")
             db.session.rollback()
             return False
     
     def is_analysis_cached(self, ticker, maximum_brain=False):
         """Check if analysis is cached without retrieving the data"""
         try:
-            cached = AnalysisCache.query.filter(
+            stmt = db.select(AnalysisCache).filter(
                 AnalysisCache.ticker_symbol == ticker.upper(),
                 AnalysisCache.maximum_brain.is_(maximum_brain),
                 AnalysisCache.cache_expiry > datetime.utcnow()
-            ).first()
+            )
+            cached = db.session.execute(stmt).scalars().first()
             
             return cached is not None
             
@@ -106,10 +109,11 @@ class CacheManager:
     def get_cache_info(self, ticker, maximum_brain=False):
         """Get cache information including expiry time"""
         try:
-            cached = AnalysisCache.query.filter(
+            stmt = db.select(AnalysisCache).filter(
                 AnalysisCache.ticker_symbol == ticker.upper(),
                 AnalysisCache.maximum_brain.is_(maximum_brain)
-            ).first()
+            )
+            cached = db.session.execute(stmt).scalars().first()
             
             if not cached:
                 return None
@@ -119,7 +123,7 @@ class CacheManager:
                 'maximum_brain': cached.maximum_brain,
                 'created_at': cached.created_at.isoformat(),
                 'cache_expiry': cached.cache_expiry.isoformat(),
-                'is_expired': cached.is_expired,
+                'is_expired': cached.cache_expiry <= datetime.utcnow(), # Corrected from cached.is_expired
                 'minutes_remaining': max(0, int((cached.cache_expiry - datetime.utcnow()).total_seconds() / 60))
             }
             
@@ -127,36 +131,28 @@ class CacheManager:
             self.logger.error(f"Error getting cache info: {str(e)}")
             return None
     
-    def cleanup_expired_cache(self):
+    def cleanup_expired(self):
         """Remove expired cache entries"""
         try:
-            expired_count = AnalysisCache.query.filter(
-                AnalysisCache.cache_expiry <= datetime.utcnow()
-            ).delete()
-            
+            stmt = db.delete(AnalysisCache).where(AnalysisCache.cache_expiry < datetime.utcnow())
+            result = db.session.execute(stmt)
             db.session.commit()
-            
-            if expired_count > 0:
-                self.logger.info(f"Cleaned up {expired_count} expired cache entries")
-            
-            return expired_count
-            
+            return result.rowcount
         except Exception as e:
-            self.logger.error(f"Error cleaning up expired cache: {str(e)}")
-            db.session.rollback()
+            self.logger.error(f"Error cleaning up cache: {e}")
             return 0
     
     def clear_cache_for_ticker(self, ticker):
         """Clear all cache entries for a specific ticker"""
         try:
-            deleted_count = AnalysisCache.query.filter(
+            stmt = db.delete(AnalysisCache).filter(
                 AnalysisCache.ticker_symbol == ticker.upper()
-            ).delete()
-            
+            )
+            result = db.session.execute(stmt)
             db.session.commit()
             
-            self.logger.info(f"Cleared {deleted_count} cache entries for {ticker}")
-            return deleted_count
+            self.logger.info(f"Cleared {result.rowcount} cache entries for {ticker}")
+            return result.rowcount
             
         except Exception as e:
             self.logger.error(f"Error clearing cache for {ticker}: {str(e)}")
@@ -166,13 +162,18 @@ class CacheManager:
     def get_cache_stats(self):
         """Get overall cache statistics"""
         try:
-            total_entries = AnalysisCache.query.count()
-            active_entries = AnalysisCache.query.filter(
+            # Count total entries
+            stmt_total = db.select(db.func.count(AnalysisCache.id))
+            total_entries = db.session.execute(stmt_total).scalar() or 0
+            
+            # Count active entries
+            stmt_active = db.select(db.func.count(AnalysisCache.id)).where(
                 AnalysisCache.cache_expiry > datetime.utcnow()
-            ).count()
+            )
+            active_entries = db.session.execute(stmt_active).scalar() or 0
+            
             expired_entries = total_entries - active_entries
             
-            # Get cache hit information (this would need to be tracked separately in production)
             return {
                 'total_entries': total_entries,
                 'active_entries': active_entries,
@@ -187,11 +188,12 @@ class CacheManager:
     def invalidate_all_cache(self):
         """Emergency function to clear all cache entries"""
         try:
-            deleted_count = AnalysisCache.query.delete()
+            stmt = db.delete(AnalysisCache)
+            result = db.session.execute(stmt)
             db.session.commit()
             
-            self.logger.warning(f"Emergency cache invalidation: cleared {deleted_count} entries")
-            return deleted_count
+            self.logger.warning(f"Emergency cache invalidation: cleared {result.rowcount} entries")
+            return result.rowcount
             
         except Exception as e:
             self.logger.error(f"Error invalidating all cache: {str(e)}")

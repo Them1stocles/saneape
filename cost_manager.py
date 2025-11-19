@@ -3,7 +3,7 @@ Cost Management System for OpenAI API usage tracking and billing protection.
 Production-grade implementation with comprehensive error handling.
 """
 
-from app import db
+from extensions import db
 from models import SystemLimits
 from datetime import datetime, date, timedelta
 import logging
@@ -24,15 +24,15 @@ class CostManager:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
     
-    def get_today_limits(self):
+    def _get_todays_limits(self):
         """Get or create today's system limits record"""
         try:
             today = date.today()
-            limits = SystemLimits.query.filter_by(date_created=today).first()
+            stmt = db.select(SystemLimits).filter_by(date_created=today)
+            limits = db.session.execute(stmt).scalars().first()
             
             if not limits:
-                limits = SystemLimits()
-                limits.date_created = today
+                limits = SystemLimits(date_created=today)
                 limits.daily_api_calls = 0
                 limits.daily_cost_estimate = 0.0
                 limits.max_daily_cost = 25.0
@@ -40,11 +40,10 @@ class CostManager:
                 db.session.add(limits)
                 db.session.commit()
                 self.logger.info(f"Created new daily limits record for {today}")
-            
+                
             return limits
-            
         except Exception as e:
-            self.logger.error(f"Error getting today's limits: {str(e)}")
+            self.logger.error(f"Error getting today's limits: {e}")
             db.session.rollback()
             return None
     
@@ -62,7 +61,7 @@ class CostManager:
     def can_afford_request(self, maximum_brain=False):
         """Check if we can afford this request within daily limits"""
         try:
-            limits = self.get_today_limits()
+            limits = self._get_todays_limits()
             if not limits:
                 self.logger.error("Could not get today's limits - denying request")
                 return False, "System error - please try again later"
@@ -89,7 +88,7 @@ class CostManager:
     def record_api_call(self, maximum_brain=False, actual_cost=None):
         """Record an API call and update cost tracking"""
         try:
-            limits = self.get_today_limits()
+            limits = self._get_todays_limits()
             if not limits:
                 self.logger.error("Could not get today's limits for recording")
                 return False
@@ -118,7 +117,7 @@ class CostManager:
     def get_daily_stats(self):
         """Get current daily usage statistics"""
         try:
-            limits = self.get_today_limits()
+            limits = self._get_todays_limits()
             if not limits:
                 return None
             
@@ -139,7 +138,7 @@ class CostManager:
     def set_emergency_stop(self, enabled=True):
         """Enable or disable emergency stop"""
         try:
-            limits = self.get_today_limits()
+            limits = self._get_todays_limits()
             if not limits:
                 return False
             
@@ -162,7 +161,7 @@ class CostManager:
             if new_limit <= 0:
                 return False, "Daily limit must be greater than 0"
             
-            limits = self.get_today_limits()
+            limits = self._get_todays_limits()
             if not limits:
                 return False, "Could not access system limits"
             
