@@ -54,11 +54,45 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+tests/
 
 # Temporary files
 *.tmp
 *.bak
+
+# Replit artifacts
+attached_assets/
+.local/
+cookies.txt
+main.py
+pyproject.toml
+uv.lock
+replit.md
+
+# Old Stripe/Payment files
+sync_stripe_subscription.py
+webhook_test.py
+production_fix_subscription.py
+direct_fix_subscription.py
+fix_subscription.py
+verify_user_fix.py
+
+# Debug scripts
 debug_db.py
 list_models.py
 create_tables.py
+test_stock_fetch.py
+clear_cache.py
+reset_limits.py
+fix_database.py
+
+# Documentation
+agent_handoff_comprehensive.md
+user_accounts_payment_implementation_plan.md
+production_logs_analysis.md
+yfinance_debug_analysis.md
+
+# Unused features
+monitoring.py
+feature_flags.py
 .vercel
