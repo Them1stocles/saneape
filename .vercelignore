@@ -1,0 +1,75 @@
+# Test files and documentation
+tests/
+*.md
+!README.md
+
+# Assets and media
+attached_assets/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.mp4
+
+# Development files
+.git
+.git.backup
+.local/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Environment and secrets
+.env
+*.env
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Lock files
+uv.lock
+poetry.lock
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.backup
+debug_db.py
+list_models.py
+create_tables.py
+
+# Old/unused files
+sync_stripe_subscription.py
+webhook_test.py
+production_fix_subscription.py
+production_logs_analysis.md
+yfinance_debug_analysis.md
+user_accounts_payment_implementation_plan.md
+agent_handoff_comprehensive.md
+replit.md
+direct_fix_subscription.py
+fix_database.py
+fix_subscription.py
+verify_user_fix.py
+test_stock_fetch.py
+reset_limits.py
+clear_cache.py
