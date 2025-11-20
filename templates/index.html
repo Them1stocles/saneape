@@ -10,6 +10,102 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Terminal UI Styles */
+        .terminal-window {
+            background-color: #1e1e1e;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
+            width: 100%;
+            max-width: 700px;
+            margin: 2rem auto;
+            display: none;
+            /* Hidden by default */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .terminal-header {
+            background-color: #2d2d2d;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red {
+            background-color: #ff5f56;
+        }
+
+        .dot-yellow {
+            background-color: #ffbd2e;
+        }
+
+        .dot-green {
+            background-color: #27c93f;
+        }
+
+        .terminal-title {
+            color: #999;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+        }
+
+        .terminal-body {
+            padding: 1rem;
+            height: 300px;
+            overflow-y: auto;
+            color: #d4d4d4;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .log-line {
+            opacity: 0;
+            animation: fadeIn 0.3s forwards;
+        }
+
+        .log-line.latest {
+            color: var(--accent-primary);
+            font-weight: bold;
+        }
+
+        .log-timestamp {
+            color: #666;
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Scrollbar for terminal */
+        .terminal-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+    </style>
 </head>
 
 <body>
@@ -51,6 +147,19 @@
             </div>
         </section>
 
+        <!-- Terminal Window for Real-time Logs -->
+        <div id="terminalWindow" class="terminal-window">
+            <div class="terminal-header">
+                <div class="terminal-dot dot-red"></div>
+                <div class="terminal-dot dot-yellow"></div>
+                <div class="terminal-dot dot-green"></div>
+                <div class="terminal-title">saneape_analysis_engine — bash — 80x24</div>
+            </div>
+            <div id="terminalBody" class="terminal-body">
+                <!-- Logs will appear here -->
+            </div>
+        </div>
+
         <div id="loader" class="loader">
             <div class="spinner"></div>
             <p id="loadingText">Initializing AI models...</p>
@@ -63,6 +172,7 @@
 
     <script>
         let currentMode = 'standard';
+        let pollingInterval = null;
 
         function selectMode(element, mode) {
             document.querySelectorAll('.option-card').forEach(card => card.classList.remove('selected'));
@@ -79,59 +189,147 @@
             const ticker = document.getElementById('tickerInput').value.toUpperCase().trim();
             if (!ticker) return;
 
-            // UI State
+            // UI State Reset
             const loader = document.getElementById('loader');
             const resultsSection = document.getElementById('resultsSection');
-            const loadingText = document.getElementById('loadingText');
+            const terminalWindow = document.getElementById('terminalWindow');
+            const terminalBody = document.getElementById('terminalBody');
 
             resultsSection.style.display = 'none';
-            loader.classList.add('active');
+            terminalWindow.style.display = 'none';
+            terminalBody.innerHTML = ''; // Clear previous logs
 
+            // Show terminal for Max Brain, Loader for Standard
             if (currentMode === 'maximum_brain') {
-                loadingText.innerText = "Engaging Maximum Brain (Gemini 1.5 Pro)... This may take 30-60s.";
+                terminalWindow.style.display = 'block';
+                addLogLine("Initializing Maximum Brain Analysis protocol...");
             } else {
-                loadingText.innerText = "Analyzing market data...";
+                loader.classList.add('active');
+                document.getElementById('loadingText').innerText = "Analyzing market data...";
             }
 
             try {
+                // 1. Start Analysis Job
                 const response = await fetch('/analyze', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ticker: ticker,
-                        mode: currentMode
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker: ticker, mode: currentMode })
                 });
 
                 const data = await response.json();
 
-                console.log('Response status:', response.status);
-                console.log('Response data:', data);
-
                 if (data.error) {
                     showError(data.error);
-                } else {
-                    renderResults(data);
+                    loader.classList.remove('active');
+                    terminalWindow.style.display = 'none';
+                    return;
                 }
+
+                // Check if we got a cached result immediately
+                if (data.cached && data.result) {
+                    loader.classList.remove('active');
+                    terminalWindow.style.display = 'none';
+                    renderResults(data.result);
+                    return;
+                }
+
+                // 2. Poll for Status
+                if (data.job_id) {
+                    pollStatus(data.job_id);
+                }
+
             } catch (error) {
                 console.error('Fetch error:', error);
-                console.error('Error details:', error.message, error.stack);
                 showError("Connection error. Please try again.");
-            } finally {
                 loader.classList.remove('active');
+                terminalWindow.style.display = 'none';
             }
+        }
+
+        function addLogLine(text) {
+            const terminalBody = document.getElementById('terminalBody');
+            const now = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            // Remove 'latest' class from previous lines
+            const prevLatest = terminalBody.querySelector('.latest');
+            if (prevLatest) prevLatest.classList.remove('latest');
+
+            const div = document.createElement('div');
+            div.className = 'log-line latest';
+            div.innerHTML = `<span class="log-timestamp">[${now}]</span> > ${text}`;
+
+            terminalBody.appendChild(div);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        async function pollStatus(jobId) {
+            const terminalWindow = document.getElementById('terminalWindow');
+            const loader = document.getElementById('loader');
+
+            pollingInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(\`/analysis/status/\${jobId}\`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        clearInterval(pollingInterval);
+                        showError(data.error);
+                        terminalWindow.style.display = 'none';
+                        loader.classList.remove('active');
+                        return;
+                    }
+                    
+                    // Update Logs
+                    if (data.logs && data.logs.length > 0) {
+                        const terminalBody = document.getElementById('terminalBody');
+                        // Simple diff: just clear and re-render if needed, or smarter append
+                        // For simplicity, let's just ensure we show the latest logs
+                        // A better way is to track index, but for now let's just show the last log if it's new
+                        
+                        // Actually, let's just re-render all logs to be safe and simple
+                        terminalBody.innerHTML = '';
+                        data.logs.forEach(log => {
+                            const now = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const div = document.createElement('div');
+                            div.className = 'log-line';
+                            div.innerHTML = `< span class= "log-timestamp" > [${ now }]</span > > ${ log }`;
+                            terminalBody.appendChild(div);
+                        });
+                        
+                        // Highlight last one
+                        if (terminalBody.lastChild) terminalBody.lastChild.classList.add('latest');
+                        terminalBody.scrollTop = terminalBody.scrollHeight;
+                    }
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(pollingInterval);
+                        setTimeout(() => {
+                            terminalWindow.style.display = 'none';
+                            loader.classList.remove('active');
+                            renderResults(data.result);
+                        }, 1000); // Short delay to let user see "Completed"
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollingInterval);
+                        showError(data.error || "Analysis failed.");
+                        terminalWindow.style.display = 'none';
+                        loader.classList.remove('active');
+                    }
+                    
+                } catch (e) {
+                    console.error("Polling error:", e);
+                    // Don't stop polling immediately on one network blip, but maybe after threshold
+                }
+            }, 1000); // Poll every 1 second
         }
 
         function showError(message) {
             const resultsSection = document.getElementById('resultsSection');
             resultsSection.innerHTML = `
-                <div class="result-card" style="border-color: var(--accent-danger)">
+                    < div class= "result-card" style = "border-color: var(--accent-danger)" >
                     <h2 style="color: var(--accent-danger)">Analysis Failed</h2>
                     <p>${message}</p>
-                </div>
-            `;
+                </div >
+                        `;
             resultsSection.style.display = 'block';
         }
 
@@ -145,7 +343,7 @@
             const priceChangeClass = priceChange >= 0 ? 'positive' : 'negative';
 
             let html = `
-                <div class="result-card">
+                        < div class="result-card" >
                     <div class="result-header">
                         <div>
                             <span class="ticker-badge">${data.ticker}</span>
@@ -170,18 +368,18 @@
                             Confidence: <span style="color: var(--text-primary); font-weight: 600;">${data.confidence.toUpperCase()}</span>
                         </div>
                     </div>
-            `;
+                    `;
 
             // Fundamental Health Score (if available)
             if (data.fundamental_health_score) {
                 html += `
-                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                        Fundamental Health Score: <span style="color: var(--accent-primary); font-weight: 600;">${data.fundamental_health_score}/10</span>
-                    </div>
-                `;
+                        < div style = "margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);" >
+                            Fundamental Health Score: <span style="color: var(--accent-primary); font-weight: 600;">${data.fundamental_health_score}/10</span>
+                    </div >
+                        `;
             }
-
-            html += `</div>`;
+            
+            html += `</div > `;
 
             // Income Analysis Section
             if (data.income_analysis && !data.income_analysis.error) {
@@ -189,7 +387,7 @@
                 const incRecClass = ia.recommendation.toLowerCase().includes('buy') ? 'rec-buy' : 'rec-sell';
 
                 html += `
-                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        < div style = "margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);" >
                         <h3 style="margin-bottom: 1rem; color: var(--accent-warning);">💰 Income Analysis</h3>
                         <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
                             <div class="indicator-card" style="flex: 1; min-width: 200px;">
@@ -204,42 +402,44 @@
                             </div>
                         </div>
                         <p style="color: var(--text-secondary); margin-bottom: 1rem;">${ia.explanation}</p>
-                        ${ia.key_risks.length > 0 ? `
+                        ${
+                        ia.key_risks.length > 0 ? `
                             <div style="background: rgba(248, 113, 113, 0.1); padding: 1rem; border-radius: 0.5rem;">
                                 <strong style="color: var(--accent-danger);">Key Risks:</strong>
                                 <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-secondary);">
                                     ${ia.key_risks.map(risk => `<li>${risk}</li>`).join('')}
                                 </ul>
                             </div>
-                        ` : ''}
-                    </div>
-                `;
+                        ` : ''
+                    }
+                    </div >
+                        `;
             }
 
             // Technical Indicators Grid
-            html += `<div class="analysis-grid">`;
+            html += `< div class="analysis-grid" > `;
 
             data.analysis_details.forEach(item => {
                 const signalClass = item.signal.toLowerCase().includes('no') ? 'signal-sell' : 'signal-buy';
                 const signalText = item.signal.toLowerCase().includes('no') ? 'SELL / NEUTRAL' : 'BUY';
 
                 html += `
-                    <div class="indicator-card">
+                        < div class="indicator-card" >
                         <div class="indicator-header">
                             <strong style="color: var(--accent-primary)">${item.method}</strong>
                             <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
                                 <span class="signal-dot ${signalClass}"></span>
-                                ${signalText}
+                                <span class="signal-text">${signalText}</span>
                             </div>
                         </div>
                         <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
                             ${item.explanation}
                         </p>
-                    </div>
-                `;
+                    </div >
+                        `;
             });
 
-            html += `</div></div>`;
+            html += `</div ></div >`;
 
             resultsSection.innerHTML = html;
             resultsSection.style.display = 'block';

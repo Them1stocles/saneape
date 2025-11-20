@@ -840,70 +840,83 @@ Provide a final recommendation in the standard JSON format used for stock analys
             logging.error(f"Error in chunked analysis: {str(e)}")
             return None, "Chunked analysis failed"
 
-    def analyze_stock(self, ticker, maximum_brain=False, income_focus=False):
-        """Main method to analyze a stock with optional income-focused analysis"""
+    def analyze_stock(self, ticker, maximum_brain=False, income_focus=False, progress_callback=None):
+        """
+        Analyze a stock using technical indicators and AI.
+        
+        Args:
+            ticker (str): Stock symbol
+            maximum_brain (bool): Whether to use advanced analysis
+            income_focus (bool): Whether to focus on income metrics
+            progress_callback (callable, optional): Function to call with status updates (str)
+        """
         try:
-            # Check if ticker is a yield ETF
-            is_yield_etf = self.income_analyzer.is_yield_etf(ticker)
+            def log_progress(msg):
+                if progress_callback:
+                    progress_callback(msg)
+                logging.info(msg)
+
+            log_progress(f"Fetching data for {ticker}...")
             
-            # Fetch stock data
+            # 1. Fetch Data
             stock_data, error = self.fetch_stock_data(ticker)
-            if error or stock_data is None:
-                return {'success': False, 'error': error or 'Failed to fetch stock data'}
+            if error:
+                return {'success': False, 'error': error}
             
-            # Calculate indicators
-            df_with_indicators = self.calculate_technical_indicators(stock_data['history'], maximum_brain)
+            log_progress(f"Data fetched successfully. Source: {stock_data.get('source', 'Unknown')}")
             
-            # Summarize data
-            summary = self.summarize_data(df_with_indicators, stock_data['info'], maximum_brain)
+            # 2. Calculate Indicators
+            log_progress("Calculating technical indicators...")
+            df = self.calculate_technical_indicators(stock_data['history'], maximum_brain)
+            
+            # 3. Summarize for AI
+            log_progress("Summarizing data for AI analysis...")
+            summary = self.summarize_data(df, stock_data['info'], maximum_brain)
             
             # Calculate income metrics
             income_metrics = None
             if income_focus:
+                log_progress("Calculating income metrics...")
                 income_metrics = self.income_analyzer.calculate_income_metrics(ticker, stock_data['history'])
             
             # Fetch fundamental data (Sanity Check)
             fundamental_data = None
             if maximum_brain: # Only fetch for deep analysis to conserve API limits
+                log_progress("Fetching fundamental data from AlphaVantage...")
                 fundamental_data = self.fetch_fundamental_data(ticker)
             
             # AI Analysis
+            log_progress(f"Engaging AI ({'Maximum Brain' if maximum_brain else 'Standard'})...")
             analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics, fundamental_data)
             
             if error or analysis is None:
                 # Try chunked fallback if Max Brain failed
                 if maximum_brain:
+                    log_progress("Primary AI analysis failed. Attempting chunked fallback...")
                     analysis, error = self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
                 
                 if error or analysis is None:
                     return {'success': False, 'error': error or 'Failed to get AI analysis'}
             
+            log_progress("Analysis complete. Formatting results...")
+            
+            # Combine everything
             result = {
                 'success': True,
-                'ticker': ticker,
-                'company_name': summary.get('company_name', 'N/A'),
-                'current_price': summary.get('current_price', 0),
-                'price_change_30d': summary.get('price_change_30d', 0),
-                'recommendation': analysis.get('recommendation', 'No recommendation'),
-                'confidence': analysis.get('confidence', 'unknown'),
-                'overall_explanation': analysis.get('overall_explanation', 'No explanation available'),
+                'ticker': summary['ticker'],
+                'company_name': summary['company_name'],
+                'current_price': summary['current_price'],
+                'price_change_30d': summary['price_change_30d'],
+                'recommendation': analysis.get('recommendation', 'Hold'),
+                'confidence': analysis.get('confidence', 'low'),
+                'overall_explanation': analysis.get('overall_explanation', 'No explanation provided'),
+                'fundamental_health_score': analysis.get('fundamental_health_score'),
                 'analysis_details': analysis.get('technical_analysis', []),
-                'income_focus': income_focus,
-                'is_yield_etf': is_yield_etf
+                'income_analysis': analysis.get('income_analysis')
             }
             
-            if income_focus and income_metrics:
-                result['income_analysis'] = {
-                    'metrics': income_metrics,
-                    'recommendation': analysis.get('income_analysis', {}).get('income_recommendation', 'No income recommendation'),
-                    'confidence': analysis.get('income_analysis', {}).get('income_confidence', 'unknown'),
-                    'explanation': analysis.get('income_analysis', {}).get('income_explanation', 'No income explanation available'),
-                    'key_risks': analysis.get('income_analysis', {}).get('key_income_risks', []),
-                    'effective_return': analysis.get('income_analysis', {}).get('effective_income_return', income_metrics.get('effective_return', 0))
-                }
-            elif income_focus:
+            if income_focus and not result['income_analysis']:
                 result['income_analysis'] = {'error': 'Insufficient data for income analysis'}
-            
             return result
             
         except Exception as e:

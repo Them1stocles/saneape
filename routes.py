@@ -4,19 +4,91 @@ from extensions import db
 import logging
 from stock_analyzer import StockAnalyzer
 from rate_limiter import RateLimiter
-from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache
+from models import StockAnalysis, SystemLimits, RateLimit, AnalysisCache, AnalysisJob
 from cost_manager import CostManager
 from cache_manager import CacheManager
 from security_monitor import SecurityMonitor
 from datetime import date, datetime
 import json
 import os
+import threading
+import uuid
+import time
 
 # Initialize managers
 rate_limiter = RateLimiter()
 cost_manager = CostManager()
 cache_manager = CacheManager()
 security_monitor = SecurityMonitor()
+
+def run_analysis_background(job_id, app_context, ticker, maximum_brain, income_focus):
+    """Background worker for running analysis"""
+    with app_context:
+        try:
+            logging.info(f"Starting background analysis for job {job_id}")
+            job = db.session.get(AnalysisJob, job_id)
+            if not job:
+                logging.error(f"Job {job_id} not found")
+                return
+
+            job.status = 'processing'
+            job.logs = job.logs + [f"Job started for {ticker}..."]
+            db.session.commit()
+
+            def progress_callback(msg):
+                # Re-fetch job to avoid stale data
+                current_job = db.session.get(AnalysisJob, job_id)
+                if current_job:
+                    current_job.logs = current_job.logs + [msg]
+                    db.session.commit()
+
+            analyzer = StockAnalyzer()
+            result = analyzer.analyze_stock(ticker, maximum_brain, income_focus, progress_callback)
+
+            # Re-fetch job one last time
+            job = db.session.get(AnalysisJob, job_id)
+            
+            if result['success']:
+                job.status = 'completed'
+                job.result = result
+                job.logs = job.logs + ["Analysis completed successfully."]
+                
+                # Record successful API call
+                cost_manager.record_api_call(maximum_brain)
+                
+                # Save to main history table (legacy support)
+                analysis = StockAnalysis()
+                analysis.ticker = ticker
+                analysis.ip_address = 'async_job' # We lose original IP in thread, could pass it if needed
+                analysis.recommendation = result['recommendation']
+                analysis.confidence = result['confidence']
+                analysis.analysis_data = json.dumps(result['analysis_details'])
+                analysis.maximum_brain = maximum_brain
+                db.session.add(analysis)
+                
+                # Cache result
+                cache_manager.store_analysis(ticker, result, maximum_brain)
+                
+            else:
+                job.status = 'failed'
+                job.error = result.get('error', 'Unknown error')
+                job.logs = job.logs + [f"Analysis failed: {job.error}"]
+
+            db.session.commit()
+            logging.info(f"Job {job_id} finished with status: {job.status}")
+
+        except Exception as e:
+            logging.error(f"Background job failed: {str(e)}")
+            # Try to record failure
+            try:
+                job = db.session.get(AnalysisJob, job_id)
+                if job:
+                    job.status = 'failed'
+                    job.error = str(e)
+                    job.logs = job.logs + [f"Critical error: {str(e)}"]
+                    db.session.commit()
+            except:
+                pass
 
 @app.route('/')
 def index():
@@ -38,7 +110,7 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze_stock():
-    """Stock analysis endpoint"""
+    """Start async stock analysis"""
     client_ip = None
     try:
         # Get client IP
@@ -46,7 +118,7 @@ def analyze_stock():
         if client_ip:
             client_ip = client_ip.split(',')[0].strip()
         
-        # Get ticker and analysis options from form or JSON
+        # Get ticker and analysis options
         if request.is_json:
             data = request.get_json()
             ticker = data.get('ticker', '').strip().upper()
@@ -65,58 +137,63 @@ def analyze_stock():
             security_monitor.log_security_event(client_ip, SecurityMonitor.INVALID_INPUT, f"Invalid ticker: {ticker}")
             return jsonify({'error': 'Please enter a valid stock ticker symbol (letters only, max 5 characters).', 'type': 'validation'}), 400
         
-        # Admin bypass check
+        # Rate limit check
         is_admin = session.get('admin_authenticated', False)
-        
         if not is_admin:
-            # Rate limit check
             allowed, error_message = rate_limiter.is_allowed(client_ip, maximum_brain, ticker)
             if not allowed:
                 return jsonify({'error': error_message, 'type': 'rate_limit'}), 429
-        
-        # Check cache first
+            rate_limiter.record_request(client_ip, maximum_brain)
+
+        # Check cache first (Fast path)
         cached_result = cache_manager.get_cached_analysis(ticker, maximum_brain)
         if cached_result:
             logging.info(f"Serving cached result for {ticker}")
-            # Even for cache hits, we might want to track usage if we were strict, but for now let's be generous with cache
-            return jsonify(cached_result)
+            return jsonify({'cached': True, 'result': cached_result})
 
-        # Proceed with analysis
-        analyzer = StockAnalyzer()
-        result = analyzer.analyze_stock(ticker, maximum_brain, income_focus)
-        
-        if result['success']:
-            # Record the successful API call for cost tracking
-            cost_manager.record_api_call(maximum_brain)
-            
-            # Record request for rate limiting (if not admin)
-            if not is_admin:
-                rate_limiter.record_request(client_ip, maximum_brain)
-            
-            # Save analysis to database
-            analysis = StockAnalysis()
-            analysis.ticker = ticker
-            analysis.ip_address = client_ip
-            analysis.recommendation = result['recommendation']
-            analysis.confidence = result['confidence']
-            analysis.analysis_data = json.dumps(result['analysis_details'])
-            analysis.maximum_brain = maximum_brain
-            db.session.add(analysis)
-            
-            # Store in cache
-            cache_manager.store_analysis(ticker, result, maximum_brain)
-            
-            db.session.commit()
-            
-            return jsonify(result)
-        else:
-            return jsonify({'error': result['error'], 'type': 'analysis'}), 400
+        # Create Job
+        job_id = str(uuid.uuid4())
+        job = AnalysisJob(
+            id=job_id,
+            ticker=ticker,
+            mode='maximum_brain' if maximum_brain else 'standard',
+            status='pending',
+            logs=[f"Request received for {ticker}."]
+        )
+        db.session.add(job)
+        db.session.commit()
+
+        # Spawn background thread
+        # We must pass app.app_context() to the thread so it can access the DB
+        thread = threading.Thread(
+            target=run_analysis_background,
+            args=(job_id, app.app_context(), ticker, maximum_brain, income_focus)
+        )
+        thread.start()
+
+        return jsonify({'job_id': job_id, 'status': 'pending'})
             
     except Exception as e:
         logging.error(f"Error in analyze_stock: {str(e)}")
-        if client_ip:
-            security_monitor.log_security_event(client_ip, "system_error", str(e))
-        return jsonify({'error': 'An unexpected error occurred. Please try again later.', 'type': 'server'}), 500
+        return jsonify({'error': 'An unexpected error occurred.', 'type': 'server'}), 500
+
+@app.route('/analysis/status/<job_id>', methods=['GET'])
+def get_analysis_status(job_id):
+    """Poll for job status"""
+    try:
+        job = db.session.get(AnalysisJob, job_id)
+        if not job:
+            return jsonify({'error': 'Job not found'}), 404
+        
+        return jsonify({
+            'status': job.status,
+            'logs': job.logs,
+            'result': job.result if job.status == 'completed' else None,
+            'error': job.error
+        })
+    except Exception as e:
+        logging.error(f"Error checking status: {str(e)}")
+        return jsonify({'error': 'Server error checking status'}), 500
 
 # Admin Routes
 @app.route('/admin')

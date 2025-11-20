@@ -18,6 +18,30 @@ class RateLimit(Base):
     def __repr__(self):
         return f'<RateLimit {self.ip_address}: {self.request_count}/{self.maximum_brain_count}>'
 
+class AnalysisJob(Base):
+    __tablename__ = 'analysis_jobs'
+    
+    id = db.Column(db.String(36), primary_key=True)  # UUID
+    ticker = db.Column(db.String(10), nullable=False)
+    mode = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed
+    logs = db.Column(db.JSON, default=list)
+    result = db.Column(db.JSON, nullable=True)
+    error = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'ticker': self.ticker,
+            'mode': self.mode,
+            'status': self.status,
+            'logs': self.logs,
+            'result': self.result,
+            'error': self.error,
+            'created_at': self.created_at.isoformat()
+        }
+
 class StockAnalysis(Base):
     __tablename__ = 'stock_analyses'
     id = db.Column(db.Integer, primary_key=True)
