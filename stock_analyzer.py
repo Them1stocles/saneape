@@ -22,68 +22,87 @@ class StockAnalyzer:
             genai.configure(api_key=api_key)
             
         self.income_analyzer = IncomeAnalyzer()
+        
+        # Initialize AlphaVantage Client
+        from alpha_vantage_client import AlphaVantageClient
+        self.av_client = AlphaVantageClient()
     
+    def fetch_fundamental_data(self, ticker):
+        """Fetch fundamental data from AlphaVantage"""
+        if not self.av_client.api_key:
+            return None
+            
+        data, error = self.av_client.fetch_company_overview(ticker)
+        if error:
+            logging.warning(f"AlphaVantage fundamental fetch failed: {error}")
+            return None
+            
+        return data
+
     def fetch_stock_data(self, ticker):
-        """Fetch historical stock data using yfinance with robust error handling"""
-        try:
-            import yfinance as yf
-            
-            stock = yf.Ticker(ticker)
-            
-            # Get 2 years of historical data
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=730)  # 2 years
-            
-            # Try multiple approaches to handle timezone and I/O issues
-            hist = None
-            info = None
-            
-            # First attempt: standard approach
+        """Fetch historical stock data using Hybrid approach (AlphaVantage -> yfinance)"""
+        hist = None
+        info = {}
+        source = "yfinance"
+        
+        # 1. Try AlphaVantage first for price data
+        if self.av_client.api_key:
             try:
-                hist = stock.history(start=start_date, end=end_date)
-                info = stock.info
-            except (OSError, IOError) as io_error:
-                if "Input/output error" in str(io_error) or "Errno 5" in str(io_error):
-                    logging.warning(f"I/O error for {ticker}, trying alternative approach: {str(io_error)}")
-                    # Try with different parameters to avoid timezone issues
-                    try:
-                        # Use period parameter instead of start/end dates to avoid timezone parsing
-                        hist = stock.history(period="2y")
-                        info = stock.info
-                    except Exception as fallback_error:
-                        logging.warning(f"Fallback approach also failed for {ticker}: {str(fallback_error)}")
-                        # Try minimal data fetch
-                        try:
-                            hist = stock.history(period="1y")  # Try 1 year if 2 years fails
-                            info = {}  # Use empty info if info fetch fails
-                        except Exception:
-                            raise io_error  # Re-raise original error if all attempts fail
-                else:
-                    raise  # Re-raise if it's not the I/O error we're handling
+                av_data, error = self.av_client.fetch_daily_adjusted(ticker)
+                if av_data:
+                    # Convert AlphaVantage JSON to DataFrame compatible with yfinance format
+                    data_list = []
+                    for date_str, values in av_data.items():
+                        data_list.append({
+                            'Date': pd.to_datetime(date_str),
+                            'Open': float(values.get('1. open', 0)),
+                            'High': float(values.get('2. high', 0)),
+                            'Low': float(values.get('3. low', 0)),
+                            'Close': float(values.get('5. adjusted close', 0)), # Use adjusted close for TA
+                            'Volume': int(values.get('6. volume', 0))
+                        })
+                    
+                    if data_list:
+                        hist = pd.DataFrame(data_list)
+                        hist.set_index('Date', inplace=True)
+                        hist.sort_index(inplace=True) # Ensure chronological order
+                        source = "AlphaVantage"
+                        logging.info(f"Successfully fetched data for {ticker} from AlphaVantage")
+            except Exception as e:
+                logging.warning(f"AlphaVantage fetch failed for {ticker}: {e}")
+
+        # 2. Fallback to yfinance if AlphaVantage failed or returned no data
+        if hist is None or hist.empty:
+            try:
+                import yfinance as yf
+                stock = yf.Ticker(ticker)
+                
+                # Get 2 years of historical data
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=730)
+                
+                try:
+                    hist = stock.history(start=start_date, end=end_date)
+                    info = stock.info
+                except Exception:
+                    # Fallback to period if dates fail
+                    hist = stock.history(period="2y")
+                    info = stock.info
+                
+                source = "yfinance"
+            except Exception as e:
+                logging.error(f"yfinance fetch failed for {ticker}: {e}")
+                return None, f"Error fetching data for {ticker}. Please verify the ticker symbol."
+
+        if hist is None or hist.empty:
+            return None, f"No data found for ticker {ticker}."
             
-            if hist is None or hist.empty:
-                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol."
-            
-            return {
-                'history': hist,
-                'info': info or {},
-                'ticker': ticker
-            }, None
-            
-        except Exception as e:
-            error_msg = str(e)
-            logging.error(f"Error fetching data for {ticker}: {error_msg}")
-            # More detailed error logging
-            import traceback
-            logging.error(f"Traceback: {traceback.format_exc()}")
-            
-            # Provide more specific error messages
-            if "Input/output error" in error_msg or "Errno 5" in error_msg:
-                return None, f"System I/O error occurred while fetching data for {ticker}. This is typically a temporary issue - please try again in a few moments."
-            elif "No data found" in error_msg or "404" in error_msg:
-                return None, f"No data found for ticker {ticker}. Please verify the ticker symbol exists on Yahoo Finance."
-            else:
-                return None, f"Error fetching data for {ticker}. Please verify the ticker symbol and try again."
+        return {
+            'history': hist,
+            'info': info or {},
+            'ticker': ticker,
+            'source': source
+        }, None
 
     def calculate_technical_indicators(self, df, maximum_brain=False):
         """Calculate technical indicators - standard or comprehensive based on mode"""
@@ -440,6 +459,49 @@ class StockAnalyzer:
             stock_df['volume_trend'] = np.where(df['Volume'] > df['Volume'].rolling(20).mean(), 1, 0)
             stock_df['price_momentum'] = np.where(df['Close'] > df['Close'].shift(5), 1, 0)
             stock_df['volatility'] = df['Close'].rolling(20).std()
+            # 28. Chaikin Money Flow (CMF)
+            try:
+                mf_multiplier = ((df['Close'] - df['Low']) - (df['High'] - df['Close'])) / (df['High'] - df['Low'])
+                mf_volume = mf_multiplier * df['Volume']
+                stock_df['cmf'] = mf_volume.rolling(20).sum() / df['Volume'].rolling(20).sum()
+                indicator_calculation_log['successful'].append("CMF")
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"CMF: {str(e)}")
+                stock_df['cmf'] = 0
+
+            # 29. Volume Oscillator
+            try:
+                vol_short = df['Volume'].rolling(5).mean()
+                vol_long = df['Volume'].rolling(10).mean()
+                stock_df['volume_oscillator'] = ((vol_short - vol_long) / vol_long) * 100
+                indicator_calculation_log['successful'].append("Volume_Oscillator")
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Volume Oscillator: {str(e)}")
+                stock_df['volume_oscillator'] = 0
+
+            # 30. VWAP Bands
+            try:
+                # VWAP is already calculated as stock_df['vwap']
+                vwap_std = df['Close'].rolling(20).std()
+                stock_df['vwap_upper'] = stock_df['vwap'] + (vwap_std * 2)
+                stock_df['vwap_lower'] = stock_df['vwap'] - (vwap_std * 2)
+                indicator_calculation_log['successful'].append("VWAP_Bands")
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"VWAP Bands: {str(e)}")
+
+            # 31. Volume Profile (Simplified - Price levels with high volume)
+            try:
+                # Create price bins and sum volume for each bin
+                price_bins = pd.cut(df['Close'], bins=10)
+                vol_profile = df.groupby(price_bins)['Volume'].sum()
+                # Find the price bin with max volume (Point of Control proxy)
+                poc_bin = vol_profile.idxmax()
+                stock_df['volume_poc'] = poc_bin.mid
+                indicator_calculation_log['successful'].append("Volume_Profile")
+            except Exception as e:
+                indicator_calculation_log['failed'].append(f"Volume Profile: {str(e)}")
+                stock_df['volume_poc'] = 0
+
             stock_df['rsi_divergence'] = np.where((stock_df['rsi_14'] > 70) | (stock_df['rsi_14'] < 30), 1, 0)
             stock_df['macd_crossover'] = np.where(stock_df['macd'] > stock_df['macd_signal'], 1, 0)
             
@@ -490,7 +552,9 @@ class StockAnalyzer:
                     ('Support_Level', 'support_level'), ('RMI', 'rmi'), ('Supertrend', 'supertrend'),
                     ('Trend_Strength', 'trend_strength'), ('Volume_Trend', 'volume_trend'),
                     ('Price_Momentum', 'price_momentum'), ('Volatility', 'volatility'),
-                    ('RSI_Divergence_Flag', 'rsi_divergence'), ('MACD_Crossover_Flag', 'macd_crossover')
+                    ('RSI_Divergence_Flag', 'rsi_divergence'), ('MACD_Crossover_Flag', 'macd_crossover'),
+                    ('Chaikin_Money_Flow', 'cmf'), ('Volume_Oscillator', 'volume_oscillator'),
+                    ('VWAP_Upper', 'vwap_upper'), ('VWAP_Lower', 'vwap_lower'), ('Volume_POC', 'volume_poc')
                 ]
                 
                 indicator_values = {}
@@ -500,10 +564,10 @@ class StockAnalyzer:
                     value = self.safe_get_value(latest_row, column_name)
                     indicator_values[display_name] = value
                 
-                # Process optional indicators (limit to 25)
+                # Process optional indicators (limit to 60 to include new ones)
                 count = 0
                 for display_name, column_name in optional_indicators:
-                    if count >= 25: break
+                    if count >= 60: break
                     value = self.safe_get_value(latest_row, column_name)
                     indicator_values[display_name] = value
                     count += 1
@@ -545,20 +609,35 @@ class StockAnalyzer:
         except:
             return 0
 
-    def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None):
+    def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None, fundamental_data=None):
         """Send data to Google Gemini for technical analysis"""
         try:
             if maximum_brain:
-                indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns"""
+                indicators_list = """Relative Strength Index (RSI), Average Directional Index (ADX), Bollinger Bands, Moving Average Convergence Divergence (MACD), Simple Moving Average (SMA), Exponential Moving Average (EMA), Stochastic Oscillator, Commodity Channel Index (CCI), Ichimoku Cloud, Donchian Channels, Williams %R, Ultimate Oscillator, Money Flow Index (MFI), Relative Momentum Index (RMI), On-Balance Volume (OBV), Average True Range (ATR), Parabolic SAR, Aroon Indicator, TRIX, Accumulation/Distribution Line, Supertrend, Volume Weighted Average Price (VWAP), Momentum Indicator, Rate of Change (ROC), Keltner Channels, Pivot Points, Fibonacci Retracements, Candlestick Patterns, Support and Resistance Levels, Trend Lines, Elliott Wave Principle, Wyckoff Method, Head and Shoulders Pattern, Double Top/Bottom, Volume Patterns, Chaikin Money Flow (CMF), Volume Oscillator, VWAP Bands"""
                 analysis_mode = "MAXIMUM BRAIN ANALYSIS - Use your most advanced analytical capabilities"
                 
                 indicator_json = json.dumps(summary.get('indicator_values', {}), indent=2)
+                
+                fundamental_section = ""
+                if fundamental_data:
+                    fundamental_section = f"""
+FUNDAMENTAL DATA (Sanity Check):
+P/E Ratio: {fundamental_data.get('PERatio', 'N/A')}
+PEG Ratio: {fundamental_data.get('PEGRatio', 'N/A')}
+EPS: {fundamental_data.get('EPS', 'N/A')}
+Book Value: {fundamental_data.get('BookValue', 'N/A')}
+Revenue (TTM): {fundamental_data.get('RevenueTTM', 'N/A')}
+Profit Margin: {fundamental_data.get('ProfitMargin', 'N/A')}
+Quarterly Earnings Growth (YOY): {fundamental_data.get('QuarterlyEarningsGrowthYOY', 'N/A')}
+"""
+
                 prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
 
 Current Price: ${summary['current_price']:.2f}
 30-day Price Change: {summary['price_change_30d']:.2f}%
 30-day Average Volume: {summary['volume_avg_30d']:,.0f}
 30-day Volatility (StdDev): {summary['volatility_30d']:.2f}
+{fundamental_section}
 
 PRE-COMPUTED TECHNICAL INDICATOR VALUES:
 {indicator_json}
@@ -567,19 +646,23 @@ Analyze this stock using ALL of these technical analysis methods and indicators:
 
 Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.
 
+CRITICAL INSTRUCTIONS:
+1. **Volume Confirms Price**: You MUST validate any price signal with volume indicators (CMF, Volume Oscillator, OBV). If price is rising but volume is weak/diverging, invalidate the Buy signal.
+2. **Fundamental Sanity Check**: If fundamental data is provided, use it to "sanity check" the technical signal. A technical "Buy" on a bankrupt company (e.g. massive negative EPS, high debt) should be treated with extreme caution.
+3. **Divergence Detection**: Look specifically for divergences between Price and RSI/MACD/Volume.
+
 For each method/indicator:
 - Briefly explain the method and how it applies to this data
 - State whether it suggests a 'Buy' signal (positive outlook) or 'No Buy' signal (negative or neutral outlook)
 
 Then, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly 'Yes, buy!' if the consensus is positive, or 'No, don't buy!' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.
 
-Do not consider fundamental analysis, news, or external factors. Focus solely on technical analysis of the pre-computed indicator values provided.
-
 Respond in JSON format with this structure:
 {{
     "recommendation": "Yes, buy!" or "No, don't buy!",
     "confidence": "high" or "medium" or "low",
-    "overall_explanation": "Brief explanation of the overall decision",
+    "fundamental_health_score": "0-10 score based on fundamentals (if available)",
+    "overall_explanation": "Brief explanation of the overall decision, including volume confirmation and fundamental sanity check",
     "technical_analysis": [
         {{
             "method": "Method name",
@@ -779,8 +862,13 @@ Provide a final recommendation in the standard JSON format used for stock analys
             if income_focus:
                 income_metrics = self.income_analyzer.calculate_income_metrics(ticker, stock_data['history'])
             
+            # Fetch fundamental data (Sanity Check)
+            fundamental_data = None
+            if maximum_brain: # Only fetch for deep analysis to conserve API limits
+                fundamental_data = self.fetch_fundamental_data(ticker)
+            
             # AI Analysis
-            analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics)
+            analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics, fundamental_data)
             
             if error or analysis is None:
                 # Try chunked fallback if Max Brain failed

@@ -172,6 +172,17 @@
                     </div>
             `;
 
+            // Fundamental Health Score (if available)
+            if (data.fundamental_health_score) {
+                html += `
+                    <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
+                        Fundamental Health Score: <span style="color: var(--accent-primary); font-weight: 600;">${data.fundamental_health_score}/10</span>
+                    </div>
+                `;
+            }
+
+            html += `</div>`;
+
             // Income Analysis Section
             if (data.income_analysis && !data.income_analysis.error) {
                 const ia = data.income_analysis;
