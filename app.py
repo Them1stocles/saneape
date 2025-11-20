@@ -41,8 +41,9 @@ from extensions import Base
 # Import routes after app initialization
 from routes import *
 
+# Create tables within app context to ensure they exist (critical for Gunicorn/Render)
+with app.app_context():
+    Base.metadata.create_all(bind=db.engine)
+
 if __name__ == "__main__":
-    with app.app_context():
-        # Create tables using Base.metadata which holds the model definitions
-        Base.metadata.create_all(bind=db.engine)
     app.run(host='0.0.0.0', port=5002, debug=False, use_reloader=False)
