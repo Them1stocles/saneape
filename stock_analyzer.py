@@ -817,7 +817,7 @@ Respond in JSON format with this structure:
             logging.error(f"Error in AI analysis: {str(e)}")
             return None, f"Error analyzing stock data: {str(e)}"
 
-    def analyze_with_chunked_calls(self, summary, income_focus=False, income_metrics=None):
+    def analyze_with_chunked_calls(self, summary):
         """Fallback method: Split Maximum Brain analysis into multiple smaller API calls"""
         # For Gemini, we might not need chunking as much due to larger context window, 
         # but keeping it as a fallback strategy is good practice.
@@ -958,8 +958,6 @@ Provide a final recommendation in the standard JSON format used for stock analys
                 'income_analysis': analysis.get('income_analysis')
             }
             
-            if income_focus and not result['income_analysis']:
-                result['income_analysis'] = {'error': 'Insufficient data for income analysis'}
             return result
             
         except Exception as e:
