@@ -635,6 +635,8 @@ Revenue (TTM): {fundamental_data.get('RevenueTTM', 'N/A')}
 Profit Margin: {fundamental_data.get('ProfitMargin', 'N/A')}
 Quarterly Earnings Growth (YOY): {fundamental_data.get('QuarterlyEarningsGrowthYOY', 'N/A')}
 """
+                else:
+                    fundamental_section = "\nFUNDAMENTAL DATA: Unavailable (Focus on Technical Analysis)\n"
 
                 if fundamental_scores:
                     fundamental_section += f"""
@@ -801,6 +803,16 @@ Respond in JSON format with this structure:
                 
 
                 
+                # Log the keys we got back to help debug missing data
+                logging.info(f"AI Analysis Keys Received: {list(analysis.keys())}")
+                
+                # Robustness: Handle common key variations
+                if 'overall_explanation' not in analysis and 'explanation' in analysis:
+                    analysis['overall_explanation'] = analysis['explanation']
+                
+                if 'overall_explanation' not in analysis:
+                    analysis['overall_explanation'] = "AI provided no explanation. Please check the detailed technical analysis below."
+
                 return analysis, None
             else:
                 return None, "Empty response from AI analysis"
