@@ -867,7 +867,8 @@ Provide a final recommendation in the standard JSON format used for stock analys
             
             # 2. Calculate Indicators
             log_progress("Calculating technical indicators...")
-            df = self.calculate_technical_indicators(stock_data['history'], maximum_brain)
+            # Pass progress_callback to get granular updates
+            df = self.calculate_technical_indicators(stock_data['history'], maximum_brain, progress_callback=progress_callback)
             
             # 3. Summarize for AI
             log_progress("Summarizing data for AI analysis...")
@@ -886,7 +887,10 @@ Provide a final recommendation in the standard JSON format used for stock analys
                 fundamental_data = self.fetch_fundamental_data(ticker)
             
             # AI Analysis
-            log_progress(f"Engaging AI ({'Maximum Brain' if maximum_brain else 'Standard'})...")
+            if maximum_brain:
+                log_progress("Crunching Data through proprietary algorithm to determine BUY/SELL confidence...")
+            else:
+                log_progress(f"Engaging AI ({'Maximum Brain' if maximum_brain else 'Standard'})...")
             analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics, fundamental_data)
             
             if error or analysis is None:
