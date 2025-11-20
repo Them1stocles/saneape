@@ -140,10 +140,7 @@
                     <h3>Maximum Brain 🧠</h3>
                     <p>Deep dive using 35+ indicators and Gemini 1.5 Pro.</p>
                 </div>
-                <div class="option-card" data-mode="income" onclick="selectMode(this, 'income')">
-                    <h3>Income Focus 💰</h3>
-                    <p>Specialized analysis for YieldMax/Defiance ETFs and dividend stocks.</p>
-                </div>
+
             </div>
         </section>
 
@@ -381,38 +378,7 @@
 
             html += `</div>`;
 
-            // Income Analysis Section
-            if (data.income_analysis && !data.income_analysis.error) {
-                const ia = data.income_analysis;
-                const incRecClass = ia.recommendation.toLowerCase().includes('buy') ? 'rec-buy' : 'rec-sell';
 
-                html += `
-                    <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
-                        <h3 style="margin-bottom: 1rem; color: var(--accent-warning);">💰 Income Analysis</h3>
-                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                            <div class="indicator-card" style="flex: 1; min-width: 200px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Effective Return</div>
-                                <div style="font-size: 1.5rem; font-weight: 700; color: ${ia.effective_return > 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}">
-                                    ${ia.effective_return.toFixed(2)}%
-                                </div>
-                            </div>
-                            <div class="indicator-card" style="flex: 1; min-width: 200px;">
-                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Recommendation</div>
-                                <div style="font-size: 1.2rem; font-weight: 700;">${ia.recommendation}</div>
-                            </div>
-                        </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">${ia.explanation}</p>
-                        ${ia.key_risks.length > 0 ? `
-                            <div style="background: rgba(248, 113, 113, 0.1); padding: 1rem; border-radius: 0.5rem;">
-                                <strong style="color: var(--accent-danger);">Key Risks:</strong>
-                                <ul style="margin-left: 1.5rem; margin-top: 0.5rem; color: var(--text-secondary);">
-                                    ${ia.key_risks.map(risk => `<li>${risk}</li>`).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }
 
             // Technical Indicators Grid
             html += `<div class="analysis-grid">`;

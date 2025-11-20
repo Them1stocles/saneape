@@ -21,7 +21,7 @@ cost_manager = CostManager()
 cache_manager = CacheManager()
 security_monitor = SecurityMonitor()
 
-def run_analysis_background(job_id, app_context, ticker, maximum_brain, income_focus):
+def run_analysis_background(job_id, app_context, ticker, maximum_brain):
     """Background worker for running analysis"""
     with app_context:
         try:
@@ -43,7 +43,7 @@ def run_analysis_background(job_id, app_context, ticker, maximum_brain, income_f
                     db.session.commit()
 
             analyzer = StockAnalyzer()
-            result = analyzer.analyze_stock(ticker, maximum_brain, income_focus, progress_callback)
+            result = analyzer.analyze_stock(ticker, maximum_brain, progress_callback)
 
             # Re-fetch job one last time
             job = db.session.get(AnalysisJob, job_id)
@@ -123,11 +123,9 @@ def analyze_stock():
             data = request.get_json()
             ticker = data.get('ticker', '').strip().upper()
             maximum_brain = data.get('maximum_brain') == 'maximum_brain' or data.get('mode') == 'maximum_brain'
-            income_focus = data.get('income_focus') == 'true' or data.get('mode') == 'income'
         else:
             ticker = request.form.get('ticker', '').strip().upper()
             maximum_brain = request.form.get('maximum_brain') == 'true'
-            income_focus = request.form.get('income_focus') == 'true'
         
         # Validate input
         if not ticker:
@@ -167,7 +165,7 @@ def analyze_stock():
         # We must pass app.app_context() to the thread so it can access the DB
         thread = threading.Thread(
             target=run_analysis_background,
-            args=(job_id, app.app_context(), ticker, maximum_brain, income_focus)
+            args=(job_id, app.app_context(), ticker, maximum_brain)
         )
         thread.start()
 

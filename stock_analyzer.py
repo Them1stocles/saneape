@@ -10,7 +10,7 @@ import time
 
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
-from income_analyzer import IncomeAnalyzer
+
 
 class StockAnalyzer:
     def __init__(self):
@@ -21,7 +21,7 @@ class StockAnalyzer:
         else:
             genai.configure(api_key=api_key)
             
-        self.income_analyzer = IncomeAnalyzer()
+
         
         # Initialize AlphaVantage Client
         from alpha_vantage_client import AlphaVantageClient
@@ -609,7 +609,7 @@ class StockAnalyzer:
         except:
             return 0
 
-    def analyze_with_ai(self, summary, maximum_brain=False, income_focus=False, income_metrics=None, fundamental_data=None):
+    def analyze_with_ai(self, summary, maximum_brain=False, fundamental_data=None):
         """Send data to Google Gemini for technical analysis"""
         try:
             if maximum_brain:
@@ -840,14 +840,13 @@ Provide a final recommendation in the standard JSON format used for stock analys
             logging.error(f"Error in chunked analysis: {str(e)}")
             return None, "Chunked analysis failed"
 
-    def analyze_stock(self, ticker, maximum_brain=False, income_focus=False, progress_callback=None):
+    def analyze_stock(self, ticker, maximum_brain=False, progress_callback=None):
         """
         Analyze a stock using technical indicators and AI.
         
         Args:
             ticker (str): Stock symbol
             maximum_brain (bool): Whether to use advanced analysis
-            income_focus (bool): Whether to focus on income metrics
             progress_callback (callable, optional): Function to call with status updates (str)
         """
         try:
@@ -874,12 +873,7 @@ Provide a final recommendation in the standard JSON format used for stock analys
             log_progress("Summarizing data for AI analysis...")
             summary = self.summarize_data(df, stock_data['info'], maximum_brain)
             
-            # Calculate income metrics
-            income_metrics = None
-            if income_focus:
-                log_progress("Calculating income metrics...")
-                income_metrics = self.income_analyzer.calculate_income_metrics(ticker, stock_data['history'])
-            
+
             # Fetch fundamental data (Sanity Check)
             fundamental_data = None
             if maximum_brain: # Only fetch for deep analysis to conserve API limits
@@ -891,13 +885,13 @@ Provide a final recommendation in the standard JSON format used for stock analys
                 log_progress("Crunching Data through proprietary algorithm to determine BUY/SELL confidence...")
             else:
                 log_progress(f"Engaging AI ({'Maximum Brain' if maximum_brain else 'Standard'})...")
-            analysis, error = self.analyze_with_ai(summary, maximum_brain, income_focus, income_metrics, fundamental_data)
+            analysis, error = self.analyze_with_ai(summary, maximum_brain, fundamental_data)
             
             if error or analysis is None:
                 # Try chunked fallback if Max Brain failed
                 if maximum_brain:
                     log_progress("Primary AI analysis failed. Attempting chunked fallback...")
-                    analysis, error = self.analyze_with_chunked_calls(summary, income_focus, income_metrics)
+                    analysis, error = self.analyze_with_chunked_calls(summary)
                 
                 if error or analysis is None:
                     return {'success': False, 'error': error or 'Failed to get AI analysis'}
