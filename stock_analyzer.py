@@ -107,11 +107,11 @@ class StockAnalyzer:
             'source': source
         }, None
 
-    def calculate_technical_indicators(self, df, maximum_brain=False):
+    def calculate_technical_indicators(self, df, maximum_brain=False, progress_callback=None):
         """Calculate technical indicators - standard or comprehensive based on mode"""
         try:
             if maximum_brain:
-                return self.calculate_comprehensive_indicators(df)
+                return self.calculate_comprehensive_indicators(df, progress_callback)
             else:
                 return self.calculate_standard_indicators(df)
                 
@@ -168,7 +168,7 @@ class StockAnalyzer:
             logging.error(f"Error calculating standard indicators: {str(e)}")
             return df
     
-    def calculate_comprehensive_indicators(self, df):
+    def calculate_comprehensive_indicators(self, df, progress_callback=None):
         """Calculate all 35 technical indicators for Maximum Brain Analysis"""
         # ... (This method remains largely unchanged, just copying the logic from previous file)
         # For brevity in this rewrite, I'm assuming the logic is identical to the original file
@@ -179,6 +179,8 @@ class StockAnalyzer:
             
             # Detailed logging initialization
             logging.info("=== STARTING COMPREHENSIVE INDICATOR CALCULATION ===")
+            if progress_callback:
+                progress_callback("Calculating 35+ technical indicators...")
             
             # Track indicator calculation success/failure
             indicator_calculation_log = {
