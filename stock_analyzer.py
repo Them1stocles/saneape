@@ -799,15 +799,7 @@ Respond in JSON format with this structure:
                     logging.error(f"Response text (first 500 chars): {response_text[:500]}")
                     raise
                 
-                # Add income analysis if requested
-                if income_focus and income_metrics and 'income_analysis' not in analysis:
-                    analysis['income_analysis'] = {
-                        'income_recommendation': "Buy for Income" if income_metrics['effective_return'] > income_metrics['buy_threshold'] else "No Buy",
-                        'income_confidence': 'medium',
-                        'income_explanation': f"Based on effective income return of {income_metrics['effective_return']:.2f}%",
-                        'key_income_risks': income_metrics.get('risks', []),
-                        'effective_income_return': income_metrics['effective_return']
-                    }
+
                 
                 return analysis, None
             else:
