@@ -85,3 +85,86 @@ class AlphaVantageClient:
             
         except Exception as e:
             return None, str(e)
+    def fetch_balance_sheet(self, symbol):
+        """Fetch annual and quarterly balance sheets"""
+        if not self.api_key:
+            return None, "No API key provided"
+            
+        self._wait_for_rate_limit()
+        
+        params = {
+            "function": "BALANCE_SHEET",
+            "symbol": symbol,
+            "apikey": self.api_key
+        }
+        
+        try:
+            response = requests.get(self.BASE_URL, params=params)
+            data = response.json()
+            
+            if "Note" in data:
+                return None, f"API Limit Reached: {data['Note']}"
+                
+            if not data or "annualReports" not in data:
+                return None, "No balance sheet data found"
+                
+            return data, None
+            
+        except Exception as e:
+            return None, str(e)
+
+    def fetch_income_statement(self, symbol):
+        """Fetch annual and quarterly income statements"""
+        if not self.api_key:
+            return None, "No API key provided"
+            
+        self._wait_for_rate_limit()
+        
+        params = {
+            "function": "INCOME_STATEMENT",
+            "symbol": symbol,
+            "apikey": self.api_key
+        }
+        
+        try:
+            response = requests.get(self.BASE_URL, params=params)
+            data = response.json()
+            
+            if "Note" in data:
+                return None, f"API Limit Reached: {data['Note']}"
+                
+            if not data or "annualReports" not in data:
+                return None, "No income statement data found"
+                
+            return data, None
+            
+        except Exception as e:
+            return None, str(e)
+
+    def fetch_cash_flow(self, symbol):
+        """Fetch annual and quarterly cash flows"""
+        if not self.api_key:
+            return None, "No API key provided"
+            
+        self._wait_for_rate_limit()
+        
+        params = {
+            "function": "CASH_FLOW",
+            "symbol": symbol,
+            "apikey": self.api_key
+        }
+        
+        try:
+            response = requests.get(self.BASE_URL, params=params)
+            data = response.json()
+            
+            if "Note" in data:
+                return None, f"API Limit Reached: {data['Note']}"
+                
+            if not data or "annualReports" not in data:
+                return None, "No cash flow data found"
+                
+            return data, None
+            
+        except Exception as e:
+            return None, str(e)

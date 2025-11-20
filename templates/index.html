@@ -376,6 +376,183 @@
                 `;
             }
 
+            // Institutional Scores (Phase 1 Upgrade)
+            if (data.institutional_scores) {
+                const scores = data.institutional_scores;
+
+                // Color logic
+                const pScore = parseInt(scores.piotroski_f_score);
+                const pClass = pScore >= 7 ? 'rec-buy' : (pScore >= 4 ? 'rec-hold' : 'rec-sell');
+
+                const zScore = parseFloat(scores.altman_z_score);
+                const zClass = zScore > 2.99 ? 'rec-buy' : (zScore > 1.8 ? 'rec-hold' : 'rec-sell');
+
+                const mRisk = scores.beneish_m_risk;
+                const mClass = mRisk === 'Low' ? 'rec-buy' : (mRisk === 'Medium' ? 'rec-hold' : 'rec-sell');
+
+                html += `
+                    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <h3 style="margin-bottom: 1rem; color: var(--accent-primary); text-align: center;">🏛️ Institutional Fundamentals</h3>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;">
+                            
+                            <!-- Piotroski F-Score -->
+                            <div class="indicator-card" style="flex: 1; min-width: 200px; text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Piotroski F-Score</div>
+                                <div style="font-size: 1.8rem; font-weight: 700;" class="${pClass}">
+                                    ${scores.piotroski_f_score}/9
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    ${scores.piotroski_interpretation}
+                                </div>
+                            </div>
+
+                            <!-- Altman Z-Score -->
+                            <div class="indicator-card" style="flex: 1; min-width: 200px; text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Altman Z-Score</div>
+                                <div style="font-size: 1.8rem; font-weight: 700;" class="${zClass}">
+                                    ${scores.altman_z_score}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    ${scores.altman_interpretation}
+                                </div>
+                            </div>
+
+                            <!-- Beneish M-Score -->
+                            <div class="indicator-card" style="flex: 1; min-width: 200px; text-align: center;">
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">Beneish M-Score Risk</div>
+                                <div style="font-size: 1.8rem; font-weight: 700;" class="${mClass}">
+                                    ${scores.beneish_m_risk}
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Earnings Manipulation
+                                </div>
+                            </div>
+
+                        </div>
+                        
+                        <!-- Details Dropdown (Optional) -->
+                        <div style="margin-top: 1rem; text-align: center;">
+                            <details>
+                                <summary style="cursor: pointer; color: var(--accent-primary);">View Scoring Details</summary>
+                                <div style="text-align: left; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                                    <p><strong>Piotroski Drivers:</strong> ${scores.piotroski_details.join(', ')}</p>
+                                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                        * F-Score measures financial strength trend.<br>
+                                        * Z-Score predicts bankruptcy risk.<br>
+                                        * M-Score detects potential earnings manipulation.
+                                    </p>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Advanced Patterns (Phase 2 Upgrade)
+            if (data.detected_patterns && data.detected_patterns.length > 0) {
+                const patterns = data.detected_patterns;
+
+                // Helper to format pattern objects or strings
+                let patternHtml = '';
+
+                // 1. Smart Money Concepts (FVG, OB)
+                if (patterns.fair_value_gaps && patterns.fair_value_gaps.length > 0) {
+                    patternHtml += `
+                        <div class="pattern-group">
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Smart Money Concepts</h4>
+                            ${patterns.fair_value_gaps.map(fvg => `
+                                <div class="pattern-item ${fvg.type.includes('Bullish') ? 'bullish' : 'bearish'}">
+                                    <span class="pattern-name">${fvg.type}</span>
+                                    <span class="pattern-details">${fvg.date}: ${fvg.bottom.toFixed(2)} - ${fvg.top.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                            ${patterns.order_blocks ? patterns.order_blocks.map(ob => `
+                                <div class="pattern-item ${ob.type.includes('Bullish') ? 'bullish' : 'bearish'}">
+                                    <span class="pattern-name">${ob.type}</span>
+                                    <span class="pattern-details">${ob.date} @ ${ob.price_level.toFixed(2)}</span>
+                                </div>
+                            `).join('') : ''}
+                        </div>
+                    `;
+                }
+
+                // 2. Harmonic Patterns
+                if (patterns.harmonic_patterns && patterns.harmonic_patterns.length > 0) {
+                    patternHtml += `
+                        <div class="pattern-group">
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Harmonic Patterns</h4>
+                            ${patterns.harmonic_patterns.map(p => `
+                                <div class="pattern-item ${p.signal === 'Buy' ? 'bullish' : 'bearish'}">
+                                    <span class="pattern-name">${p.name} (${p.signal})</span>
+                                    <span class="pattern-details">Confidence: ${p.confidence}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // 3. Elliott Wave & VWAP
+                if (patterns.elliott_wave || patterns.anchored_vwap) {
+                    patternHtml += `
+                        <div class="pattern-group">
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">Trend & Momentum</h4>
+                            ${patterns.elliott_wave ? `
+                                <div class="pattern-item neutral">
+                                    <span class="pattern-name">Elliott Wave Status</span>
+                                    <span class="pattern-details">${patterns.elliott_wave.current_wave_status} (AO: ${patterns.elliott_wave.ao_value})</span>
+                                </div>
+                            ` : ''}
+                            ${patterns.anchored_vwap ? `
+                                <div class="pattern-item ${patterns.anchored_vwap.signal === 'Bullish' ? 'bullish' : 'bearish'}">
+                                    <span class="pattern-name">Anchored VWAP (${patterns.anchored_vwap.signal})</span>
+                                    <span class="pattern-details">Price: ${patterns.anchored_vwap.anchored_price} (Anchor: ${patterns.anchored_vwap.anchor_date})</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+
+                if (patternHtml) {
+                    html += `
+                        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <h3 style="margin-bottom: 1rem; color: var(--accent-primary); text-align: center;">🧩 Advanced Pattern Recognition</h3>
+                            <div class="patterns-container">
+                                ${patternHtml}
+                            </div>
+                        </div>
+                        
+                        <style>
+                            .patterns-container {
+                                display: grid;
+                                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                                gap: 1rem;
+                            }
+                            .pattern-group {
+                                background: rgba(255,255,255,0.03);
+                                padding: 1rem;
+                                border-radius: 8px;
+                                border: 1px solid rgba(255,255,255,0.05);
+                            }
+                            .pattern-item {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                padding: 0.5rem;
+                                margin-bottom: 0.5rem;
+                                border-radius: 4px;
+                                font-size: 0.9rem;
+                            }
+                            .pattern-item:last-child { margin-bottom: 0; }
+                            .pattern-item.bullish { background: rgba(16, 185, 129, 0.1); border-left: 3px solid var(--accent-success); }
+                            .pattern-item.bearish { background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--accent-danger); }
+                            .pattern-item.neutral { background: rgba(59, 130, 246, 0.1); border-left: 3px solid #3b82f6; }
+                            .pattern-name { font-weight: 600; }
+                            .pattern-details { font-size: 0.8rem; color: var(--text-secondary); }
+                        </style>
+                    `;
+                }
+            }
+
             html += `</div>`;
 
 

@@ -11,7 +11,8 @@ import time
 # Technical analysis libraries for Maximum Brain mode
 import stockstats
 
-
+from fundamental_analyzer import FundamentalAnalyzer
+from technical_patterns import TechnicalPatternScanner
 class StockAnalyzer:
     def __init__(self):
         # Configure Gemini client
@@ -26,6 +27,8 @@ class StockAnalyzer:
         # Initialize AlphaVantage Client
         from alpha_vantage_client import AlphaVantageClient
         self.av_client = AlphaVantageClient()
+        self.fundamental_analyzer = FundamentalAnalyzer()
+        self.pattern_scanner = TechnicalPatternScanner()
     
     def fetch_fundamental_data(self, ticker):
         """Fetch fundamental data from AlphaVantage"""
@@ -609,7 +612,7 @@ class StockAnalyzer:
         except:
             return 0
 
-    def analyze_with_ai(self, summary, maximum_brain=False, fundamental_data=None):
+    def analyze_with_ai(self, summary, maximum_brain=False, fundamental_data=None, fundamental_scores=None, patterns=None):
         """Send data to Google Gemini for technical analysis"""
         try:
             if maximum_brain:
@@ -631,6 +634,16 @@ Profit Margin: {fundamental_data.get('ProfitMargin', 'N/A')}
 Quarterly Earnings Growth (YOY): {fundamental_data.get('QuarterlyEarningsGrowthYOY', 'N/A')}
 """
 
+                if fundamental_scores:
+                    fundamental_section += f"""
+INSTITUTIONAL FUNDAMENTAL SCORES:
+Piotroski F-Score: {fundamental_scores['piotroski_f_score']}/9 ({fundamental_scores['piotroski_interpretation']})
+Details: {', '.join(fundamental_scores['piotroski_details'])}
+
+Altman Z-Score: {fundamental_scores['altman_z_score']} ({fundamental_scores['altman_interpretation']})
+Beneish M-Score Risk: {fundamental_scores['beneish_m_risk']}
+"""
+
                 prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
 
 Current Price: ${summary['current_price']:.2f}
@@ -638,6 +651,9 @@ Current Price: ${summary['current_price']:.2f}
 30-day Average Volume: {summary['volume_avg_30d']:,.0f}
 30-day Volatility (StdDev): {summary['volatility_30d']:.2f}
 {fundamental_section}
+
+ADVANCED PATTERN RECOGNITION:
+{json.dumps(patterns, indent=2) if patterns else "No advanced patterns detected."}
 
 PRE-COMPUTED TECHNICAL INDICATOR VALUES:
 {indicator_json}
@@ -650,6 +666,7 @@ CRITICAL INSTRUCTIONS:
 1. **Volume Confirms Price**: You MUST validate any price signal with volume indicators (CMF, Volume Oscillator, OBV). If price is rising but volume is weak/diverging, invalidate the Buy signal.
 2. **Fundamental Sanity Check**: If fundamental data is provided, use it to "sanity check" the technical signal. A technical "Buy" on a bankrupt company (e.g. massive negative EPS, high debt) should be treated with extreme caution.
 3. **Divergence Detection**: Look specifically for divergences between Price and RSI/MACD/Volume.
+4. **Pattern Confirmation**: Use detected patterns (FVG, Order Blocks, Harmonics) to confirm entry/exit zones. If price is in a Bullish FVG or Order Block, it strengthens a Buy signal.
 
 For each method/indicator:
 - Briefly explain the method and how it applies to this data
@@ -662,6 +679,14 @@ Respond in JSON format with this structure:
     "recommendation": "Yes, buy!" or "No, don't buy!",
     "confidence": "high" or "medium" or "low",
     "fundamental_health_score": "0-10 score based on fundamentals (if available)",
+    "institutional_scores": {{
+        "piotroski_score": "X/9",
+        "altman_z_score": "X.XX",
+        "beneish_risk": "Low/Medium/High"
+    }},
+    "detected_patterns": [
+        "List of key patterns found (e.g. 'Bullish Gartley', 'Wave 3 Momentum', 'Bullish FVG')"
+    ],
     "overall_explanation": "Brief explanation of the overall decision, including volume confirmation and fundamental sanity check",
     "technical_analysis": [
         {{
@@ -876,16 +901,32 @@ Provide a final recommendation in the standard JSON format used for stock analys
 
             # Fetch fundamental data (Sanity Check)
             fundamental_data = None
+            fundamental_scores = None
+            patterns = None
+            
             if maximum_brain: # Only fetch for deep analysis to conserve API limits
+                log_progress("Scanning for Advanced Patterns (SMC, Harmonics, Elliott Wave)...")
+                patterns = self.pattern_scanner.analyze_patterns(stock_data['history'])
+                
                 log_progress("Fetching fundamental data from AlphaVantage...")
                 fundamental_data = self.fetch_fundamental_data(ticker)
+                
+                # Fetch deep financial statements for scoring
+                log_progress("Fetching deep financial statements (Balance Sheet, Income, Cash Flow)...")
+                bs, _ = self.av_client.fetch_balance_sheet(ticker)
+                income, _ = self.av_client.fetch_income_statement(ticker)
+                cash, _ = self.av_client.fetch_cash_flow(ticker)
+                
+                if bs and income and cash and fundamental_data:
+                    log_progress("Calculating Institutional Scores (Piotroski, Altman, Beneish)...")
+                    fundamental_scores = self.fundamental_analyzer.calculate_scores(bs, income, cash, fundamental_data)
             
             # AI Analysis
             if maximum_brain:
                 log_progress("Crunching Data through proprietary algorithm to determine BUY/SELL confidence...")
             else:
                 log_progress(f"Engaging AI ({'Maximum Brain' if maximum_brain else 'Standard'})...")
-            analysis, error = self.analyze_with_ai(summary, maximum_brain, fundamental_data)
+            analysis, error = self.analyze_with_ai(summary, maximum_brain, fundamental_data, fundamental_scores, patterns)
             
             if error or analysis is None:
                 # Try chunked fallback if Max Brain failed
@@ -910,6 +951,8 @@ Provide a final recommendation in the standard JSON format used for stock analys
                 'overall_explanation': analysis.get('overall_explanation', 'No explanation provided'),
                 'fundamental_health_score': analysis.get('fundamental_health_score'),
                 'analysis_details': analysis.get('technical_analysis', []),
+                'institutional_scores': analysis.get('institutional_scores'),
+                'detected_patterns': analysis.get('detected_patterns', []),
                 'income_analysis': analysis.get('income_analysis')
             }
             
