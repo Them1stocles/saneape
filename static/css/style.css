@@ -5,17 +5,22 @@
     --bg-card: rgba(30, 41, 59, 0.7);
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --accent-primary: #38bdf8; /* Sky Blue */
-    --accent-secondary: #818cf8; /* Indigo */
-    --accent-success: #34d399; /* Emerald */
-    --accent-danger: #f87171; /* Red */
-    --accent-warning: #fbbf24; /* Amber */
-    
+    --accent-primary: #38bdf8;
+    /* Sky Blue */
+    --accent-secondary: #818cf8;
+    /* Indigo */
+    --accent-success: #34d399;
+    /* Emerald */
+    --accent-danger: #f87171;
+    /* Red */
+    --accent-warning: #fbbf24;
+    /* Amber */
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
     --gradient-card: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
     --gradient-accent: linear-gradient(90deg, #38bdf8, #818cf8);
-    
+
     /* Shadows & Effects */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -23,7 +28,7 @@
     --shadow-glow: 0 0 15px rgba(56, 189, 248, 0.3);
     --glass-border: 1px solid rgba(255, 255, 255, 0.1);
     --backdrop-blur: blur(12px);
-    
+
     /* Typography */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
@@ -41,7 +46,7 @@ body {
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
-    background-image: 
+    background-image:
         radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.1) 0%, transparent 20%),
         radial-gradient(circle at 90% 80%, rgba(129, 140, 248, 0.1) 0%, transparent 20%);
 }
@@ -188,7 +193,8 @@ header {
 /* Results Section */
 .results-section {
     margin-top: 3rem;
-    display: none; /* Hidden by default */
+    display: none;
+    /* Hidden by default */
 }
 
 .results-section.active {
@@ -210,7 +216,7 @@ header {
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 2rem;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding-bottom: 1.5rem;
 }
 
@@ -237,8 +243,13 @@ header {
     font-weight: 500;
 }
 
-.price-change.positive { color: var(--accent-success); }
-.price-change.negative { color: var(--accent-danger); }
+.price-change.positive {
+    color: var(--accent-success);
+}
+
+.price-change.negative {
+    color: var(--accent-danger);
+}
 
 /* Recommendation Badge */
 .recommendation-badge {
@@ -276,7 +287,7 @@ header {
     background: rgba(15, 23, 42, 0.5);
     padding: 1.25rem;
     border-radius: 1rem;
-    border: 1px solid rgba(255,255,255,0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .indicator-header {
@@ -292,9 +303,19 @@ header {
     display: inline-block;
 }
 
-.signal-buy { background-color: var(--accent-success); box-shadow: 0 0 8px var(--accent-success); }
-.signal-sell { background-color: var(--accent-danger); box-shadow: 0 0 8px var(--accent-danger); }
-.signal-neutral { background-color: var(--text-secondary); }
+.signal-buy {
+    background-color: var(--accent-success);
+    box-shadow: 0 0 8px var(--accent-success);
+}
+
+.signal-sell {
+    background-color: var(--accent-danger);
+    box-shadow: 0 0 8px var(--accent-danger);
+}
+
+.signal-neutral {
+    background-color: var(--text-secondary);
+}
 
 /* Loading State */
 .loader {
@@ -318,17 +339,130 @@ header {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
-    .hero h1 { font-size: 2rem; }
-    .result-header { flex-direction: column; gap: 1rem; }
-    .price-display { text-align: left; }
+    .hero h1 {
+        font-size: 2rem;
+    }
+
+    .result-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .price-display {
+        text-align: left;
+    }
+}
+
+/* Share Button */
+.share-btn {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.share-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent-primary);
+    transform: translateY(-2px);
+}
+
+/* Freshness Banner (Shared View) */
+.freshness-banner {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.freshness-gauge {
+    flex: 1;
+    min-width: 200px;
+}
+
+.freshness-bar {
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.freshness-fill {
+    height: 100%;
+    transition: width 1s ease;
+}
+
+.freshness-fill.rec-buy {
+    background: var(--accent-success);
+}
+
+.freshness-fill.rec-hold {
+    background: var(--accent-warning);
+}
+
+.freshness-fill.rec-sell {
+    background: var(--accent-danger);
+}
+
+/* CTA Footer */
+.cta-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    z-index: 1000;
+}
+
+.cta-btn {
+    background: var(--accent-primary);
+    color: black;
+    border: none;
+    padding: 0.8rem 2rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.cta-btn:hover {
+    transform: scale(1.05);
 }

@@ -22,6 +22,7 @@ class AnalysisJob(Base):
     __tablename__ = 'analysis_jobs'
     
     id = db.Column(db.String(36), primary_key=True)  # UUID
+    short_id = db.Column(db.String(10), unique=True, index=True)  # For sharing
     ticker = db.Column(db.String(10), nullable=False)
     mode = db.Column(db.String(20), nullable=False)
     status = db.Column(db.String(20), default='pending')  # pending, processing, completed, failed

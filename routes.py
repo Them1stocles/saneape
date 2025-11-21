@@ -13,6 +13,8 @@ import json
 import os
 import threading
 import uuid
+import uuid
+import shortuuid
 import time
 
 # Initialize managers
@@ -151,8 +153,11 @@ def analyze_stock():
 
         # Create Job
         job_id = str(uuid.uuid4())
+        short_id = shortuuid.ShortUUID().random(length=8)
+        
         job = AnalysisJob(
             id=job_id,
+            short_id=short_id,
             ticker=ticker,
             mode='maximum_brain' if maximum_brain else 'standard',
             status='pending',
@@ -169,7 +174,11 @@ def analyze_stock():
         )
         thread.start()
 
-        return jsonify({'job_id': job_id, 'status': 'pending'})
+        return jsonify({
+            'job_id': job_id,
+            'short_id': short_id,
+            'status': 'pending'
+        })
             
     except Exception as e:
         logging.error(f"Error in analyze_stock: {str(e)}")
@@ -187,11 +196,66 @@ def get_analysis_status(job_id):
             'status': job.status,
             'logs': job.logs,
             'result': job.result if job.status == 'completed' else None,
+            'short_id': job.short_id,
             'error': job.error
         })
     except Exception as e:
         logging.error(f"Error checking status: {str(e)}")
         return jsonify({'error': 'Server error checking status'}), 500
+
+@app.route('/share/<short_id>')
+def share_result(short_id):
+    """Render a shared analysis result"""
+    try:
+        # Find job by short_id
+        stmt = db.select(AnalysisJob).where(AnalysisJob.short_id == short_id)
+        job = db.session.execute(stmt).scalar_one_or_none()
+        
+        if not job:
+            return render_template('share_result.html', error="Analysis not found"), 404
+            
+        if job.status != 'completed' or not job.result:
+            return render_template('share_result.html', error="Analysis not ready or failed"), 404
+            
+        # Calculate age
+        age = datetime.utcnow() - job.created_at
+        age_minutes = int(age.total_seconds() / 60)
+        age_hours = age_minutes // 60
+        
+        # Determine freshness/confidence
+        if age_minutes < 15:
+            freshness = "FRESH"
+            freshness_color = "rec-buy" # Green
+            confidence_pct = 100
+            message = "Actionable Intelligence"
+        elif age_minutes < 60:
+            freshness = "COOLING"
+            freshness_color = "rec-hold" # Yellow
+            confidence_pct = 75
+            message = "Verify Current Price"
+        elif age_hours < 4:
+            freshness = "STALE"
+            freshness_color = "rec-sell" # Orange/Redish
+            confidence_pct = 40
+            message = "Trend Shift Likely"
+        else:
+            freshness = "HISTORICAL"
+            freshness_color = "rec-sell" # Red
+            confidence_pct = 0
+            message = "Archive Only - Do Not Trade"
+            
+        return render_template('share_result.html', 
+                             job=job, 
+                             result=job.result,
+                             age_str=f"{age_hours}h {age_minutes % 60}m ago" if age_hours > 0 else f"{age_minutes}m ago",
+                             freshness=freshness,
+                             freshness_color=freshness_color,
+                             confidence_pct=confidence_pct,
+                             message=message)
+                             
+    except Exception as e:
+        logging.error(f"Error rendering share page: {e}")
+        return render_template('share_result.html', error="System Error"), 500
 
 # Admin Routes
 @app.route('/admin')

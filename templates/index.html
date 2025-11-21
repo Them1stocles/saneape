@@ -200,10 +200,18 @@
             if (currentMode === 'maximum_brain') {
                 terminalWindow.style.display = 'block';
                 addLogLine("Initializing Maximum Brain Analysis protocol...");
+
+                // Auto-scroll to terminal (Mobile UX Fix)
+                terminalWindow.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } else {
                 loader.classList.add('active');
                 document.getElementById('loadingText').innerText = "Analyzing market data...";
             }
+
+            // Disable button to prevent double-submit
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.innerText = "Analyzing...";
 
             try {
                 // 1. Start Analysis Job
@@ -219,6 +227,7 @@
                     showError(data.error);
                     loader.classList.remove('active');
                     terminalWindow.style.display = 'none';
+                    resetButton();
                     return;
                 }
 
@@ -226,13 +235,16 @@
                 if (data.cached && data.result) {
                     loader.classList.remove('active');
                     terminalWindow.style.display = 'none';
-                    renderResults(data.result);
+                    renderResults(data.result, null); // No short_id for cached yet, or pass if available
+                    resetButton();
                     return;
                 }
 
                 // 2. Poll for Status
                 if (data.job_id) {
                     pollStatus(data.job_id);
+                } else {
+                    resetButton();
                 }
 
             } catch (error) {
@@ -240,7 +252,14 @@
                 showError("Connection error. Please try again.");
                 loader.classList.remove('active');
                 terminalWindow.style.display = 'none';
+                resetButton();
             }
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = false;
+            btn.innerText = "Analyze";
         }
 
         function addLogLine(text) {
@@ -273,6 +292,7 @@
                         showError(data.error);
                         terminalWindow.style.display = 'none';
                         loader.classList.remove('active');
+                        resetButton();
                         return;
                     }
 
@@ -303,13 +323,15 @@
                         setTimeout(() => {
                             terminalWindow.style.display = 'none';
                             loader.classList.remove('active');
-                            renderResults(data.result);
+                            renderResults(data.result, data.short_id);
+                            resetButton();
                         }, 1000); // Short delay to let user see "Completed"
                     } else if (data.status === 'failed') {
                         clearInterval(pollingInterval);
                         showError(data.error || "Analysis failed.");
                         terminalWindow.style.display = 'none';
                         loader.classList.remove('active');
+                        resetButton();
                     }
 
                 } catch (e) {
@@ -330,7 +352,7 @@
             resultsSection.style.display = 'block';
         }
 
-        function renderResults(data) {
+        function renderResults(data, shortId) {
             const resultsSection = document.getElementById('resultsSection');
             const isBuy = data.recommendation.toLowerCase().includes('yes') || data.recommendation.toLowerCase().includes('buy');
             const recClass = isBuy ? 'rec-buy' : 'rec-sell';
@@ -364,6 +386,14 @@
                         <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
                             Confidence: <span style="color: var(--text-primary); font-weight: 600;">${data.confidence.toUpperCase()}</span>
                         </div>
+                        
+                        ${shortId ? `
+                        <div style="margin-top: 1.5rem;">
+                            <a href="/share/${shortId}" target="_blank" class="share-btn">
+                                🔗 Share Analysis
+                            </a>
+                        </div>
+                        ` : ''}
                     </div>
             `;
 
