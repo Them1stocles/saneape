@@ -16,6 +16,18 @@
             /* Space for fixed footer */
         }
 
+        .rec-contrarian {
+            background: rgba(255, 189, 46, 0.15);
+            border: 1px solid #ffbd2e;
+            color: #ffbd2e;
+        }
+
+        .rec-watch {
+            background: rgba(52, 152, 219, 0.15);
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+
         .share-header {
             text-align: center;
             margin-bottom: 2rem;
@@ -133,10 +145,28 @@
         <!-- Main Result Card -->
         <div class="result-card">
             <div style="text-align: center;">
-                <div
-                    class="recommendation-badge {{ 'rec-buy' if 'buy' in result.recommendation.lower() or 'yes' in result.recommendation.lower() else 'rec-sell' }}">
-                    {{ result.recommendation }}
+                {% set rec_lower = result.recommendation.lower() %}
+                {% set rec_class = 'rec-sell' %}
+                {% set rec_icon = '🛑' %}
+
+                {% if 'strong buy' in rec_lower or 'yes' in rec_lower %}
+                {% set rec_class = 'rec-buy' %}
+                {% set rec_icon = '🚀' %}
+                {% elif 'contrarian' in rec_lower %}
+                {% set rec_class = 'rec-contrarian' %}
+                {% set rec_icon = '⚠️' %}
+                {% elif 'watch' in rec_lower or 'hold' in rec_lower %}
+                {% set rec_class = 'rec-watch' %}
+                {% set rec_icon = '👀' %}
+                {% endif %}
+
+                <div class="recommendation-badge {{ rec_class }}">
+                    {{ rec_icon }} {{ result.recommendation|upper }}
                 </div>
+                {% if 'contrarian' in rec_lower %}
+                <p style="color: #ffbd2e; font-size: 0.8rem; margin-top: 0.5rem;">⚠️ HIGH RISK: Counter-trend trade.
+                    Strict stop-loss required.</p>
+                {% endif %}
                 <p style="font-size: 1.1rem; margin-top: 1rem; color: var(--text-secondary);">
                     {{ result.overall_explanation }}
                 </p>

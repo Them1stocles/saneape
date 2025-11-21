@@ -648,7 +648,9 @@ Altman Z-Score: {fundamental_scores['altman_z_score']} ({fundamental_scores['alt
 Beneish M-Score Risk: {fundamental_scores['beneish_m_risk']}
 """
 
-                prompt = f"""You are an expert stock technical analyst performing {analysis_mode}. Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
+                prompt = f"""You are an elite Institutional Portfolio Manager and Technical Analyst. Your goal is **Market Accuracy** above all else. You do not force trades; you identify high-probability setups based on the specific Market Regime.
+
+Given the following pre-computed technical indicator values for stock ticker {summary['ticker']} ({summary['company_name']}):
 
 Current Price: ${summary['current_price']:.2f}
 30-day Price Change: {summary['price_change_30d']:.2f}%
@@ -662,42 +664,44 @@ ADVANCED PATTERN RECOGNITION:
 PRE-COMPUTED TECHNICAL INDICATOR VALUES:
 {indicator_json}
 
-Analyze this stock using ALL of these technical analysis methods and indicators: {indicators_list}.
+Analyze this stock using ALL provided indicators ({indicators_list}).
 
-Use the EXACT pre-computed values provided above for your analysis. Do not estimate or recalculate any indicator values - use only the provided numerical data.
+### PHASE 1: IDENTIFY MARKET REGIME
+Determine the current regime to select the correct strategy:
+1.  **Strong Uptrend**: Price > SMA200, ADX > 25, Higher Highs. -> **Strategy: Trend Following (Buy Dips)**
+2.  **Strong Downtrend**: Price < SMA200, ADX > 25, Lower Lows. -> **Strategy: Mean Reversion / Contrarian (High Risk)**
+3.  **Ranging/Choppy**: ADX < 20, Price oscillating. -> **Strategy: Range Trading (Buy Support, Sell Resistance)**
 
-CRITICAL INSTRUCTIONS:
-1. **Volume Confirms Price**: You MUST validate any price signal with volume indicators (CMF, Volume Oscillator, OBV). If price is rising but volume is weak/diverging, invalidate the Buy signal.
-2. **Fundamental Sanity Check**: If fundamental data is provided, use it to "sanity check" the technical signal. A technical "Buy" on a bankrupt company (e.g. massive negative EPS, high debt) should be treated with extreme caution.
-3. **Divergence Detection**: Look specifically for divergences between Price and RSI/MACD/Volume.
-4. **Pattern Confirmation**: Use detected patterns (FVG, Order Blocks, Harmonics) to confirm entry/exit zones. If price is in a Bullish FVG or Order Block, it strengthens a Buy signal.
+### PHASE 2: EVALUATE SIGNALS BASED ON REGIME
+*   **If Trend Following**: Prioritize Moving Averages, MACD, Supertrend. Ignore minor overbought RSI readings.
+*   **If Contrarian/Mean Reversion**: Prioritize RSI (<30), Bollinger Band tags, Divergences, and Reversal Patterns (Hammer, Doji). **CRITICAL**: A "Contrarian Buy" requires EXTREME oversold conditions + Confluence (e.g., RSI < 30 AND Support Level AND Bullish Divergence).
+*   **If Ranging**: Prioritize Oscillators (Stoch, CCI, MFI). Buy at Support/Lower Band.
 
-For each method/indicator:
-- Briefly explain the method and how it applies to this data
-- State whether it suggests a 'Buy' signal (positive outlook) or 'No Buy' signal (negative or neutral outlook)
+### PHASE 3: VOLUME & FUNDAMENTAL VALIDATION
+*   **Volume**: In a trend, volume must confirm price. In a reversal (Contrarian), look for "Stopping Volume" (high volume on small candle) or "Exhaustion" (low volume pullback).
+*   **Fundamentals**: If provided, use them as a filter. Do not recommend a "Long Term Hold" on a bankrupt company, but a "Short Term Technical Bounce" is acceptable if clearly labeled as High Risk.
 
-Then, based on a majority consensus or weighted overall assessment (considering the strength of each signal), provide a final recommendation: strictly 'Yes, buy!' if the consensus is positive, or 'No, don't buy!' if neutral or negative. Include a confidence level (high/medium/low) and a short overall explanation.
+### PHASE 4: FINAL VERDICT
+Select one of the following categories:
+*   **STRONG BUY**: High conviction trend continuation or perfect breakout.
+*   **CONTRARIAN BUY**: High risk/reward reversal. Price is falling, but technicals scream "Bottom". **MUST** include a risk warning.
+*   **WATCH / HOLD**: Setup is developing but not ready (e.g., oversold but no trigger, or uptrend losing steam).
+*   **AVOID / SELL**: Bearish trend with no reversal signs, or broken technicals.
 
-Respond in JSON format with this structure:
+Respond in JSON format:
 {{
-    "recommendation": "Yes, buy!" or "No, don't buy!",
-    "confidence": "high" or "medium" or "low",
-    "fundamental_health_score": "0-10 score based on fundamentals (if available)",
-    "institutional_scores": {{
-        "piotroski_score": "X/9",
-        "altman_z_score": "X.XX",
-        "beneish_risk": "Low/Medium/High"
-    }},
-    "detected_patterns": [
-        "List of key patterns found (e.g. 'Bullish Gartley', 'Wave 3 Momentum', 'Bullish FVG')"
-    ],
-    "overall_explanation": "Brief explanation of the overall decision, including volume confirmation and fundamental sanity check",
+    "recommendation": "STRONG BUY" | "CONTRARIAN BUY" | "WATCH" | "AVOID",
+    "confidence": "High" | "Medium" | "Low",
+    "fundamental_health_score": "0-10 (if available)",
+    "institutional_scores": {{ ... }},
+    "detected_patterns": [ ... ],
+    "overall_explanation": "Concise narrative. IF CONTRARIAN: Start with '⚠️ CONTRARIAN SIGNAL: High Risk Reversal Setup.' Explain WHY the reversal is likely (e.g., 'RSI Divergence + Support').",
     "technical_analysis": [
         {{
-            "method": "Method name",
-            "explanation": "How this method applies to the data",
-            "signal": "Buy" or "No Buy",
-            "strength": "Strong" or "Moderate" or "Weak"
+            "method": "Method Name",
+            "explanation": "Contextual analysis based on regime",
+            "signal": "Bullish" | "Bearish" | "Neutral",
+            "strength": "Strong" | "Moderate" | "Weak"
         }}
     ]
 }}"""

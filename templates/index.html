@@ -106,6 +106,18 @@
             border-radius: 4px;
         }
 
+        .rec-contrarian {
+            background: rgba(255, 189, 46, 0.15);
+            border: 1px solid #ffbd2e;
+            color: #ffbd2e;
+        }
+
+        .rec-watch {
+            background: rgba(52, 152, 219, 0.15);
+            border: 1px solid #3498db;
+            color: #3498db;
+        }
+
         footer {
             text-align: center;
             padding: 2rem 1rem;
@@ -375,8 +387,21 @@
 
         function renderResults(data, shortId) {
             const resultsSection = document.getElementById('resultsSection');
-            const isBuy = data.recommendation.toLowerCase().includes('yes') || data.recommendation.toLowerCase().includes('buy');
-            const recClass = isBuy ? 'rec-buy' : 'rec-sell';
+
+            let recClass = 'rec-sell';
+            let recIcon = '🛑';
+            const recLower = data.recommendation.toLowerCase();
+
+            if (recLower.includes('strong buy') || recLower === 'yes, buy!') {
+                recClass = 'rec-buy';
+                recIcon = '🚀';
+            } else if (recLower.includes('contrarian')) {
+                recClass = 'rec-contrarian';
+                recIcon = '⚠️';
+            } else if (recLower.includes('watch') || recLower.includes('hold')) {
+                recClass = 'rec-watch';
+                recIcon = '👀';
+            }
 
             // Handle missing price_change_30d gracefully
             const priceChange = data.price_change_30d || 0;
@@ -399,14 +424,15 @@
 
                     <div style="text-align: center;">
                         <div class="recommendation-badge ${recClass}">
-                            ${data.recommendation}
+                            ${recIcon} ${data.recommendation.toUpperCase()}
                         </div>
+                        <div class="confidence-meter">
+                            Confidence: <span class="${data.confidence.toLowerCase()}">${data.confidence}</span>
+                        </div>
+                        ${recLower.includes('contrarian') ? '<p style="color: #ffbd2e; font-size: 0.8rem; margin-top: 0.5rem;">⚠️ HIGH RISK: Counter-trend trade. Strict stop-loss required.</p>' : ''}
                         <p style="font-size: 1.1rem; max-width: 700px; margin: 0 auto; color: var(--text-secondary);">
                             ${data.overall_explanation}
                         </p>
-                        <div style="margin-top: 1rem; font-size: 0.9rem; color: var(--text-secondary);">
-                            Confidence: <span style="color: var(--text-primary); font-weight: 600;">${data.confidence.toUpperCase()}</span>
-                        </div>
                         
                         ${shortId ? `
                         <div style="margin-top: 1.5rem;">
