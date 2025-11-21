@@ -172,7 +172,34 @@
 
                 </div>
             </div>
-            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Technical Indicators Grid -->
+        {% if result.analysis_details %}
+        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <h3 style="margin-bottom: 1rem; color: var(--accent-primary); text-align: center;">📊 Technical Indicators
+            </h3>
+            <div class="analysis-grid">
+                {% for item in result.analysis_details %}
+                <div class="indicator-card">
+                    <div class="indicator-header">
+                        <strong style="color: var(--accent-primary)">{{ item.method }}</strong>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                            <span
+                                class="signal-dot {{ 'signal-sell' if 'no' in item.signal.lower() else 'signal-buy' }}"></span>
+                            <span class="signal-text">{{ 'SELL / NEUTRAL' if 'no' in item.signal.lower() else 'BUY'
+                                }}</span>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
+                        {{ item.explanation }}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
         </div>
 
     </main>
