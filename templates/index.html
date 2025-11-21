@@ -105,6 +105,21 @@
             background: #444;
             border-radius: 4px;
         }
+
+        footer {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .footer-credit {
+            margin-top: 0.5rem;
+            font-weight: 500;
+            color: var(--accent-primary);
+        }
     </style>
 </head>
 
@@ -166,6 +181,12 @@
             <!-- Results injected here via JS -->
         </section>
     </main>
+
+    <footer>
+        <p>Disclaimer: This is not financial advice. All content is for entertainment and educational purposes only. Do
+            your own research.</p>
+        <p class="footer-credit">Your AI powered sanity check, created by @CovertWars.</p>
+    </footer>
 
     <script>
         let currentMode = 'standard';
