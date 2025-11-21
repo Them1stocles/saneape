@@ -957,7 +957,7 @@ Provide a final recommendation in the standard JSON format used for stock analys
                 'overall_explanation': analysis.get('overall_explanation', 'No explanation provided'),
                 'fundamental_health_score': analysis.get('fundamental_health_score'),
                 'analysis_details': analysis.get('technical_analysis', []),
-                'institutional_scores': analysis.get('institutional_scores'),
+                'institutional_scores': fundamental_scores,
                 'detected_patterns': analysis.get('detected_patterns', []),
                 'income_analysis': analysis.get('income_analysis')
             }
