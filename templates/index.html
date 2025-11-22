@@ -451,6 +451,10 @@
                         Fundamental Health Score: <span style="color: var(--accent-primary); font-weight: 600;">${data.fundamental_health_score}/10</span>
                     </div>
                 `;
+            } else {
+                // Fallback if score is missing but we want to show something (e.g. for Standard mode if score not calc)
+                // But since we fetch fundamentals now, we might want to show them.
+                // For now, let's just show the score if it exists.
             }
 
             // Institutional Scores (Phase 1 Upgrade)
@@ -646,9 +650,18 @@
                         <div class="indicator-header">
                             <strong style="color: var(--accent-primary)">${item.method}</strong>
                             <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
-                                <span class="signal-dot ${signalClass}"></span>
-                                <span class="signal-text">${signalText}</span>
-                            </div>
+                            <span class="signal-dot ${item.signal.toLowerCase().includes('sell') ||
+                        item.signal.toLowerCase().includes('bearish') ||
+                        item.signal.toLowerCase().includes('no')
+                        ? 'signal-sell'
+                        : (item.signal.toLowerCase().includes('neutral') || item.signal.toLowerCase().includes('hold') ? 'signal-neutral' : 'signal-buy')
+                    }"></span>
+                            <span class="signal-text">${item.signal.toLowerCase().includes('sell') ||
+                        item.signal.toLowerCase().includes('bearish') ||
+                        item.signal.toLowerCase().includes('no')
+                        ? 'SELL / BEARISH'
+                        : (item.signal.toLowerCase().includes('neutral') || item.signal.toLowerCase().includes('hold') ? 'NEUTRAL' : 'BUY')
+                    }</span>
                         </div>
                         <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
                             ${item.explanation}

@@ -909,17 +909,16 @@ Provide a final recommendation in the standard JSON format used for stock analys
             summary = self.summarize_data(df, stock_data['info'], maximum_brain)
             
 
-            # Fetch fundamental data (Sanity Check)
-            fundamental_data = None
+            # Fetch fundamental data (Sanity Check) - NOW FOR ALL MODES
+            log_progress("Fetching fundamental data from AlphaVantage...")
+            fundamental_data = self.fetch_fundamental_data(ticker)
+            
             fundamental_scores = None
             patterns = None
             
-            if maximum_brain: # Only fetch for deep analysis to conserve API limits
+            if maximum_brain: # Only fetch deep data for deep analysis to conserve API limits
                 log_progress("Scanning for Advanced Patterns (SMC, Harmonics, Elliott Wave)...")
                 patterns = self.pattern_scanner.analyze_patterns(stock_data['history'])
-                
-                log_progress("Fetching fundamental data from AlphaVantage...")
-                fundamental_data = self.fetch_fundamental_data(ticker)
                 
                 # Fetch deep financial statements for scoring
                 log_progress("Fetching deep financial statements (Balance Sheet, Income, Cash Flow)...")

@@ -9,6 +9,22 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
         rel="stylesheet">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="SaneApe Analysis: {{ result.ticker }} - {{ result.recommendation }}">
+    <meta property="og:description"
+        content="AI-powered technical analysis for {{ result.company_name }}. Verdict: {{ result.recommendation }}. Confidence: {{ result.confidence }}.">
+    <meta property="og:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ request.url }}">
+    <meta property="twitter:title" content="SaneApe Analysis: {{ result.ticker }} - {{ result.recommendation }}">
+    <meta property="twitter:description"
+        content="AI-powered technical analysis for {{ result.company_name }}. Verdict: {{ result.recommendation }}. Confidence: {{ result.confidence }}.">
+    <meta property="twitter:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
     <style>
         /* Specific overrides for share page */
         body {
@@ -120,7 +136,27 @@
             <h1 style="margin-top: 0.5rem;">${{ "%.2f"|format(result.current_price) }}</h1>
             <p style="color: var(--text-secondary); font-size: 0.9rem;">Snapshot taken on {{
                 job.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+
+            <button onclick="copyToClipboard()" class="share-btn" style="margin-top: 1rem; cursor: pointer;">
+                🔗 Copy Link
+            </button>
+            <span id="copyFeedback"
+                style="display: none; color: var(--accent-success); font-size: 0.8rem; margin-left: 0.5rem;">Copied!</span>
         </div>
+
+        <script>
+            function copyToClipboard() {
+                navigator.clipboard.writeText(window.location.href).then(function () {
+                    const feedback = document.getElementById('copyFeedback');
+                    feedback.style.display = 'inline';
+                    setTimeout(() => {
+                        feedback.style.display = 'none';
+                    }, 2000);
+                }, function (err) {
+                    console.error('Could not copy text: ', err);
+                });
+            }
+        </script>
 
         <!-- Time Decay Banner -->
         <div class="freshness-banner">
@@ -176,6 +212,23 @@
                 </div>
             </div>
 
+            <!-- Basic Fundamentals (All Modes) -->
+            {% if result.fundamental_health_score or result.income_analysis %}
+            <div
+                style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); text-align: center;">
+                <h3 style="margin-bottom: 1rem; color: var(--accent-primary);">📊 Key Fundamentals</h3>
+                <div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap;">
+                    {% if result.fundamental_health_score %}
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">Health Score</div>
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">{{
+                            result.fundamental_health_score }}/10</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
             {% if result.institutional_scores %}
             <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
                 <h3 style="margin-bottom: 1rem; color: var(--accent-primary); text-align: center;">🏛️ Institutional
@@ -216,10 +269,20 @@
                     <div class="indicator-header">
                         <strong style="color: var(--accent-primary)">{{ item.method }}</strong>
                         <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
-                            <span
-                                class="signal-dot {{ 'signal-sell' if 'no' in item.signal.lower() else 'signal-buy' }}"></span>
-                            <span class="signal-text">{{ 'SELL / NEUTRAL' if 'no' in item.signal.lower() else 'BUY'
-                                }}</span>
+                            {% set signal_lower = item.signal.lower() %}
+                            {% set signal_class = 'signal-buy' %}
+                            {% set signal_text = 'BUY' %}
+
+                            {% if 'sell' in signal_lower or 'bearish' in signal_lower or 'no' in signal_lower %}
+                            {% set signal_class = 'signal-sell' %}
+                            {% set signal_text = 'SELL / BEARISH' %}
+                            {% elif 'neutral' in signal_lower or 'hold' in signal_lower %}
+                            {% set signal_class = 'signal-neutral' %}
+                            {% set signal_text = 'NEUTRAL' %}
+                            {% endif %}
+
+                            <span class="signal-dot {{ signal_class }}"></span>
+                            <span class="signal-text">{{ signal_text }}</span>
                         </div>
                     </div>
                     <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
